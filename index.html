@@ -197,7 +197,35 @@
       border-radius: 8px; padding: 9px 8px; font-size: 0.85rem; font-weight: 600; width: 100%;
     }
     .now-btn { background: rgba(56,189,248,0.12); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 0 12px; font-weight: 700; font-size: 0.85rem; }
-    #surgeMap { width: 100%; height: 380px; border-radius: 12px; border: 1px solid var(--card-border); background: #0f172a; }
+    #surgeMap { width: 100%; height: min(64vh, 600px); min-height: 360px; border-radius: 12px; border: 1px solid var(--card-border); background: #0f172a; }
+
+    /* Live location: blue dot, pulse and heading cone */
+    .me-icon { background: none; border: none; }
+    .me-wrap { position: relative; width: 64px; height: 64px; }
+    .me-dot {
+      position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+      border-radius: 50%; background: #1a73e8; border: 3px solid #fff;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.45);
+    }
+    .me-pulse {
+      position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+      border-radius: 50%; background: rgba(26,115,232,0.45); animation: mePulse 2s ease-out infinite;
+    }
+    @keyframes mePulse { 0% { transform: scale(1); opacity: .8; } 100% { transform: scale(3.2); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .me-pulse { animation: none; opacity: 0; } }
+    .me-cone {
+      display: none; position: absolute; left: 0; top: 0; width: 64px; height: 64px;
+      background: conic-gradient(from -28deg, rgba(26,115,232,0.55), rgba(26,115,232,0) 56deg, transparent 56deg);
+      -webkit-mask: radial-gradient(circle, #000 0 31px, transparent 32px);
+              mask: radial-gradient(circle, #000 0 31px, transparent 32px);
+      transition: transform .25s linear;
+    }
+    .map-fabs { display: flex; flex-direction: column; gap: 8px; margin: 0 10px 22px 0; }
+    .map-fab {
+      width: 44px; height: 44px; border-radius: 50%; border: none; background: #fff; color: #5f6368;
+      font-size: 1.1rem; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35); cursor: pointer;
+    }
+    .map-fab.on { color: #1a73e8; }
     .map-note { font-size: 0.75rem; color: var(--muted); margin-top: 6px; text-align: center; min-height: 16px; }
     .map-note.place { color: #fb923c; font-weight: 700; }
     .leaflet-popup-content { font-size: 0.8rem; margin: 10px 12px; }
@@ -971,6 +999,12 @@
       const when = `${DAYS[(now.getDay() + 6) % 7]} ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
       meta.textContent = `${when} · getting location…`;
       document.getElementById('snapSheet').style.display = 'flex';
+      // Use the live blue-dot position if it's fresh
+      if (lastFix && Date.now() - lastFix.t < 60000) {
+        pendingPos = { lat: lastFix.lat, lng: lastFix.lng };
+        meta.textContent = `${when} · 📍 location locked (±${Math.round(lastFix.acc)}m)`;
+        return;
+      }
       if (!navigator.geolocation) { meta.textContent = `${when} · no GPS — you'll place it on the map`; return; }
       navigator.geolocation.getCurrentPosition(
         p => { pendingPos = { lat: p.coords.latitude, lng: p.coords.longitude }; meta.textContent = `${when} · 📍 location locked (±${Math.round(p.coords.accuracy)}m)`; },
@@ -1096,6 +1130,101 @@
       return best;
     }
 
+    // ================= LIVE LOCATION (blue dot) =================
+    let watchId = null, meMarker = null, meAcc = null, lastFix = null;
+    let followMe = true, compassHeading = null, compassOn = false, locErrShown = false;
+
+    function setFollow(on) {
+      followMe = on;
+      const b = document.getElementById('fabLocate');
+      if (b) b.classList.toggle('on', on);
+    }
+
+    function startTracking() {
+      if (watchId !== null || !navigator.geolocation) return;
+      watchId = navigator.geolocation.watchPosition(onFix, onFixError,
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+    }
+    function stopTracking() {
+      if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+    }
+
+    function currentHeading() {
+      // Compass when available; otherwise GPS course while moving (> ~4 km/h)
+      if (compassHeading !== null) return compassHeading;
+      if (lastFix && lastFix.heading != null && !isNaN(lastFix.heading) && lastFix.speed > 1.1) return lastFix.heading;
+      return null;
+    }
+
+    function drawMe() {
+      if (!map || !lastFix) return;
+      const ll = [lastFix.lat, lastFix.lng];
+      if (!meMarker) {
+        meAcc = L.circle(ll, { radius: lastFix.acc, color: '#1a73e8', weight: 1, opacity: 0.5,
+          fillColor: '#1a73e8', fillOpacity: 0.12, interactive: false }).addTo(map);
+        meMarker = L.marker(ll, {
+          interactive: false, keyboard: false, zIndexOffset: 1000,
+          icon: L.divIcon({ className: 'me-icon', iconSize: [64, 64], iconAnchor: [32, 32],
+            html: '<div class="me-wrap"><div class="me-cone" id="meCone"></div><div class="me-pulse"></div><div class="me-dot"></div></div>' })
+        }).addTo(map);
+      } else {
+        meMarker.setLatLng(ll);
+        meAcc.setLatLng(ll).setRadius(lastFix.acc);
+      }
+      const cone = document.getElementById('meCone');
+      const h = currentHeading();
+      if (cone) {
+        cone.style.display = h === null ? 'none' : 'block';
+        if (h !== null) cone.style.transform = `rotate(${h}deg)`;
+      }
+    }
+
+    function onFix(p) {
+      const first = !lastFix;
+      lastFix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.min(p.coords.accuracy || 30, 2000),
+        heading: p.coords.heading, speed: p.coords.speed || 0, t: Date.now() };
+      locErrShown = false;
+      if (!map) return;
+      drawMe();
+      if (followMe) {
+        if (first) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 15), { animate: false });
+        else map.panTo([lastFix.lat, lastFix.lng], { animate: true, duration: 0.6 });
+      }
+    }
+
+    function onFixError(err) {
+      if (locErrShown) return;
+      locErrShown = true;
+      if (err && err.code === 1) {
+        toast('Allow location: Settings → Privacy → Location Services → Safari Websites');
+        setFollow(false);
+      } else {
+        toast('Waiting for GPS signal…');
+      }
+    }
+
+    // Compass heading (Apple Maps style cone). iOS asks permission on a tap.
+    function onOrient(e) {
+      let h = null;
+      if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+      else if (e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;
+      if (h === null) return;
+      const o = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+      compassHeading = (h + o + 360) % 360;
+      drawMe();
+    }
+    function enableCompass() {
+      if (compassOn || typeof DeviceOrientationEvent === 'undefined') return;
+      const attach = () => {
+        compassOn = true;
+        window.addEventListener('deviceorientationabsolute', onOrient, true);
+        window.addEventListener('deviceorientation', onOrient, true);
+      };
+      if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(s => { if (s === 'granted') attach(); }).catch(() => {});
+      } else attach();
+    }
+
     function initTimeFilter() {
       const sel = document.getElementById('fTime');
       let h = '<option value="all">All times</option>';
@@ -1139,26 +1268,30 @@
       streets.addTo(map); // default: standard street map
       L.control.layers({ 'Street map': streets, 'Night': dark }, null, { position: 'topright' }).addTo(map);
 
-      // Home + locate-me buttons
+      // Locate / follow-me button (bottom right, like map apps) + Melbourne overview
       const Ctl = L.Control.extend({
-        options: { position: 'topleft' },
+        options: { position: 'bottomright' },
         onAdd: function () {
-          const box = L.DomUtil.create('div', 'leaflet-bar');
-          box.innerHTML = '<a href="#" title="Melbourne" style="font-size:15px">🏙</a><a href="#" title="My location" style="font-size:15px">📍</a>';
-          const [home, me] = box.querySelectorAll('a');
+          const box = L.DomUtil.create('div', 'map-fabs');
+          box.innerHTML =
+            '<button type="button" class="map-fab" id="fabCity" aria-label="Show all of Melbourne">🏙</button>' +
+            '<button type="button" class="map-fab' + (followMe ? ' on' : '') + '" id="fabLocate" aria-label="Follow my location">' +
+            '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3L12.5 20z" fill="currentColor"/></svg></button>';
           L.DomEvent.disableClickPropagation(box);
-          home.onclick = e => { e.preventDefault(); map.setView(MELB, 12); };
-          me.onclick = e => {
-            e.preventDefault();
-            if (!navigator.geolocation) return toast('Location not available');
-            navigator.geolocation.getCurrentPosition(
-              p => map.setView([p.coords.latitude, p.coords.longitude], 14),
-              () => toast('Location not available'), { timeout: 8000, maximumAge: 60000 });
+          L.DomEvent.disableScrollPropagation(box);
+          box.querySelector('#fabCity').onclick = () => { setFollow(false); map.setView(MELB, 12); };
+          box.querySelector('#fabLocate').onclick = () => {
+            enableCompass();
+            setFollow(true);
+            if (lastFix) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 16));
+            else { startTracking(); toast('Finding your location…'); }
           };
           return box;
         }
       });
       map.addControl(new Ctl());
+      map.on('dragstart', () => setFollow(false));
+      if (lastFix) map.setView([lastFix.lat, lastFix.lng], 15);
 
       areaLayer = L.layerGroup().addTo(map);
       markerLayer = L.layerGroup().addTo(map);
@@ -1277,7 +1410,8 @@
         document.getElementById('tab-' + t).classList.toggle('active', tab === t);
       });
       if (tab === 'insights') renderInsights();
-      if (tab === 'map') setTimeout(renderMap, 50);
+      if (tab === 'map') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
+      else stopTracking(); // save battery when the map isn't showing
     }
 
     window.onload = () => { initTimeFilter(); initStream(); renderInsights(); };
