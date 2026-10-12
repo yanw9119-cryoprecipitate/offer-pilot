@@ -337,6 +337,27 @@
     }
     .chase-toast.maybe .ct-btns > * { background: rgba(0,0,0,.08); border-color: rgba(0,0,0,.35); }
 
+    /* ================= WHERE TO DRIVE ================= */
+    .where-card { margin-bottom: 10px; }
+    .wn-head { font-size: .85rem; line-height: 1.4; margin: 8px 0; }
+    .wn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .wn-cell { background: #0f172a; border: 1px solid var(--card-border); border-radius: 10px; padding: 7px; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .wn-cell.yes { border-color: rgba(34,197,94,.6); }
+    .wn-cell.maybe { border-color: rgba(245,158,11,.6); }
+    .wn-when { font-size: .64rem; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; }
+    .wn-cell b { font-size: .8rem; line-height: 1.2; overflow-wrap: anywhere; }
+    .wn-lvl { font-size: .68rem; color: var(--muted); }
+    .wn-cell .pill { margin: 2px 0 0; align-self: flex-start; font-size: .58rem; padding: 2px 5px; max-width: 100%; white-space: normal; }
+    .pill.na { background: rgba(148,163,184,.2); color: var(--muted); }
+    .plan-box { margin-top: 12px; border-top: 1px solid var(--card-border); padding-top: 10px; }
+    .plan-title { font-weight: 800; font-size: .88rem; margin-bottom: 6px; }
+    .plan-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+    .plan-row select { background: #0f172a; color: var(--text); border: 1px solid var(--card-border); border-radius: 8px; padding: 7px; font-size: .85rem; }
+    .plan-row select:disabled { opacity: .45; }
+    .plan-lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .plan-end input { width: 18px; height: 18px; accent-color: var(--accent); }
+    #planResult .rank-item { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
+
     /* ================= UBER DEMAND (Best Times) ================= */
     .demand-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 4px; }
     .demand-head { display: flex; align-items: center; gap: 8px; }
@@ -691,6 +712,23 @@
 
     <!-- ================= INSIGHTS VIEW ================= -->
     <div id="view-insights" style="display:none;">
+      <div class="demand-card where-card">
+        <div class="demand-title">📍 Where to drive</div>
+        <div id="whereNow"></div>
+        <div class="plan-box">
+          <div class="plan-title">🗓 Plan a shift</div>
+          <div class="plan-row">
+            <select id="planDay" onchange="renderPlan()" aria-label="Day"></select>
+            <label class="plan-lbl">From <select id="planStart" onchange="renderPlan()" aria-label="Start time"></select></label>
+          </div>
+          <div class="plan-row">
+            <label class="plan-lbl plan-end"><input type="checkbox" id="planHasEnd" onchange="onPlanEndToggle()" /> Until
+              <select id="planEnd" onchange="renderPlan()" disabled aria-label="End time"></select></label>
+            <span class="autoread-hint" id="planHint" style="margin:0;">No end time: looks at the first 2 hours</span>
+          </div>
+          <div id="planResult"></div>
+        </div>
+      </div>
       <div class="demand-card">
         <div class="demand-head">
           <div class="demand-titles">
@@ -1693,6 +1731,167 @@
     }
     function onDemandZone(v) { lsSet('trendZone', v); renderInsights(); }
 
+    // ================= WHERE TO DRIVE (now, next hours, and shift planner) =================
+    // Rough centres of Uber's Melbourne trend zones, to tell which one you're in and how far the others are
+    const ZONE_CENTRES = {
+      'Melbourne City': [-37.8136, 144.9631],
+      'Mill Park to Templestowe': [-37.7000, 145.0800],
+      'Werribee to Footscray': [-37.8300, 144.8000],
+      'Brighton to Dandenong': [-37.9300, 145.0800]
+    };
+    const VERDICT = v => v === null ? { t: 'No data', c: 'na' }
+      : v >= 0.625 ? { t: 'Recommended', c: 'yes' } : v >= 0.375 ? { t: 'Fair', c: 'maybe' } : { t: 'Not really worth it', c: 'no' };
+    const GOOD = 0.625, OK = 0.375;   // High or better / Medium (same cut-offs as the demand names)
+    const dayIdx = dt => (dt.getDay() + 6) % 7;
+
+    function myZone() {
+      if (!lastFix) return null;
+      let best = null, bd = Infinity;
+      Object.entries(ZONE_CENTRES).forEach(([z, [la, ln]]) => { const d = distM(lastFix.lat, lastFix.lng, la, ln); if (d < bd) { bd = d; best = z; } });
+      return best;
+    }
+    function zoneKm(z) {
+      const c = ZONE_CENTRES[z];
+      return lastFix && c ? distM(lastFix.lat, lastFix.lng, c[0], c[1]) / 1000 : null;
+    }
+
+    // Best zone for one clock hour. Stays in your zone unless another is clearly busier (a full level).
+    function bestZoneAt(dt) {
+      const zones = Object.keys(loadTrends());
+      const here = myZone();
+      const rows = zones.map(z => ({ z, v: demandAt(z, dayIdx(dt), dt.getHours()) })).filter(r => r.v !== null)
+        .sort((a, b) => b.v - a.v);
+      if (!rows.length) return null;
+      let pick = rows[0];
+      const mine = rows.find(r => r.z === here);
+      // Stay put when your zone is at least Medium and within one level of the best
+      if (mine && pick.z !== here && mine.v >= OK && pick.v - mine.v <= 0.26) pick = mine;
+      return { ...pick, here: pick.z === here, all: rows };
+    }
+
+    // First hour within `hours` from dt when any zone is High or better
+    function nextBusy(dt, hours = 12) {
+      for (let k = 1; k <= hours; k++) {
+        const t = new Date(dt.getTime() + k * 3600000);
+        const b = bestZoneAt(t);
+        if (b && b.v >= GOOD) return { t, b };
+      }
+      return null;
+    }
+
+    const hourName = dt => fmtHour(dt.getHours());
+
+    function renderWhereNow() {
+      const box = document.getElementById('whereNow');
+      if (!box) return;
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      const slots = [['Now', now], ['Next hour', new Date(now.getTime() + 3600000)], ['In 2 hours', new Date(now.getTime() + 7200000)]];
+      const cells = slots.map(([label, dt]) => {
+        const b = bestZoneAt(dt);
+        if (!b) return `<div class="wn-cell"><span class="wn-when">${label}</span><b>No data</b></div>`;
+        const v = VERDICT(b.v), km = zoneKm(b.z);
+        return `<div class="wn-cell ${v.c}"><span class="wn-when">${label} · ${hourName(dt)}</span>` +
+          `<b>${esc(b.z)}</b><span class="wn-lvl">${demandName(b.v)}${b.here ? ' · you’re here' : km !== null ? ` · ${km.toFixed(0)} km` : ''}</span>` +
+          `<i class="pill ${v.c}">${v.t}</i></div>`;
+      }).join('');
+      const nowB = bestZoneAt(now);
+      let head;
+      if (!nowB) head = 'Import Uber trends to get recommendations.';
+      else if (nowB.v >= GOOD) head = `🟢 Drive now in <b>${esc(nowB.z)}</b>: ${demandName(nowB.v).toLowerCase()} demand.`;
+      else if (nowB.v >= OK) {
+        const nb = nextBusy(now, 3);
+        head = `🟡 Fair right now in <b>${esc(nowB.z)}</b>.` + (nb ? ` Busier from <b>${hourName(nb.t)}</b> in <b>${esc(nb.b.z)}</b>.` : '');
+      }
+      else {
+        const nb = nextBusy(now);
+        head = `🔴 Not really worth driving now: demand is low everywhere.` +
+          (nb ? ` It picks up from <b>${hourName(nb.t)}${dayIdx(nb.t) !== dayIdx(now) ? ' ' + DAYS[dayIdx(nb.t)] : ''}</b> in <b>${esc(nb.b.z)}</b>.` : '');
+      }
+      box.innerHTML = `<div class="wn-head">${head}</div><div class="wn-grid">${cells}</div>`;
+    }
+
+    // ---- Shift planner ----
+    function initPlanner() {
+      const today = new Date();
+      document.getElementById('planDay').innerHTML = Array.from({ length: 7 }, (_, k) => {
+        const d = new Date(today.getTime() + k * 86400000);
+        return `<option value="${k}">${k === 0 ? `Today (${DAYS[dayIdx(d)]})` : k === 1 ? `Tomorrow (${DAYS[dayIdx(d)]})` : DAYS[dayIdx(d)]}</option>`;
+      }).join('');
+      const hours = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${fmtHour(h)}</option>`).join('');
+      document.getElementById('planStart').innerHTML = hours;
+      document.getElementById('planEnd').innerHTML = hours;
+      const next = (today.getHours() + 1) % 24;
+      document.getElementById('planStart').value = String(next);
+      document.getElementById('planEnd').value = String((next + 3) % 24);
+    }
+    function onPlanEndToggle() {
+      document.getElementById('planEnd').disabled = !document.getElementById('planHasEnd').checked;
+      document.getElementById('planHint').hidden = document.getElementById('planHasEnd').checked;
+      renderPlan();
+    }
+
+    function renderPlan() {
+      const out = document.getElementById('planResult');
+      if (!out) return;
+      const zones = Object.keys(loadTrends());
+      if (!zones.length) { out.innerHTML = '<div class="empty">Import Uber trends to plan a shift.</div>'; return; }
+      const dayOff = +document.getElementById('planDay').value;
+      const sh = +document.getElementById('planStart').value;
+      const hasEnd = document.getElementById('planHasEnd').checked;
+      const eh = +document.getElementById('planEnd').value;
+      const len = hasEnd ? (((eh - sh + 24) % 24) || 24) : 2;      // no end: look at the first 2 hours
+      const start = new Date(); start.setHours(0, 0, 0, 0);
+      start.setTime(start.getTime() + dayOff * 86400000 + sh * 3600000);
+      const hrs = Array.from({ length: len }, (_, k) => new Date(start.getTime() + k * 3600000));
+
+      const rows = zones.map(z => {
+        const vals = hrs.map(t => demandAt(z, dayIdx(t), t.getHours()));
+        const known = vals.filter(v => v !== null);
+        const avg = known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
+        // Busiest run of hours inside the window
+        const peak = known.length ? Math.max(...known) : null;
+        let runs = [], cur = null;
+        vals.forEach((v, k) => {
+          if (v !== null && v >= Math.max(GOOD, peak)) { if (!cur) cur = [k, k]; else cur[1] = k; }
+          else if (cur) { runs.push(cur); cur = null; }
+        });
+        if (cur) runs.push(cur);
+        const best = runs.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
+        return { z, avg, peak, best, km: zoneKm(z) };
+      }).filter(r => r.avg !== null).sort((a, b) => b.avg - a.avg);
+      // Stay in your own zone when it's within one level of the best
+      const here = myZone(), mi = rows.findIndex(r => r.z === here);
+      if (mi > 0 && rows[mi].avg >= OK && rows[0].avg - rows[mi].avg <= 0.26) rows.unshift(rows.splice(mi, 1)[0]);
+
+      const span = `${DAYS[dayIdx(hrs[0])]} ${fmtHour(sh)}${hasEnd ? '–' + fmtHour(eh) : ''}`;
+      if (!rows.length) { out.innerHTML = `<div class="empty">No Uber trend for ${span} yet.</div>`; return; }
+      const top = rows[0], v = VERDICT(top.avg);
+      let head;
+      if (top.avg >= OK) {
+        const win = top.best ? ` Busiest ${fmtHour(hrs[top.best[0]].getHours())}–${fmtHour((hrs[top.best[1]].getHours() + 1) % 24)}.` : '';
+        head = `${v.c === 'yes' ? '🟢' : '🟡'} <b>${esc(top.z)}</b> is the best area for ${span}: ${demandName(top.avg).toLowerCase()} demand on average.${win}`;
+      } else {
+        // Suggest the nearest better time on the same day
+        let alt = null;
+        for (let k = -6; k <= 6 && !alt; k++) {
+          if (k === 0) continue;
+          for (const dir of [k]) {
+            const t = new Date(start.getTime() + dir * 3600000), b = bestZoneAt(t);
+            if (b && b.v >= GOOD) alt = { t, b };
+          }
+        }
+        head = `🔴 Not really recommended for ${span}: demand is low in every zone.` +
+          (alt ? ` Try <b>${fmtHour(alt.t.getHours())}</b> in <b>${esc(alt.b.z)}</b> instead.` : '');
+      }
+      out.innerHTML = `<div class="wn-head">${head}</div>` + rows.map(r => {
+        const vv = VERDICT(r.avg);
+        const win = r.best ? `busiest ${fmtHour(hrs[r.best[0]].getHours())}–${fmtHour((hrs[r.best[1]].getHours() + 1) % 24)}` : 'no busy hours';
+        return `<div class="rank-item"><div><div>${esc(r.z)}</div>` +
+          `<div class="r-sub">${demandName(r.avg)} on average · ${win}${r.z === here ? ' · you’re here' : r.km !== null ? ` · ${r.km.toFixed(0)} km away` : ''}</div></div>` +
+          `<i class="pill ${vv.c}">${vv.t}</i></div>`;
+      }).join('');
+    }
+
     function renderInsights() {
       const log = loadLog();
       const all = agg(log);
@@ -1714,6 +1913,8 @@
       document.getElementById('insBestDay').textContent = bestDay ? `${DAYS[bestDay.d]} $${bestDay.gph.toFixed(0)}` : '—';
       document.getElementById('insBestTime').textContent = bestTime ? blockLabel(bestTime.b) : '—';
       const ranked = renderDemand();
+      renderWhereNow();
+      renderPlan();
       if (Object.keys(loadTrends()).length && ranked.length) {
         const byDay = {}, byBlock = {};
         ranked.forEach(r => { (byDay[r.d] = byDay[r.d] || []).push(r.score); (byBlock[r.b] = byBlock[r.b] || []).push(r.score); });
@@ -3471,7 +3672,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.13.0';
+    const APP_VERSION = '1.14.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -3524,9 +3725,13 @@
       checkVersion();
       setInterval(checkVersion, 10 * 60000);
       initTimeFilter(); initAutoRead(); loadAutoOpts(); syncSoundBtn(); syncNotifBtn(); initStream();
+      initPlanner();
       showTab('drive');
       // Keep live-surge ages and predictions current while driving
-      setInterval(() => { if (document.getElementById('view-drive').style.display !== 'none') renderMap(); }, 60000);
+      setInterval(() => {
+        if (document.getElementById('view-drive').style.display !== 'none') renderMap();
+        else { renderWhereNow(); }                         // Where to drive: keep now/next hours current
+      }, 60000);
     };
   </script>
 </body>
