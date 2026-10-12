@@ -296,6 +296,26 @@
       font-size: 0.6rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;
     }
     .area-label::before { display: none; }
+    /* ================= CHASE ALERT POPUP ================= */
+    .chase-toast {
+      position: fixed; left: 50%; top: -240px; transform: translateX(-50%); width: 92%; max-width: 400px; z-index: 1100;
+      border-radius: 16px; padding: 12px 14px; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.55);
+      transition: top .35s cubic-bezier(0.34, 1.56, 0.64, 1); border: 2px solid rgba(255,255,255,.85);
+    }
+    .chase-toast.show { top: calc(12px + env(safe-area-inset-top, 0px)); }
+    .chase-toast.yes { background: #15803d; }
+    .chase-toast.maybe { background: #facc15; color: #1c1917; border-color: #1c1917; }
+    .ct-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .ct-level { font-weight: 900; font-size: 1.05rem; }
+    .ct-where { font-weight: 800; font-size: 1.15rem; margin-top: 4px; }
+    .ct-nums { font-weight: 700; font-size: .85rem; margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .ct-btns { display: flex; gap: 6px; margin-top: 10px; }
+    .ct-btns > * {
+      flex: 1; text-align: center; text-decoration: none; padding: 8px 4px; border-radius: 8px; font-weight: 800; font-size: .82rem;
+      background: rgba(0,0,0,.22); color: inherit; border: 1px solid rgba(255,255,255,.35);
+    }
+    .chase-toast.maybe .ct-btns > * { background: rgba(0,0,0,.08); border-color: rgba(0,0,0,.35); }
+
     /* ================= UBER DEMAND (Best Times) ================= */
     .demand-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 4px; }
     .demand-head { display: flex; align-items: center; gap: 8px; }
@@ -827,6 +847,7 @@
   </div>
 
   <div class="toast" id="toast"></div>
+  <div class="chase-toast" id="chaseToast" role="alert"></div>
 
   <!-- Big ACCEPT / DECLINE popup for Auto-Read offers -->
   <div id="decisionToast" onclick="this.classList.remove('show')">
@@ -860,6 +881,14 @@
         <label>TomTom key for live traffic (optional)</label>
         <input type="text" id="cfgTomTom" placeholder="Leave empty to use free road data" autocomplete="off" spellcheck="false" />
         <div class="autoread-hint">Without a key, drive times use free road data plus Melbourne rush-hour estimates. A free key from developer.tomtom.com adds live traffic.</div>
+      </div>
+      <div class="setting-item">
+        <label for="cfgAlerts">Chase alerts</label>
+        <select id="cfgAlerts" class="sel-full">
+          <option value="all">Worth chasing and optional (green + yellow)</option>
+          <option value="green">Only worth chasing (green)</option>
+          <option value="off">Off</option>
+        </select>
       </div>
       <button class="pip-btn" onclick="saveSettings()">Save & Close</button>
     </div>
@@ -1115,13 +1144,15 @@
         document.getElementById('cfgCostKm').value = config.costPerKm;
         document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
         document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
+        document.getElementById('cfgAlerts').value = chaseCfg.alerts;
       }
     }
 
     // Surge chasing settings
     const chaseCfg = {
       maxMin: parseFloat(lsGet('cfgMaxChase')) || 12,
-      tomtom: lsGet('cfgTomTom') || ''
+      tomtom: lsGet('cfgTomTom') || '',
+      alerts: lsGet('cfgAlerts') || 'all'
     };
 
     function saveSettings() {
@@ -1134,6 +1165,8 @@
       lsSet('cfgCostKm', config.costPerKm);
       chaseCfg.maxMin = parseFloat(document.getElementById('cfgMaxChase').value) || 12;
       chaseCfg.tomtom = document.getElementById('cfgTomTom').value.trim();
+      chaseCfg.alerts = document.getElementById('cfgAlerts').value;
+      lsSet('cfgAlerts', chaseCfg.alerts);
       lsSet('cfgMaxChase', chaseCfg.maxMin);
       lsSet('cfgTomTom', chaseCfg.tomtom);
       routeCache.clear();
@@ -2848,6 +2881,82 @@
     // Zone colour for a predicted surge: green = worth chasing, yellow = optional, red = not worth it
     const PRED_COLORS = { yes: '#16a34a', here: '#16a34a', maybe: '#eab308', no: '#dc2626' };
 
+    // ================= CHASE ALERTS =================
+    // Popup (plus chime and phone notification) when a surge turns green or yellow.
+    // Each surge alerts once; again only if it upgrades to green or is still there after 20 minutes.
+    const alerted = new Map();                 // key -> { cls, at }
+    const streetCache = new Map();
+    let chaseQueue = [], chaseShowing = false, chaseHideT = null;
+    const CHASE_LEVEL = { yes: 'Worth chasing', here: "You're in it", maybe: 'Optional chase' };
+
+    async function streetNear(lat, lng) {   // nearest street name (OpenStreetMap), cached
+      const k = lat.toFixed(3) + ',' + lng.toFixed(3);
+      if (streetCache.has(k)) return streetCache.get(k);
+      let road = null;
+      try {
+        const j = await fetchJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&lat=${lat}&lon=${lng}`, 5000);
+        const a = j.address || {};
+        road = a.road || a.pedestrian || a.neighbourhood || null;
+      } catch (e) {}
+      streetCache.set(k, road);
+      return road;
+    }
+
+    function checkChaseAlerts(surges, evals) {
+      const mode = chaseCfg.alerts;           // 'all' | 'green' | 'off'
+      if (mode === 'off') return;
+      const now = Date.now();
+      surges.forEach(sg => {
+        const ev = evals.get(sg.key);
+        if (!ev || !ev.real) return;           // wait for the real road route, avoids flip-flopping
+        const cls = ev.w.cls;
+        const ok = cls === 'yes' || (mode === 'all' && cls === 'maybe') || (cls === 'here' && sg.kind === 'live');
+        if (!ok) { if (alerted.has(sg.key) && cls === 'no') alerted.delete(sg.key); return; }
+        const prev = alerted.get(sg.key);
+        const upgraded = prev && prev.cls === 'maybe' && cls === 'yes';
+        if (prev && !upgraded && now - prev.at < 20 * 60000) return;
+        alerted.set(sg.key, { cls, at: now });
+        chaseQueue.push({ sg, ev });
+      });
+      showNextChase();
+    }
+
+    async function showNextChase() {
+      if (chaseShowing || !chaseQueue.length) return;
+      chaseShowing = true;
+      const { sg, ev } = chaseQueue.shift();
+      const w = ev.w, cls = w.cls;
+      const street = sg.kind === 'live' ? await streetNear(sg.lat, sg.lng) : null;
+      const where = street ? `${sg.name} · near ${street}` : sg.name;
+      const level = CHASE_LEVEL[cls] || 'Surge';
+      const amt = `+$${fmtAmt(w.amt)}${w.amtKnown ? '' : '?'}`;
+      const dur = sg.kind === 'live' ? `seen ${Math.max(0, Math.round(sg.ageMin))} min ago` : `lasts ~${sg.dur} min`;
+      const drive = `🚗 ${Math.max(1, Math.round(ev.r.min))} min`;
+      const box = document.getElementById('chaseToast');
+      box.className = 'chase-toast show ' + (cls === 'maybe' ? 'maybe' : 'yes');
+      box.innerHTML = `<div class="ct-top"><span class="ct-level">${cls === 'maybe' ? '🟡' : '🟢'} ${level}</span>` +
+        `<span class="tag ${sg.kind === 'live' ? 'tag-live' : 'tag-pred'}">${sg.kind === 'live' ? '● LIVE' : 'PREDICTED'}</span></div>` +
+        `<div class="ct-where">${esc(where)}</div>` +
+        `<div class="ct-nums">${amt} · ⏱ ${dur} · ${drive}</div>` +
+        `<div class="ct-btns"><button type="button" onclick="chaseShow('${esc(sg.key)}')">Show</button>` +
+        `<a href="https://waze.com/ul?ll=${sg.lat.toFixed(5)},${sg.lng.toFixed(5)}&navigate=yes" target="_blank" rel="noopener">Waze</a>` +
+        `<button type="button" onclick="chaseClose()">Dismiss</button></div>`;
+      playTone(cls === 'maybe' ? [660, 660] : [660, 880, 1100], 0.11);
+      sendNotice(`${cls === 'maybe' ? '🟡' : '🟢'} ${level}: ${sg.name}`, `${street ? 'Near ' + street + ' · ' : ''}${amt} · ${dur} · ${drive}`);
+      clearTimeout(chaseHideT);
+      chaseHideT = setTimeout(chaseClose, 12000);
+    }
+    function chaseClose() {
+      clearTimeout(chaseHideT);
+      document.getElementById('chaseToast').classList.remove('show');
+      setTimeout(() => { chaseShowing = false; showNextChase(); }, 400);
+    }
+    function chaseShow(key) {
+      chaseClose();
+      if (document.getElementById('view-drive').style.display === 'none') showTab('drive');
+      setTimeout(() => openSurgeCard(key), 100);
+    }
+
     function filterNow() {
       const s = slotOf(Date.now());
       document.getElementById('fDay').value = String(s.day);
@@ -2867,7 +2976,7 @@
       const surges = buildSurges();
       // Judge every predicted surge now (cached road route, else a quick estimate), refine in the background
       const from = myPos(), evals = new Map(), missing = [];
-      surges.filter(sg => sg.kind === 'pred').forEach(sg => {
+      surges.forEach(sg => {
         const q = routeNow(from, sg);
         evals.set(sg.key, { r: q.r, real: q.real, w: worthIt(sg, q.r) });
         if (!q.real) missing.push(sg);
@@ -2907,6 +3016,7 @@
         L.marker([sg.lat, sg.lng], { icon: surgeIcon(sg, ev), zIndexOffset: sg.kind === 'live' ? 600 : 400 })
           .on('click', () => openSurgeCard(sg.key)).addTo(surgeLayer);
       });
+      checkChaseAlerts(surges, evals);
 
       // History: individual snapshots for the chosen day/time
       if (layers.hist) {
@@ -2964,7 +3074,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.9.0';
+    const APP_VERSION = '1.10.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
