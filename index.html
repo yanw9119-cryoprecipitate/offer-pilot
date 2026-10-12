@@ -303,6 +303,15 @@
     .veh-cost { font-size: .8rem; background: rgba(56,189,248,.08); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px; margin: 2px 0 10px; }
     #settingsModal .modal-content { max-height: 90vh; overflow-y: auto; }
 
+    /* ================= FUEL STOPS ================= */
+    .chase-toast.fuel { background: #1e3a8a; }
+    .chase-toast.fuel.ev { background: #065f46; }
+    .fl-head { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+    .fl-head b { flex: 1; font-size: .85rem; }
+    .fl-avg { font-size: .8rem; margin: 8px 0; line-height: 1.6; }
+    .fl-row { display: flex; justify-content: space-between; gap: 8px; font-size: .74rem; color: var(--muted); padding: 5px 0; border-top: 1px solid var(--card-border); }
+    .fl-row span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* ================= CHASE ALERT POPUP ================= */
     .chase-toast {
       position: fixed; left: 50%; top: -240px; transform: translateX(-50%); width: 92%; max-width: 400px; z-index: 1100;
@@ -738,6 +747,31 @@
 
   </div>
 
+  <!-- Fill-up sheet -->
+  <div class="sheet" id="fillSheet" onclick="if (event.target === this) closeFillSheet()">
+    <div class="sheet-content">
+      <div class="sheet-head">
+        <h3 id="fillTitle" style="color: var(--accent);">⛽ Fill-up</h3>
+        <button class="x-btn" onclick="closeFillSheet()" aria-label="Close">✕</button>
+      </div>
+      <div class="veh-grid">
+        <div class="setting-item"><label for="fillType">Type</label>
+          <select id="fillType" class="sel-full" onchange="syncFillLabels()"><option value="fuel">Fuel</option><option value="ev">EV charge</option></select></div>
+        <div class="setting-item"><label for="fillQty" id="fillQtyLabel">Fuel added (litres)</label>
+          <input type="number" id="fillQty" inputmode="decimal" step="0.01" min="0" /></div>
+        <div class="setting-item"><label for="fillPaid">Total paid ($)</label>
+          <input type="number" id="fillPaid" inputmode="decimal" step="0.01" min="0" /></div>
+        <div class="setting-item"><label for="fillOdo">Odometer (km)</label>
+          <input type="number" id="fillOdo" inputmode="numeric" step="1" min="0" /></div>
+      </div>
+      <label class="tgl"><input type="checkbox" id="fillFull" checked />
+        <span>Filled to full<small>Full-to-full fills give the most accurate economy. Partial top-ups are added to the next full one.</small></span></label>
+      <div class="veh-cost" id="fillResult" hidden></div>
+      <button class="pip-btn" id="fillSave" onclick="saveFill()">Save fill-up</button>
+      <div class="autoread-hint">The odometer is pre-filled from your last reading plus the distance tracked while the pilot was open. Correct it from your dashboard for exact results.</div>
+    </div>
+  </div>
+
   <!-- Uber trend import sheet -->
   <div class="sheet" id="trendSheet" onclick="if (event.target === this) closeTrendSheet()">
     <div class="sheet-content">
@@ -855,6 +889,7 @@
 
   <div class="toast" id="toast"></div>
   <div class="chase-toast" id="chaseToast" role="alert"></div>
+  <div class="chase-toast" id="fuelToast" role="alert"></div>
 
   <!-- Big ACCEPT / DECLINE popup for Auto-Read offers -->
   <div id="decisionToast" onclick="this.classList.remove('show')">
@@ -895,6 +930,10 @@
             <input type="number" id="goalKm" step="0.05" min="0" oninput="onVehicleEdit()" /></div>
         </div>
         <div class="autoread-hint" id="vehNote"></div>
+        <div class="fl-head"><b>⛽ Fill-ups</b>
+          <button type="button" class="chip" onclick="toggleSettings(false); openFillSheet(false)">+ Fuel</button>
+          <button type="button" class="chip" onclick="toggleSettings(false); openFillSheet(true)">+ Charge</button></div>
+        <div id="fillLog"></div>
       </div>
 
       <h3 style="margin: 16px 0 8px; color:var(--accent); font-size: 1rem;">⚙️ Offer targets (set from your vehicle)</h3>
@@ -1256,6 +1295,7 @@
         document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
         fillVehicleUI();
+        renderFillLog();
       }
     }
 
@@ -2527,12 +2567,189 @@
       } else if (!compassOn) { enableCompass(); toast('Compass on: the arrow now turns with your phone'); }
     }
 
+    // ================= FUEL & CHARGING STOPS =================
+    // Detects a stop at a petrol or EV charging station (OpenStreetMap), asks what you filled,
+    // and works out real-world economy from full tank to full tank.
+    const FILLS_KEY = 'fillUps';
+    const DWELL_M = 45, DWELL_MS = 90 * 1000, ASK_AGAIN_MS = 2 * 3600 * 1000;
+    let stations = [], stationsAt = null, stationsLoading = false;
+    let dwell = null;                          // { id, since }
+    const askedStations = new Map();           // station id -> time asked
+    let pendingFill = null;                    // station for the open sheet
+    let lastKmFix = null;
+
+    function loadFills() { try { return JSON.parse(lsGet(FILLS_KEY)) || []; } catch (e) { return []; } }
+    function saveFills(f) { lsSet(FILLS_KEY, JSON.stringify(f)); }
+    function trackedKm() { return parseFloat(lsGet('gpsKm')) || 0; }
+
+    // Distance driven while the pilot is open (ignores GPS jitter and jumps)
+    function addTrackedKm(fix) {
+      if (fix.acc > 60) return;
+      if (lastKmFix) {
+        const d = distM(lastKmFix.lat, lastKmFix.lng, fix.lat, fix.lng);
+        const dt = (fix.t - lastKmFix.t) / 1000;
+        if (d < 15) return;                    // jitter: wait for real movement
+        if (dt > 0 && d / dt < 45) lsSet('gpsKm', (trackedKm() + d / 1000).toFixed(3)); // < 160 km/h
+      }
+      lastKmFix = { lat: fix.lat, lng: fix.lng, t: fix.t };
+    }
+
+    async function loadStations(lat, lng) {
+      if (stationsLoading) return;
+      if (stationsAt && distM(lat, lng, stationsAt.lat, stationsAt.lng) < 800 && Date.now() - stationsAt.t < 6 * 3600000) return;
+      stationsLoading = true;
+      const q = `[out:json][timeout:15];(node["amenity"~"^(fuel|charging_station)$"](around:1500,${lat},${lng});` +
+        `way["amenity"~"^(fuel|charging_station)$"](around:1500,${lat},${lng}););out center tags;`;
+      try {
+        const j = await fetchJSON('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 15000);
+        stations = (j.elements || []).map(e => {
+          const t = e.tags || {};
+          return { id: e.type + e.id, ev: t.amenity === 'charging_station', lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon,
+            name: t.name || t.brand || (t.amenity === 'charging_station' ? 'EV charger' : 'Service station') };
+        }).filter(s => s.lat != null);
+        stationsAt = { lat, lng, t: Date.now() };
+      } catch (e) { /* offline: try again on a later fix */ }
+      finally { stationsLoading = false; }
+    }
+
+    function checkFuelStop(fix) {
+      loadStations(fix.lat, fix.lng);
+      if (!stations.length || pendingFill) return;
+      let near = null, nd = Infinity;
+      stations.forEach(s => { const d = distM(fix.lat, fix.lng, s.lat, s.lng); if (d < nd) { nd = d; near = s; } });
+      const still = (fix.speed || 0) < 1.5;
+      if (!near || nd > DWELL_M + Math.min(fix.acc, 30) || !still) { dwell = null; return; }
+      if (!dwell || dwell.id !== near.id) { dwell = { id: near.id, since: Date.now() }; return; }
+      const asked = askedStations.get(near.id);
+      if (Date.now() - dwell.since >= DWELL_MS && (!asked || Date.now() - asked > ASK_AGAIN_MS)) {
+        askedStations.set(near.id, Date.now());
+        askFuelStop(near);
+      }
+    }
+
+    function askFuelStop(st) {
+      pendingFill = st;
+      const box = document.getElementById('fuelToast');
+      box.className = 'chase-toast show fuel' + (st.ev ? ' ev' : '');
+      box.innerHTML = `<div class="ct-level">${st.ev ? '⚡' : '⛽'} At ${esc(st.name)}</div>` +
+        `<div class="ct-where">${st.ev ? 'Recharging?' : 'Refuelling?'}</div>` +
+        `<div class="ct-nums">Log it to work out your real-world ${st.ev ? 'kWh' : 'L'}/100 km</div>` +
+        `<div class="ct-btns"><button type="button" onclick="openFillSheet()">Yes, ${st.ev ? 'recharging' : 'refuelling'}</button>` +
+        `<button type="button" onclick="dismissFuelStop()">No</button></div>`;
+      playTone([520, 660], 0.12);
+      sendNotice(`${st.ev ? '⚡' : '⛽'} At ${st.name}`, st.ev ? 'Recharging? Tap to log it.' : 'Refuelling? Tap to log it.');
+    }
+    function dismissFuelStop() {
+      document.getElementById('fuelToast').classList.remove('show');
+      pendingFill = null;
+    }
+
+    // Fill-up sheet (also opened by hand from Settings)
+    function openFillSheet(manualEv) {
+      document.getElementById('fuelToast').classList.remove('show');
+      const st = pendingFill || { name: 'Manual entry', ev: !!manualEv };
+      pendingFill = st;
+      const fills = loadFills(), last = fills[fills.length - 1];
+      document.getElementById('fillTitle').textContent = `${st.ev ? '⚡ Recharge' : '⛽ Fill-up'} · ${st.name}`;
+      document.getElementById('fillType').value = st.ev ? 'ev' : 'fuel';
+      document.getElementById('fillQty').value = '';
+      document.getElementById('fillPaid').value = '';
+      // Odometer guess: last reading + km tracked since then
+      const guess = last && last.odo ? Math.round(last.odo + (trackedKm() - (last.gpsKm || 0))) : '';
+      document.getElementById('fillOdo').value = guess;
+      document.getElementById('fillFull').checked = true;
+      syncFillLabels();
+      document.getElementById('fillSheet').style.display = 'flex';
+      document.getElementById('fillResult').hidden = true;
+    }
+    function closeFillSheet() { document.getElementById('fillSheet').style.display = 'none'; pendingFill = null; }
+    function syncFillLabels() {
+      const ev = document.getElementById('fillType').value === 'ev';
+      document.getElementById('fillQtyLabel').textContent = ev ? 'Energy added (kWh)' : 'Fuel added (litres)';
+    }
+
+    // Real-world economy over the last full-to-full stretch
+    function economyFor(fills, i) {
+      const cur = fills[i];
+      if (!cur.full) return null;
+      let qty = cur.qty, j = i - 1;
+      while (j >= 0 && !fills[j].full) { qty += fills[j].qty; j--; }   // partial top-ups in between count too
+      if (j < 0 || fills[j].type !== cur.type) return null;
+      const prev = fills[j];
+      const km = cur.odo && prev.odo ? cur.odo - prev.odo : (cur.gpsKm - prev.gpsKm);
+      if (!(km > 20)) return null;
+      return { per100: qty / km * 100, km, byOdo: !!(cur.odo && prev.odo) };
+    }
+    function avgEconomy(type) {
+      const fills = loadFills(), vals = [];
+      fills.forEach((f, i) => { if (f.type === type) { const e = economyFor(fills, i); if (e) vals.push(e); } });
+      const recent = vals.slice(-3);
+      if (!recent.length) return null;
+      const km = recent.reduce((a, e) => a + e.km, 0);
+      return { per100: recent.reduce((a, e) => a + e.per100 * e.km, 0) / km, km, n: recent.length };
+    }
+
+    function saveFill() {
+      const type = document.getElementById('fillType').value;
+      const qty = parseFloat(document.getElementById('fillQty').value);
+      const paid = parseFloat(document.getElementById('fillPaid').value);
+      const odo = parseFloat(document.getElementById('fillOdo').value);
+      if (!(qty > 0)) { toast(type === 'ev' ? 'Enter the kWh added' : 'Enter the litres added'); return; }
+      const fills = loadFills();
+      fills.push({ t: Date.now(), station: pendingFill ? pendingFill.name : 'Manual entry', type, qty,
+        paid: paid > 0 ? paid : null, odo: odo > 0 ? odo : null, full: document.getElementById('fillFull').checked, gpsKm: trackedKm() });
+      saveFills(fills);
+      const e = economyFor(fills, fills.length - 1);
+      const unit = type === 'ev' ? 'kWh' : 'L';
+      const res = document.getElementById('fillResult');
+      const price = paid > 0 ? ` · paid $${(paid / qty).toFixed(2)}/${unit}` : '';
+      res.innerHTML = e
+        ? `Real-world <b>${e.per100.toFixed(1)} ${unit}/100 km</b> over ${Math.round(e.km)} km${e.byOdo ? '' : ' (GPS-tracked)'}${price}`
+        : `Saved${price}. Economy shows from your next full ${type === 'ev' ? 'charge' : 'tank'}.`;
+      res.hidden = false;
+      document.getElementById('fillSave').hidden = true;
+      setTimeout(() => { closeFillSheet(); document.getElementById('fillSave').hidden = false; renderFillLog(); }, e ? 4500 : 2500);
+      toast(e ? `${unit === 'L' ? '⛽' : '⚡'} ${e.per100.toFixed(1)} ${unit}/100 km real-world` : '⛽ Fill-up saved');
+    }
+
+    // Fill-up history in Settings, and applying the real figures to the vehicle panel
+    function renderFillLog() {
+      const box = document.getElementById('fillLog');
+      if (!box) return;
+      const fills = loadFills();
+      const fuelAvg = avgEconomy('fuel'), evAvg = avgEconomy('ev');
+      const lastPaid = [...fills].reverse().find(f => f.type === 'fuel' && f.paid);
+      let html = '';
+      if (fuelAvg) html += `<div class="fl-avg">Real-world <b>${fuelAvg.per100.toFixed(1)} L/100 km</b> (last ${fuelAvg.n} tank${fuelAvg.n > 1 ? 's' : ''}, ${Math.round(fuelAvg.km)} km)` +
+        (lastPaid ? ` · last paid $${(lastPaid.paid / lastPaid.qty).toFixed(2)}/L` : '') +
+        ` <button type="button" class="chip on" onclick="applyRealEconomy()">Use in my vehicle settings</button></div>`;
+      if (evAvg) html += `<div class="fl-avg">Real-world <b>${evAvg.per100.toFixed(1)} kWh/100 km</b> (last ${evAvg.n} charge${evAvg.n > 1 ? 's' : ''})</div>`;
+      html += fills.slice(-5).reverse().map(f => {
+        const d = new Date(f.t);
+        return `<div class="fl-row"><span>${f.type === 'ev' ? '⚡' : '⛽'} ${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} · ${esc(f.station)}</span>` +
+          `<span>${f.qty} ${f.type === 'ev' ? 'kWh' : 'L'}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}${f.full ? ' · full' : ''}</span></div>`;
+      }).join('') || '<div class="autoread-hint">No fill-ups yet. They’re detected when you stop at a station, or log one here.</div>';
+      box.innerHTML = html;
+    }
+    function applyRealEconomy() {
+      const a = avgEconomy('fuel');
+      if (!a) return;
+      document.getElementById('vehModel').value = 'custom';
+      document.getElementById('vehL100').value = a.per100.toFixed(1);
+      const lastPaid = [...loadFills()].reverse().find(f => f.type === 'fuel' && f.paid);
+      if (lastPaid) document.getElementById('vehFuel').value = (lastPaid.paid / lastPaid.qty).toFixed(2);
+      document.getElementById('vehNote').textContent = `Using your real-world ${a.per100.toFixed(1)} L/100 km. Tap Save & Close to keep it.`;
+      onVehicleEdit();
+    }
+
     function onFix(p) {
       const first = !lastFix;
       lastFix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.min(p.coords.accuracy || 30, 2000),
         heading: p.coords.heading, speed: p.coords.speed || 0, t: Date.now() };
       locErrShown = false;
       setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m${compassOn ? ' · 🧭' : ''}`);
+      addTrackedKm(lastFix);
+      checkFuelStop(lastFix);
       if (!map) return;
       drawMe();
       if (followMe) {
@@ -3192,7 +3409,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.11.0';
+    const APP_VERSION = '1.12.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
