@@ -357,6 +357,40 @@
     .plan-lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .plan-end input { width: 18px; height: 18px; accent-color: var(--accent); }
     #planEndWrap[hidden] { display: none; }
+    .wn-why { font-size: .62rem; color: #fbbf24; line-height: 1.25; }
+    .ev-add { margin-top: 8px; font-size: .85rem; }
+    .ev-add summary { cursor: pointer; color: var(--accent); font-weight: 700; }
+    .ev-add input { width: 100%; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px; color: var(--text); font-size: .95rem; }
+    #eventList .fl-row span { white-space: normal; line-height: 1.35; }
+    .shift-bar { position: relative; overflow: hidden; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 6px;
+      background: #0f172a; border: 1px solid var(--card-border); border-radius: 10px; padding: 6px 10px; margin-bottom: 6px; color: var(--text); font-size: .78rem; text-align: left; }
+    .shift-bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(34,197,94,.22); }
+    .shift-bar > span, .shift-bar > small { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .shift-bar small { color: var(--muted); font-size: .68rem; }
+    .shift-bar.idle span { color: var(--accent); font-weight: 800; }
+    .shift-bar.done { border-color: var(--green); }
+    .sh-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+    .sh-grid div { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 6px; display: flex; flex-direction: column; }
+    .sh-grid span { font-size: .62rem; color: var(--muted); text-transform: uppercase; }
+    .sh-grid b { font-size: .95rem; } .sh-grid b.net { color: var(--green); }
+    .sh-prog { height: 8px; border-radius: 4px; background: #0f172a; overflow: hidden; border: 1px solid var(--card-border); }
+    .sh-prog i { display: block; height: 100%; background: var(--green); }
+    #shiftBtn.stop { background: rgba(239,68,68,.18); color: var(--red); border-color: var(--red); }
+    #shiftSheet .sheet-content { max-height: 88vh; overflow-y: auto; }
+    .stale-banner { background: rgba(245,158,11,.15); border: 1px solid var(--amber); border-radius: 10px; padding: 8px 10px; font-size: .8rem; line-height: 1.35; margin-bottom: 10px; }
+    .stale-banner[hidden] { display: none; }
+    #airportBox .rank-item, #spotList .rank-item { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
+    .ap-strip { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .68rem; color: var(--muted); }
+    .ap-strip span { width: 42px; flex: none; }
+    .ap-strip div { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; }
+    .ap-strip i { height: 14px; border-radius: 2px; }
+    .ap-strip i.ap-yes { background: var(--green); } .ap-strip i.ap-maybe { background: var(--amber); } .ap-strip i.ap-no { background: #334155; }
+    .ap-strip i.sel { outline: 2px solid var(--accent); outline-offset: 0; }
+    .ap-axis { margin-left: 48px; }
+    .bk-row { display: flex; gap: 8px; margin: 8px 0 4px; }
+    .bk-row > * { flex: 1; margin: 0; text-align: center; }
+    .bk-go { background: rgba(239,68,68,.18); color: var(--red); border-color: var(--red); }
+    .bk-go[hidden] { display: none; }
     #planResult .rank-item { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
     /* ================= UBER DEMAND (Uber Trends tab) ================= */
@@ -453,6 +487,11 @@
 
     /* Surge pins on the map */
     .surge-pin-wrap { background: none; border: none; }
+    .zone-tag {
+      transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: #0f172a;
+      background: rgba(255,255,255,.92); border: 2px solid; border-radius: 8px; padding: 3px 7px; text-align: center;
+    }
+    .zone-tag span { display: block; font-weight: 700; font-size: 10px; color: #475569; }
     .surge-pin {
       transform: translate(-50%, -120%); white-space: nowrap; font: 800 11px/1 -apple-system, sans-serif;
       padding: 5px 8px 5px 6px; border-radius: 999px; color: #fff; display: inline-flex; align-items: center; gap: 5px;
@@ -640,6 +679,8 @@
             <button class="chip on" id="chipLive" onclick="toggleLayer('live')">🔴 Live</button>
             <button class="chip on" id="chipPred" onclick="toggleLayer('pred')">🔮 Predicted</button>
             <button class="chip" id="chipHist" onclick="toggleLayer('hist')">🕘 History</button>
+            <button class="chip" id="chipZones" onclick="toggleLayer('zones')">🗺 Zones</button>
+            <button class="chip" id="chipSpots" onclick="toggleLayer('spots')">⭐ Spots</button>
             <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
           </div>
           <div class="hist-bar" id="histBar" hidden>
@@ -659,6 +700,7 @@
       </div>
 
       <div class="drive-bottom offer-panel">
+          <button type="button" class="shift-bar idle" id="shiftBar" onclick="openShift()"></button>
           <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)">ENTER OFFER DETAILS</div>
         <div class="mini-stats">
           <div><span>Gross</span><b id="grossHr">$0/hr</b></div>
@@ -713,6 +755,7 @@
 
     <!-- ================= UBER TRENDS VIEW ================= -->
     <div id="view-trends" style="display:none;">
+      <div class="stale-banner" id="trendStale" hidden></div>
       <div class="demand-card">
         <div class="demand-head">
           <div class="demand-titles">
@@ -728,6 +771,10 @@
         <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
       </div>
       <div class="autoread-hint">Screenshot Uber Driver → Earnings trends (each day tab), then Import. Several charts per screenshot are read at once.</div>
+      <div class="demand-card" style="margin-top:10px;">
+        <div class="demand-title">🔁 Week-on-week changes</div>
+        <div id="trendChanges" style="margin-top:6px;"></div>
+      </div>
     </div>
 
     <!-- ================= INSIGHTS VIEW ================= -->
@@ -751,6 +798,32 @@
           </div>
           <div id="planResult"></div>
         </div>
+      </div>
+      <div class="demand-card">
+        <div class="demand-title">✈️ Airport runs</div>
+        <div class="demand-sub">City ⇄ Melbourne Airport for the day and start time chosen above.</div>
+        <div id="airportBox"></div>
+      </div>
+      <div class="demand-card">
+        <div class="demand-title">⭐ Your best pickup spots</div>
+        <div class="demand-sub">Suburbs ranked by the $/hr of offers you got there. Turn on ⭐ Spots on the map to see them.</div>
+        <div id="spotList" style="margin-top:6px;"></div>
+      </div>
+      <div class="demand-card">
+        <div class="demand-title">🏟 Events &amp; holidays · next 2 weeks</div>
+        <div class="demand-sub">Big events raise demand in their Uber zone as crowds arrive and leave. Rain raises it everywhere.</div>
+        <div id="eventList" style="margin-top:6px;"></div>
+        <details class="ev-add"><summary>➕ Add your own event</summary>
+          <div class="veh-grid" style="margin-top:8px;">
+            <div class="setting-item"><label for="evName">Name</label><input id="evName" placeholder="e.g. Concert at Rod Laver" /></div>
+            <div class="setting-item"><label for="evDate">Date</label><input type="date" id="evDate" /></div>
+            <div class="setting-item"><label for="evStart">Starts</label><input type="time" id="evStart" /></div>
+            <div class="setting-item"><label for="evEnd">Finishes</label><input type="time" id="evEnd" /></div>
+          </div>
+          <div class="setting-item"><label for="evZone">Uber zone</label><select id="evZone" class="sel-full"></select></div>
+          <label class="tgl"><input type="checkbox" id="evBig" /><span>Big crowd (stadium, festival)</span></label>
+          <button class="pip-btn" type="button" onclick="addMyEvent()">Add event</button>
+        </details>
       </div>
       <div class="section-title">Best times to drive</div>
       <div class="rank" id="bestDrive"></div>
@@ -826,6 +899,22 @@
       <div class="veh-cost" id="fillResult" hidden></div>
       <button class="pip-btn" id="fillSave" onclick="saveFill()">Save fill-up</button>
       <div class="autoread-hint">The odometer is pre-filled from your last reading plus the distance tracked while the pilot was open. Correct it from your dashboard for exact results.</div>
+    </div>
+  </div>
+
+  <!-- Shift tracker sheet -->
+  <div class="sheet" id="shiftSheet" onclick="if (event.target === this) closeShift()">
+    <div class="sheet-content">
+      <div class="sheet-head">
+        <h3 style="color: var(--accent);">⏱ Shift</h3>
+        <button class="x-btn" onclick="closeShift()" aria-label="Close">✕</button>
+      </div>
+      <div class="setting-item"><label for="shiftGoal">Daily goal (take-home after car costs, $)</label>
+        <input type="number" id="shiftGoal" inputmode="decimal" step="10" min="0" oninput="onShiftGoal()" /></div>
+      <div id="shiftNow"></div>
+      <button class="pip-btn" id="shiftBtn" onclick="toggleShift()">▶ Start shift</button>
+      <div class="fl-head"><b>Past shifts</b></div>
+      <div id="shiftHist"></div>
     </div>
   </div>
 
@@ -1022,6 +1111,14 @@
           <option value="off">Off</option>
         </select>
       </div>
+      <h3 style="margin: 16px 0 8px; color:var(--accent); font-size: 1rem;">☁️ Backup to Google Drive</h3>
+      <div class="autoread-hint">Back up saves everything (offers, trends, shifts, fill-ups, settings) as one file. On iPhone, choose <b>Drive</b> in the share sheet. To restore, pick the file from Files → Google Drive.</div>
+      <div class="bk-row">
+        <button type="button" class="pip-btn" onclick="makeBackup()">☁️ Back up now</button>
+        <label class="pip-btn bk-restore">📂 Restore<input type="file" accept="application/json,.json" hidden onchange="onRestoreFile(event)" /></label>
+      </div>
+      <button type="button" class="pip-btn bk-go" id="restoreGo" hidden onclick="doRestore()"></button>
+      <div class="autoread-hint" id="backupInfo"></div>
       <button class="pip-btn" onclick="saveSettings()">Save & Close</button>
     </div>
   </div>
@@ -1099,7 +1196,7 @@
     function resetAll() {
       const fare = parseFloat(data.fare) || 0, mins = parseFloat(data.mins) || 0, kms = parseFloat(data.kms) || 0;
       if (fare > 0 && mins > 0 && !curEntryT) {
-        const entry = { t: Date.now(), fare, mins, kms, src: 'clr' };
+        const entry = stampLoc({ t: Date.now(), fare, mins, kms, src: 'clr' });
         entry.took = isGoodOffer(entry);
         const log = loadLog();
         log.push(entry);
@@ -1140,7 +1237,7 @@
         Object.assign(existing, { fare, mins, kms });
         existing.took = isGoodOffer(existing);
       } else {
-        const entry = { t: Date.now(), fare, mins, kms, src: 'auto' };
+        const entry = stampLoc({ t: Date.now(), fare, mins, kms, src: 'auto' });
         entry.took = isGoodOffer(entry);
         log.push(entry);
         curEntryT = entry.t;
@@ -1405,7 +1502,7 @@
     function loadLog() {
       try { return JSON.parse(lsGet(LOG_KEY)) || []; } catch (e) { return []; }
     }
-    function saveLog(log) { lsSet(LOG_KEY, JSON.stringify(log)); }
+    function saveLog(log) { lsSet(LOG_KEY, JSON.stringify(log)); renderShiftBar(); }
 
     function toast(msg, actionLabel, onAction) {
       const t = document.getElementById('toast');
@@ -1432,8 +1529,8 @@
       if (!(fare > 0 && mins > 0)) { toast('Enter fare and time first'); return; }
       const log = loadLog();
       const existing = curEntryT ? log.find(x => x.t === curEntryT) : null;
-      if (existing) existing.took = took;           // Auto-Read already logged it: just set the outcome
-      else log.push({ t: Date.now(), fare, mins, kms, took, src: 'manual' });
+      if (existing) { existing.took = took; stampLoc(existing); }  // Auto-Read already logged it: just set the outcome
+      else log.push(stampLoc({ t: Date.now(), fare, mins, kms, took, src: 'manual' }));
       saveLog(log);
       toast(took ? '✓ Logged — took it' : '✗ Logged — passed');
       clearInputs();
@@ -1655,15 +1752,23 @@
       const p = trendPending;
       if (!p || p.error) return;
       const day = +document.getElementById('trendDay').value;
-      const all = loadTrends(), saved = [];
+      const all = loadTrends(), saved = [], changes = [];
       p.charts.forEach((ch, i) => {
         if (!document.getElementById('tcInc' + i).checked) return;
         const zone = (document.getElementById('tcZone' + i).value || `Zone ${i + 1}`).trim();
+        changes.push(...trendChanges(all, zone, day, ch.levels, ch.liveIdx));
         mergeLevels(all, zone, day, ch.levels, ch.liveIdx);
         saved.push(zone);
       });
       if (!saved.length) { toast('Tick at least one chart to save'); return; }
       saveTrends(all);
+      const dayAt = (() => { try { return JSON.parse(lsGet('trendDayAt')) || {}; } catch (e) { return {}; } })();
+      dayAt[day] = Date.now(); lsSet('trendDayAt', JSON.stringify(dayAt));
+      if (changes.length) {
+        let prev = null; try { prev = JSON.parse(lsGet('trendChanges')); } catch (e) {}
+        const keep = prev && Date.now() - prev.at < 3 * 86400000 ? prev.items.filter(c => !changes.some(n => n.zone === c.zone && n.day === c.day && n.period === c.period)) : [];
+        lsSet('trendChanges', JSON.stringify({ at: Date.now(), items: changes.concat(keep).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 20) }));
+      }
       if (!lsGet('trendZone')) lsSet('trendZone', saved[0]);
       demandDay = day;
       toast(`📈 Saved ${DAYS[day]} · ${saved.length > 1 ? saved.length + ' zones' : saved[0]}`);
@@ -1741,35 +1846,178 @@
     }
     function onDemandZone(v) { lsSet('trendZone', v); renderInsights(); }
 
-    // ================= WHERE TO DRIVE (now, next hours, and shift planner) =================
-    // Rough centres of Uber's Melbourne trend zones, to tell which one you're in and how far the others are
-    const ZONE_CENTRES = {
-      'Melbourne City': [-37.8136, 144.9631],
-      'Mill Park to Templestowe': [-37.7000, 145.0800],
-      'Werribee to Footscray': [-37.8300, 144.8000],
-      'Brighton to Dandenong': [-37.9300, 145.0800]
+    // ================= RAIN & EVENTS =================
+    // Demand goes up when it rains (riders who'd walk book a ride) and around big events as crowds
+    // arrive and leave. These raise Uber's usual pattern in the planner and Where to drive.
+    const VENUES = {
+      flemington: { name: 'Flemington Racecourse', lat: -37.7880, lng: 144.9120 },
+      caulfield:  { name: 'Caulfield Racecourse', lat: -37.8790, lng: 145.0410 },
+      mcg:        { name: 'MCG', lat: -37.8200, lng: 144.9834 },
+      cbd:        { name: 'Melbourne CBD', lat: -37.8136, lng: 144.9631 }
     };
+    // Sources: Racing Victoria calendar, MCG events page, Business Victoria public holidays (checked 13 Oct 2026)
+    const RACE = (date, name, venue) => ({ name, venue, start: date + 'T10:30', end: date + 'T18:30', size: 'big' });
+    const BUILT_IN_EVENTS = [
+      RACE('2026-10-17', 'Caulfield Cup', 'caulfield'),
+      RACE('2026-10-24', 'Cox Plate', 'flemington'),
+      RACE('2026-10-31', 'Derby Day', 'flemington'),
+      RACE('2026-11-03', 'Melbourne Cup', 'flemington'),
+      RACE('2026-11-05', 'Oaks Day', 'flemington'),
+      RACE('2026-11-07', 'Champions Day', 'flemington'),
+      { name: 'T20: Australia v England', venue: 'mcg', start: '2026-11-21T19:15', end: '2026-11-21T22:45', size: 'big' },
+      { name: 'BBL: Stars v Strikers', venue: 'mcg', start: '2026-12-18T19:15', end: '2026-12-18T22:45', size: 'med' },
+      ...[26, 27, 28, 29, 30].map(d => ({ name: `Boxing Day Test, day ${d - 25}`, venue: 'mcg', start: `2026-12-${d}T10:30`, end: `2026-12-${d}T18:30`, size: d === 26 ? 'big' : 'med' })),
+      { name: 'New Year’s Eve', venue: 'cbd', start: '2026-12-31T20:00', end: '2027-01-01T01:00', size: 'big' },
+      { name: 'BBL: Renegades v Sixers', venue: 'mcg', start: '2027-01-01T16:00', end: '2027-01-01T19:30', size: 'med' },
+      { name: 'BBL: Stars v Renegades', venue: 'mcg', start: '2027-01-04T18:05', end: '2027-01-04T21:35', size: 'big' },
+      { name: 'BBL: Stars v Sixers', venue: 'mcg', start: '2027-01-07T19:15', end: '2027-01-07T22:45', size: 'med' },
+      { name: 'BBL: Stars v Hurricanes', venue: 'mcg', start: '2027-01-14T19:15', end: '2027-01-14T22:45', size: 'med' },
+      { name: 'BBL: Renegades v Stars', venue: 'mcg', start: '2027-01-16T19:15', end: '2027-01-16T22:45', size: 'big' }
+    ];
+    const PUBLIC_HOLIDAYS = {
+      '2026-11-03': 'Melbourne Cup Day', '2026-12-25': 'Christmas Day', '2026-12-26': 'Boxing Day', '2026-12-28': 'Boxing Day (extra)',
+      '2027-01-01': 'New Year’s Day', '2027-01-26': 'Australia Day', '2027-03-08': 'Labour Day', '2027-03-26': 'Good Friday',
+      '2027-03-27': 'Easter Saturday', '2027-03-28': 'Easter Sunday', '2027-03-29': 'Easter Monday', '2027-04-25': 'ANZAC Day',
+      '2027-06-14': 'King’s Birthday', '2027-11-02': 'Melbourne Cup Day', '2027-12-25': 'Christmas Day', '2027-12-26': 'Boxing Day',
+      '2027-12-27': 'Christmas Day (extra)', '2027-12-28': 'Boxing Day (extra)'
+    };
+    const ymd = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
+    function myEvents() { try { return JSON.parse(lsGet('myEvents')) || []; } catch (e) { return []; } }
+    function allEvents() {
+      return [...BUILT_IN_EVENTS, ...myEvents()].map(e => {
+        const v = VENUES[e.venue] || { name: e.place || 'Your event', lat: e.lat, lng: e.lng };
+        return { ...e, place: v.name, zone: e.zone || (v.lat != null ? zoneAt(v.lat, v.lng) : null),
+          s: new Date(e.start).getTime(), e: new Date(e.end).getTime() };
+      }).filter(e => e.zone && !isNaN(e.s) && !isNaN(e.e));
+    }
+
+    // Weather: hourly rain for Melbourne from Open-Meteo (free, no account), refreshed hourly
+    let weather = null;
+    try { weather = JSON.parse(lsGet('weatherCache')); } catch (e) {}
+    async function loadWeather() {
+      if (weather && Date.now() - weather.at < 3600000) return;
+      try {
+        const j = await fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=-37.81&longitude=144.96' +
+          '&hourly=precipitation,precipitation_probability&timezone=Australia%2FMelbourne&forecast_days=7', 10000);
+        weather = { at: Date.now(), t: j.hourly.time, mm: j.hourly.precipitation, p: j.hourly.precipitation_probability };
+        lsSet('weatherCache', JSON.stringify(weather));
+        renderInsights(); if (map) renderMap();
+      } catch (e) { /* offline: no rain boost */ }
+    }
+    function rainAt(dt) {
+      if (!weather) return null;
+      const key = `${ymd(dt)}T${String(dt.getHours()).padStart(2, '0')}:00`;
+      const i = weather.t.indexOf(key);
+      if (i < 0) return null;
+      return { mm: weather.mm[i] || 0, p: weather.p[i] || 0, wet: (weather.mm[i] || 0) >= 1 || ((weather.p[i] || 0) >= 60 && (weather.mm[i] || 0) >= 0.3) };
+    }
+
+    // Extra demand (0–0.5) and the reasons, for a zone at a clock hour
+    function boostAt(zone, dt) {
+      let add = 0; const why = [];
+      const r = rainAt(dt);
+      if (r && r.wet) { add += 0.25; why.push('🌧 rain'); }
+      const t = dt.getTime() + 1800000;               // middle of the hour
+      allEvents().forEach(e => {
+        if (e.zone !== zone) return;
+        const big = e.size === 'big';
+        const leaving = t >= e.e - 3600000 && t <= e.e + 5400000;   // last hour to 90 min after
+        const arriving = t >= e.s - 5400000 && t <= e.s;
+        if (leaving) { add += big ? 0.5 : 0.25; why.push('🏟 ' + e.name + ' finishing'); }
+        else if (arriving) { add += big ? 0.25 : 0.125; why.push('🏟 ' + e.name + ' starting'); }
+      });
+      return { add: Math.min(0.5, add), why };
+    }
+    // Uber's usual demand plus rain and events, capped at Very high
+    function demandAdj(zone, dt) {
+      const base = demandAt(zone, dayIdx(dt), dt.getHours());
+      if (base === null) return null;
+      return Math.min(1, base + boostAt(zone, dt).add);
+    }
+    function holidayOn(dt) { return PUBLIC_HOLIDAYS[ymd(dt)] || null; }
+
+    function renderEvents() {
+      const box = document.getElementById('eventList');
+      if (!box) return;
+      const now = Date.now(), soon = now + 14 * 86400000;
+      const evs = allEvents().filter(e => e.e > now && e.s < soon).sort((a, b) => a.s - b.s).slice(0, 8);
+      const hol = Object.entries(PUBLIC_HOLIDAYS).filter(([d]) => { const t = new Date(d + 'T12:00').getTime(); return t > now - 43200000 && t < soon; });
+      const fmt = t => new Date(t).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+      const mine = myEvents();
+      box.innerHTML = (evs.map(e => {
+        const idx = mine.findIndex(m => m.name === e.name && m.start === e.start);
+        return `<div class="fl-row"><span>🏟 <b>${esc(e.name)}</b> · ${esc(e.place)}<br>${fmt(e.s)} – ${new Date(e.e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${esc(e.zone)}</span>` +
+          (idx >= 0 ? `<button type="button" class="del" onclick="deleteMyEvent(${idx})" aria-label="Delete event">✕</button>` : '') + `</div>`;
+      }).join('') + hol.map(([d, n]) => `<div class="fl-row"><span>📅 <b>${esc(n)}</b> · public holiday, patterns may differ<br>${new Date(d + 'T12:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}</span></div>`).join(''))
+        || '<div class="autoread-hint">No big events in the next two weeks.</div>';
+    }
+    function addMyEvent() {
+      const name = document.getElementById('evName').value.trim();
+      const date = document.getElementById('evDate').value, st = document.getElementById('evStart').value, en = document.getElementById('evEnd').value;
+      const zone = document.getElementById('evZone').value;
+      if (!name || !date || !st || !en) { toast('Enter a name, date, start and end time'); return; }
+      let end = `${date}T${en}`;
+      if (en <= st) { const d = new Date(`${date}T12:00`); d.setDate(d.getDate() + 1); end = `${ymd(d)}T${en}`; } // finishes after midnight
+      const list = myEvents();
+      list.push({ name, start: `${date}T${st}`, end, zone, size: document.getElementById('evBig').checked ? 'big' : 'med' });
+      lsSet('myEvents', JSON.stringify(list));
+      document.getElementById('evName').value = '';
+      toast('🏟 Event added');
+      renderInsights();
+    }
+    function deleteMyEvent(i) {
+      const list = myEvents(); list.splice(i, 1); lsSet('myEvents', JSON.stringify(list)); renderInsights();
+    }
+
+    // ================= WHERE TO DRIVE (now, next hours, and shift planner) =================
+    // Uber's Melbourne trend zones, traced from the Earnings trends map (13 Oct 2026) and placed on real
+    // coordinates using the town labels on that map (accurate to about 1 km). [lat, lng] outlines.
+    // Names for four zones come from Uber's weekly trends list; the other four are descriptive until imported.
+    const UBER_ZONE_SHAPES = {"Melbourne City":[[-37.8795,144.9837],[-37.8689,144.9781],[-37.8598,144.9777],[-37.8465,144.9651],[-37.8421,144.9514],[-37.8426,144.9673],[-37.8394,144.9799],[-37.852,144.9893],[-37.8389,145.0111],[-37.8172,145.0237],[-37.8084,145.0184],[-37.8084,145.0042],[-37.7949,144.9998],[-37.7847,144.99],[-37.7671,144.998],[-37.7503,144.9932],[-37.7371,144.9761],[-37.7328,144.9426],[-37.7406,144.922],[-37.7518,144.9115],[-37.767,144.9084],[-37.7836,144.9136],[-37.7782,144.9042],[-37.7818,144.8766],[-37.7762,144.8774],[-37.7671,144.8691],[-37.7652,144.8636],[-37.7667,144.852],[-37.7706,144.8453],[-37.7682,144.836],[-37.7703,144.8199],[-37.7753,144.8122],[-37.7752,144.8017],[-37.7709,144.7985],[-37.7647,144.8013],[-37.7558,144.7978],[-37.6877,144.8042],[-37.635,144.7877],[-37.6377,144.8559],[-37.6669,144.8563],[-37.6829,144.8669],[-37.6829,144.8714],[-37.6877,144.8763],[-37.6821,144.9029],[-37.6871,144.9138],[-37.6924,144.9688],[-37.7148,144.9728],[-37.7233,144.9812],[-37.7198,145.014],[-37.7321,145.0451],[-37.7516,145.064],[-37.7634,145.0623],[-37.7688,145.0672],[-37.7773,145.0632],[-37.7836,145.0675],[-37.7822,145.0895],[-37.7945,145.1012],[-37.801,145.1264],[-37.8101,145.1223],[-37.8216,145.1282],[-37.8312,145.124],[-37.8442,145.1363],[-37.8495,145.1333],[-37.8548,145.1181],[-37.8559,145.1036],[-37.8669,145.0909],[-37.8795,144.9837]],"Mill Park to Templestowe":[[-37.7994,145.1674],[-37.7945,145.1527],[-37.7945,145.1386],[-37.7881,145.1309],[-37.7887,145.1218],[-37.7839,145.1078],[-37.7716,145.0961],[-37.7721,145.0811],[-37.7671,145.0817],[-37.7617,145.0769],[-37.7499,145.0785],[-37.7181,145.048],[-37.7084,145.0186],[-37.7091,145.0031],[-37.6533,145.0264],[-37.6489,145.0341],[-37.6336,145.0357],[-37.6061,145.0503],[-37.5994,145.0449],[-37.5966,145.0462],[-37.5889,145.0612],[-37.5828,145.0603],[-37.5779,145.0713],[-37.5775,145.0819],[-37.573,145.0895],[-37.571,145.1019],[-37.5739,145.1103],[-37.5724,145.1218],[-37.5661,145.129],[-37.5719,145.1413],[-37.587,145.1543],[-37.5982,145.1475],[-37.6021,145.1505],[-37.6184,145.1419],[-37.627,145.1432],[-37.6546,145.1719],[-37.6566,145.1685],[-37.661,145.1725],[-37.6597,145.1784],[-37.6656,145.1779],[-37.6713,145.1831],[-37.6744,145.1929],[-37.672,145.1971],[-37.6863,145.2107],[-37.6856,145.2145],[-37.6969,145.2261],[-37.7113,145.2261],[-37.7396,145.236],[-37.7528,145.2479],[-37.748,145.2855],[-37.7676,145.3051],[-37.78,145.2988],[-37.7809,145.2945],[-37.7767,145.2565],[-37.7661,145.24],[-37.7709,145.2024],[-37.7802,145.1882],[-37.7904,145.1838],[-37.7938,145.1869],[-37.798,145.1797],[-37.7994,145.1674]],"Werribee to Footscray":[[-37.9523,144.6737],[-37.9495,144.6706],[-37.9508,144.6621],[-37.9474,144.6583],[-37.9475,144.6403],[-37.9071,144.6015],[-37.8993,144.59],[-37.8861,144.5897],[-37.8786,144.5823],[-37.8758,144.5843],[-37.8615,144.5753],[-37.8553,144.5781],[-37.8201,144.6308],[-37.8134,144.6344],[-37.8066,144.696],[-37.8022,144.7036],[-37.8079,144.7106],[-37.7996,144.7818],[-37.7947,144.7929],[-37.7868,144.7941],[-37.7875,144.8179],[-37.7801,144.8261],[-37.7814,144.8453],[-37.7762,144.8606],[-37.778,144.8628],[-37.7946,144.8572],[-37.799,144.8638],[-37.8134,144.8702],[-37.8014,144.882],[-37.8027,144.8851],[-37.7995,144.8906],[-37.7903,144.8913],[-37.7892,144.9013],[-37.7988,144.9157],[-37.7983,144.9211],[-37.8117,144.9202],[-37.8186,144.911],[-37.8138,144.9067],[-37.817,144.9012],[-37.8349,144.8908],[-37.8404,144.8919],[-37.8632,144.9157],[-37.8669,144.9112],[-37.8691,144.9029],[-37.8641,144.892],[-37.865,144.8806],[-37.8558,144.869],[-37.859,144.8571],[-37.8686,144.8432],[-37.8703,144.8235],[-37.874,144.8171],[-37.8899,144.8056],[-37.9057,144.7979],[-37.9135,144.7986],[-37.9177,144.7914],[-37.9232,144.7738],[-37.9241,144.7617],[-37.9212,144.7578],[-37.9474,144.7143],[-37.9523,144.6737]],"Brighton to Dandenong":[[-38.0334,145.1048],[-38.0208,145.0973],[-37.9896,145.0667],[-37.9845,145.0505],[-37.993,145.0376],[-37.9909,145.0305],[-37.9742,145.0141],[-37.9682,145.0101],[-37.9625,145.012],[-37.9429,144.9951],[-37.9391,144.9981],[-37.9322,144.9958],[-37.9213,144.9853],[-37.917,144.9847],[-37.9151,144.9881],[-37.9034,144.9807],[-37.9004,144.9858],[-37.8902,144.9857],[-37.8763,145.0995],[-37.8657,145.1098],[-37.8645,145.1243],[-37.8601,145.1319],[-37.8585,145.1427],[-37.8623,145.1584],[-37.862,145.1793],[-37.8651,145.1847],[-37.8573,145.1938],[-37.8602,145.2021],[-37.8558,145.2105],[-37.8736,145.2278],[-37.8737,145.233],[-37.8841,145.2436],[-37.9004,145.2545],[-37.9032,145.2621],[-37.9221,145.2811],[-37.9537,145.2657],[-37.9619,145.2737],[-37.9912,145.2008],[-37.9992,145.188],[-38.0036,145.1714],[-38.0153,145.1459],[-38.0314,145.1217],[-38.0334,145.1048]],"North \u00b7 Craigieburn":[[-37.7124,144.9894],[-37.6923,144.9849],[-37.6818,144.9754],[-37.6789,144.9663],[-37.6806,144.9563],[-37.6779,144.9493],[-37.6777,144.9292],[-37.6711,144.9059],[-37.6744,144.8798],[-37.6644,144.8702],[-37.6342,144.8727],[-37.6271,144.8663],[-37.6279,144.8497],[-37.6252,144.842],[-37.6266,144.8343],[-37.6243,144.8328],[-37.6147,144.8378],[-37.6102,144.8447],[-37.5955,144.8514],[-37.5904,144.8584],[-37.5762,144.8643],[-37.5706,144.8722],[-37.5604,144.8765],[-37.557,144.8735],[-37.5335,144.8865],[-37.5295,144.8835],[-37.5199,144.8877],[-37.5149,144.8955],[-37.4883,144.9076],[-37.4832,144.9146],[-37.4435,144.9369],[-37.4227,144.9524],[-37.4009,144.9624],[-37.4063,144.9718],[-37.405,144.9803],[-37.4105,144.9904],[-37.409,144.9974],[-37.4117,144.9998],[-37.4111,145.0044],[-37.4168,145.0141],[-37.4541,145.0192],[-37.463,145.0234],[-37.4657,145.0213],[-37.4746,145.0255],[-37.4808,145.022],[-37.5096,145.0273],[-37.5182,145.0338],[-37.5214,145.0302],[-37.5535,145.0378],[-37.5652,145.0354],[-37.5969,145.0439],[-37.5996,145.0419],[-37.6057,145.0474],[-37.6354,145.0316],[-37.6437,145.0307],[-37.6499,145.0227],[-37.6526,145.0251],[-37.6913,145.0045],[-37.7088,145.001],[-37.7124,144.9894]],"North-west \u00b7 Sunbury & Melton":[[-37.8054,144.7104],[-37.7676,144.6725],[-37.7664,144.663],[-37.7465,144.6297],[-37.7511,144.6094],[-37.7461,144.6029],[-37.7472,144.5975],[-37.7418,144.5926],[-37.7404,144.5817],[-37.7357,144.5755],[-37.7213,144.5684],[-37.7177,144.5639],[-37.7153,144.5494],[-37.7047,144.5418],[-37.7059,144.5326],[-37.7029,144.528],[-37.7063,144.5124],[-37.7019,144.5039],[-37.6457,144.5165],[-37.6404,144.5594],[-37.6486,144.5667],[-37.6447,144.5832],[-37.6473,144.5894],[-37.6474,144.6088],[-37.6426,144.6509],[-37.6379,144.6589],[-37.581,144.687],[-37.564,144.6852],[-37.5586,144.6945],[-37.545,144.7003],[-37.5429,144.7145],[-37.5338,144.7373],[-37.5392,144.7467],[-37.5379,144.7552],[-37.5498,144.7658],[-37.5603,144.7637],[-37.5733,144.767],[-37.584,144.7618],[-37.5921,144.7684],[-37.6001,144.7705],[-37.6021,144.7671],[-37.6082,144.7681],[-37.6137,144.7737],[-37.6159,144.7718],[-37.6198,144.7747],[-37.6374,144.7719],[-37.6429,144.7768],[-37.6568,144.7777],[-37.6628,144.7824],[-37.6888,144.7891],[-37.757,144.7834],[-37.7753,144.7864],[-37.7816,144.7836],[-37.792,144.7905],[-37.7963,144.7885],[-37.8054,144.7104]],"East \u00b7 Ringwood":[[-37.9718,145.3199],[-37.9648,145.3034],[-37.9615,145.2772],[-37.9571,145.2713],[-37.9528,145.2681],[-37.9218,145.2834],[-37.901,145.2633],[-37.8989,145.2563],[-37.8924,145.2505],[-37.8896,145.2518],[-37.8749,145.238],[-37.8715,145.2342],[-37.8722,145.2303],[-37.8536,145.2117],[-37.8577,145.2019],[-37.8547,145.1973],[-37.8632,145.1836],[-37.8597,145.1798],[-37.8612,145.1728],[-37.8581,145.1674],[-37.8604,145.1573],[-37.857,145.1542],[-37.8578,145.1466],[-37.8425,145.1508],[-37.8289,145.1386],[-37.8165,145.1442],[-37.8083,145.1369],[-37.7953,145.1406],[-37.7983,145.1452],[-37.7989,145.1638],[-37.8017,145.167],[-37.8006,145.1769],[-37.7935,145.1892],[-37.7901,145.1862],[-37.7777,145.1924],[-37.7735,145.1996],[-37.7686,145.2402],[-37.777,145.2497],[-37.7796,145.2701],[-37.7826,145.2729],[-37.7807,145.2505],[-37.7839,145.245],[-37.7924,145.2417],[-37.8018,145.2443],[-37.8137,145.2602],[-37.8115,145.2756],[-37.7991,145.2889],[-37.7897,145.2901],[-37.7844,145.2867],[-37.7797,145.3011],[-37.769,145.307],[-37.7481,145.2889],[-37.7476,145.2961],[-37.7398,145.3059],[-37.7349,145.3465],[-37.748,145.3602],[-37.7473,145.3686],[-37.7668,145.3848],[-37.7652,145.3911],[-37.7769,145.4216],[-37.7755,145.4294],[-37.7827,145.4507],[-37.7899,145.4462],[-37.7926,145.4487],[-37.8241,145.4415],[-37.8144,145.4102],[-37.8177,145.4036],[-37.8157,145.3973],[-37.8296,145.3724],[-37.8425,145.366],[-37.8524,145.3685],[-37.8556,145.3649],[-37.86,145.3688],[-37.8587,145.3773],[-37.8621,145.3803],[-37.8626,145.3989],[-37.8713,145.408],[-37.8747,145.4065],[-37.9132,145.4308],[-37.9271,145.4228],[-37.9318,145.4263],[-37.9351,145.4241],[-37.9374,145.421],[-37.9331,145.4107],[-37.9331,145.3973],[-37.9366,145.3913],[-37.9295,145.383],[-37.9366,145.3752],[-37.9604,145.3786],[-37.9655,145.369],[-37.9718,145.3199]],"South-east \u00b7 Frankston":[[-38.1947,145.1288],[-38.1697,145.1043],[-38.1669,145.1057],[-38.1608,145.1002],[-38.157,145.1032],[-38.1537,145.1009],[-38.1428,145.1143],[-38.1181,145.1223],[-38.079,145.1213],[-38.055,145.112],[-38.0523,145.1141],[-38.036,145.1039],[-38.0348,145.106],[-38.0331,145.1206],[-38.0097,145.1627],[-37.9643,145.2713],[-37.9635,145.279],[-37.9684,145.2847],[-37.965,145.2906],[-37.9677,145.2931],[-37.9664,145.3016],[-37.9699,145.3053],[-37.9711,145.3148],[-38.0296,145.3784],[-38.0282,145.3816],[-38.0316,145.3847],[-38.0302,145.3924],[-38.0329,145.3949],[-38.0316,145.4033],[-38.0343,145.4058],[-38.0344,145.4136],[-38.0806,145.4042],[-38.0761,145.395],[-38.0803,145.3886],[-38.091,145.3924],[-38.1033,145.3899],[-38.1116,145.3941],[-38.1528,145.3738],[-38.1673,145.3585],[-38.1711,145.3465],[-38.1605,145.3382],[-38.1508,145.3238],[-38.1471,145.3133],[-38.1455,145.2912],[-38.1488,145.2756],[-38.1573,145.26],[-38.181,145.2414],[-38.1823,145.2329],[-38.1788,145.2291],[-38.181,145.2182],[-38.1779,145.2129],[-38.1814,145.2069],[-38.1799,145.1998],[-38.1831,145.1879],[-38.1875,145.1803],[-38.1853,145.177],[-38.1871,145.1677],[-38.1795,145.1595],[-38.1837,145.153],[-38.192,145.1495],[-38.1947,145.1288]]};
+
+    // Distance in km from a point to a zone's outline (0 when inside)
+    function edgeKm(lat, lng, ring) {
+      const k = Math.cos(lat * Math.PI / 180) * 111.32;
+      let best = Infinity;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const ax = ring[j][1] * k, ay = ring[j][0] * 111.32, bx = ring[i][1] * k, by = ring[i][0] * 111.32;
+        const px = lng * k, py = lat * 111.32, dx = bx - ax, dy = by - ay;
+        const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / ((dx * dx + dy * dy) || 1)));
+        best = Math.min(best, Math.hypot(px - ax - t * dx, py - ay - t * dy));
+      }
+      return best;
+    }
+    // Which Uber zone a point is in. Points in the thin gaps between zones (or under the map's
+    // labels) go to the nearest zone within 4 km; near a shared edge, a zone named after the suburb wins.
+    function zoneAt(lat, lng) {
+      const inside = Object.keys(UBER_ZONE_SHAPES).find(z => inRing(lat, lng, UBER_ZONE_SHAPES[z]));
+      if (inside) return inside;
+      const ds = Object.entries(UBER_ZONE_SHAPES).map(([z, r]) => ({ z, d: edgeKm(lat, lng, r) })).sort((a, b) => a.d - b.d);
+      if (!ds.length || ds[0].d > 4) return null;
+      const sub = (areaOf(lat, lng) || {}).name;
+      const named = sub && ds.find(x => x.d - ds[0].d < 0.3 && x.z.includes(sub));
+      return (named || ds[0]).z;
+    }
     const VERDICT = v => v === null ? { t: 'No data', c: 'na' }
       : v >= 0.625 ? { t: 'Recommended', c: 'yes' } : v >= 0.375 ? { t: 'Fair', c: 'maybe' } : { t: 'Not really worth it', c: 'no' };
     const GOOD = 0.625, OK = 0.375;   // High or better / Medium (same cut-offs as the demand names)
     const dayIdx = dt => (dt.getDay() + 6) % 7;
 
-    function myZone() {
-      if (!lastFix) return null;
-      let best = null, bd = Infinity;
-      Object.entries(ZONE_CENTRES).forEach(([z, [la, ln]]) => { const d = distM(lastFix.lat, lastFix.lng, la, ln); if (d < bd) { bd = d; best = z; } });
-      return best;
-    }
+    function myZone() { return lastFix ? zoneAt(lastFix.lat, lastFix.lng) : null; }
+    // How far you are from a zone's edge (0 if you're in it)
     function zoneKm(z) {
-      const c = ZONE_CENTRES[z];
-      return lastFix && c ? distM(lastFix.lat, lastFix.lng, c[0], c[1]) / 1000 : null;
+      const r = UBER_ZONE_SHAPES[z];
+      if (!lastFix || !r) return null;
+      if (myZone() === z) return 0;
+      return edgeKm(lastFix.lat, lastFix.lng, r);
     }
 
     // Best zone for one clock hour. Stays in your zone unless another is clearly busier (a full level).
     function bestZoneAt(dt) {
       const zones = Object.keys(loadTrends());
       const here = myZone();
-      const rows = zones.map(z => ({ z, v: demandAt(z, dayIdx(dt), dt.getHours()) })).filter(r => r.v !== null)
+      const rows = zones.map(z => ({ z, v: demandAdj(z, dt), why: boostAt(z, dt).why })).filter(r => r.v !== null)
         .sort((a, b) => b.v - a.v);
       if (!rows.length) return null;
       let pick = rows[0];
@@ -1802,6 +2050,7 @@
         const v = VERDICT(b.v), km = zoneKm(b.z);
         return `<div class="wn-cell ${v.c}"><span class="wn-when">${label} · ${hourName(dt)}</span>` +
           `<b>${esc(b.z)}</b><span class="wn-lvl">${demandName(b.v)}${b.here ? ' · you’re here' : km !== null ? ` · ${km.toFixed(0)} km` : ''}</span>` +
+          (b.why && b.why.length ? `<span class="wn-why">${esc(b.why.join(' · '))}</span>` : '') +
           `<i class="pill ${v.c}">${v.t}</i></div>`;
       }).join('');
       const nowB = bestZoneAt(now);
@@ -1817,6 +2066,9 @@
         head = `🔴 Not really worth driving now: demand is low everywhere.` +
           (nb ? ` It picks up from <b>${hourName(nb.t)}${dayIdx(nb.t) !== dayIdx(now) ? ' ' + DAYS[dayIdx(nb.t)] : ''}</b> in <b>${esc(nb.b.z)}</b>.` : '');
       }
+      const apIn = airportScore('in', now), apOut = airportRun(now);
+      if (apIn >= GOOD) head += `<br>✈️ Airport pickups are ${demandName(apIn).toLowerCase()} now: a good time to wait at the airport for a ride to the city.`;
+      else if (apOut.both >= GOOD) head += `<br>✈️ Good time for city → airport runs: you’ll likely get a ride back.`;
       box.innerHTML = `<div class="wn-head">${head}</div><div class="wn-grid">${cells}</div>`;
     }
 
@@ -1844,7 +2096,7 @@
     // One quiet hour is allowed if it picks up again straight after. Max 8 hours (fatigue).
     const MAX_SHIFT_H = 8;
     function suggestShift(start, zone) {
-      const at = k => { const t = new Date(start.getTime() + k * 3600000); return demandAt(zone, dayIdx(t), t.getHours()); };
+      const at = k => { const t = new Date(start.getTime() + k * 3600000); return demandAdj(zone, t); };
       let len = 0;
       for (let k = 0; k < MAX_SHIFT_H; k++) {
         const v = at(k);
@@ -1860,6 +2112,7 @@
     function renderPlan() {
       const out = document.getElementById('planResult');
       if (!out) return;
+      renderAirport();
       const zones = Object.keys(loadTrends());
       if (!zones.length) { out.innerHTML = '<div class="empty">Import Uber trends to plan a shift.</div>'; return; }
       const dayOff = +document.getElementById('planDay').value;
@@ -1887,7 +2140,8 @@
       const hrs = Array.from({ length: len }, (_, k) => new Date(start.getTime() + k * 3600000));
 
       const rows = zones.map(z => {
-        const vals = hrs.map(t => demandAt(z, dayIdx(t), t.getHours()));
+        const vals = hrs.map(t => demandAdj(z, t));
+        const why = [...new Set(hrs.flatMap(t => boostAt(z, t).why))];
         const known = vals.filter(v => v !== null);
         const avg = known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
         // Busiest run of hours inside the window
@@ -1899,7 +2153,7 @@
         });
         if (cur) runs.push(cur);
         const best = runs.sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]))[0];
-        return { z, avg, peak, best, km: zoneKm(z) };
+        return { z, avg, peak, best, km: zoneKm(z), why };
       }).filter(r => r.avg !== null).sort((a, b) => b.avg - a.avg);
       // Stay in your own zone when it's within one level of the best
       const here = myZone(), mi = rows.findIndex(r => r.z === here);
@@ -1925,11 +2179,14 @@
         head = `🔴 Not really recommended for ${span}: demand is low in every zone.` +
           (alt ? ` Try <b>${fmtHour(alt.t.getHours())}</b> in <b>${esc(alt.b.z)}</b> instead.` : '');
       }
+      const hol = holidayOn(hrs[0]);
+      if (hol) head += ` <br>📅 ${esc(hol)}: a public holiday, so the usual pattern may differ.`;
       out.innerHTML = `<div class="wn-head">${head}</div>` + rows.map(r => {
         const vv = VERDICT(r.avg);
         const win = r.best ? `busiest ${fmtHour(hrs[r.best[0]].getHours())}–${fmtHour((hrs[r.best[1]].getHours() + 1) % 24)}` : 'no busy hours';
         return `<div class="rank-item"><div><div>${esc(r.z)}</div>` +
-          `<div class="r-sub">${demandName(r.avg)} on average · ${win}${r.z === here ? ' · you’re here' : r.km !== null ? ` · ${r.km.toFixed(0)} km away` : ''}</div></div>` +
+          `<div class="r-sub">${demandName(r.avg)} on average · ${win}${r.z === here ? ' · you’re here' : r.km !== null ? ` · ${r.km.toFixed(0)} km away` : ''}` +
+          `${r.why.length ? '<br>' + esc(r.why.join(' · ')) : ''}</div></div>` +
           `<i class="pill ${vv.c}">${vv.t}</i></div>`;
       }).join('');
     }
@@ -1957,6 +2214,9 @@
       const ranked = renderDemand();
       renderWhereNow();
       renderPlan();
+      renderEvents();
+      renderSpotList();
+      renderTrendChanges();
       if (Object.keys(loadTrends()).length && ranked.length) {
         const byDay = {}, byBlock = {};
         ranked.forEach(r => { (byDay[r.d] = byDay[r.d] || []).push(r.score); (byBlock[r.b] = byBlock[r.b] || []).push(r.score); });
@@ -3196,7 +3456,7 @@
     const LIVE_WINDOW_MIN = 20;
     const LEVEL_AMT = [0, 1, 3, 6];          // $ assumed when no "+$" amount was recorded
     const SURGE_HALF_LIFE_MIN = 7;           // research: surges often end within 5-10 minutes
-    const layers = { live: true, pred: true, hist: false };
+    const layers = { live: true, pred: true, hist: false, zones: false, spots: false };
     let surgeLayer = null, routeLayer = null, openSurgeKey = null, suburbRenderer = null;
 
     function amtNumber(a) {
@@ -3209,7 +3469,7 @@
 
     function toggleLayer(k) {
       layers[k] = !layers[k];
-      document.getElementById({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist' }[k]).classList.toggle('on', layers[k]);
+      document.getElementById({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots' }[k]).classList.toggle('on', layers[k]);
       document.getElementById('histBar').hidden = !layers.hist;
       renderMap();
     }
@@ -3658,6 +3918,23 @@
       });
       checkChaseAlerts(surges, evals);
 
+      if (layers.spots) drawSpots();
+
+      // Uber trend zones with demand right now
+      if (layers.zones) {
+        const now = new Date(), here = myZone();
+        Object.entries(UBER_ZONE_SHAPES).forEach(([z, ring]) => {
+          const v = demandAt(z, dayIdx(now), now.getHours());
+          const col = v === null ? '#64748b' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#94a3b8';
+          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: 3, opacity: 0.9, dashArray: '10 6',
+            fillColor: col, fillOpacity: 0.06, interactive: false }).addTo(markerLayer);
+          const c = L.polygon(ring).getBounds().getCenter();
+          L.marker(c, { interactive: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+            html: `<div class="zone-tag" style="border-color:${col}">${esc(z)}${z === here ? ' · you' : ''}<span>${v === null ? 'no trends yet' : demandName(v) + ' now'}</span></div>` }) })
+            .addTo(markerLayer);
+        });
+      }
+
       // History: individual snapshots for the chosen day/time
       if (layers.hist) {
         const fd = document.getElementById('fDay').value, ft = document.getElementById('fTime').value;
@@ -3714,7 +3991,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.16.0';
+    const APP_VERSION = '1.17.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -3752,6 +4029,311 @@
       checkVersion();
     }
 
+    // ================= SHIFT TRACKER (daily goal) =================
+    // Start a shift, and the pilot adds up trips you took, GPS kilometres and car costs since then.
+    const SHIFT_KEY = 'shift', SHIFT_HIST_KEY = 'shiftHistory';
+    function loadShift() { try { return JSON.parse(lsGet(SHIFT_KEY)); } catch (e) { return null; } }
+    function shiftGoal() { return parseFloat(lsGet('shiftGoal')) || 250; }
+    function shiftStats(s) {
+      const end = s.end || Date.now();
+      const trips = loadLog().filter(e => e.t >= s.start && e.t <= end && e.took);
+      const earn = trips.reduce((a, e) => a + e.fare, 0);
+      const km = Math.max(0, (s.end ? s.km1 : trackedKm()) - s.km0);
+      const cost = km * config.costPerKm, net = earn - cost;
+      const hrs = Math.max((end - s.start) / 3600000, 1 / 60);
+      const goal = s.goal || shiftGoal();
+      const left = Math.max(0, goal - net), netHr = net / hrs;
+      return { trips: trips.length, earn, km, cost, net, hrs, netHr, goal, pct: Math.min(1, Math.max(0, net / goal)),
+        etaH: left > 0 && netHr > 5 && hrs >= 0.5 ? left / netHr : null };
+    }
+    const fmtDur = h => `${Math.floor(h)}h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}m`;
+
+    function renderShiftBar() {
+      const bar = document.getElementById('shiftBar');
+      if (!bar) return;
+      const s = loadShift();
+      if (!s) { bar.className = 'shift-bar idle'; bar.innerHTML = `<span>▶ Start shift</span><small>Goal $${shiftGoal().toFixed(0)} take-home</small>`; return; }
+      const st = shiftStats(s);
+      bar.className = 'shift-bar' + (st.pct >= 1 ? ' done' : '');
+      bar.innerHTML = `<i style="width:${(st.pct * 100).toFixed(0)}%"></i>` +
+        `<span>${st.pct >= 1 ? '🎯 Goal reached' : '⏱ ' + fmtDur(st.hrs)} · <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}</span>` +
+        `<small>${st.trips} trip${st.trips === 1 ? '' : 's'} · $${st.netHr.toFixed(0)}/hr net${st.etaH ? ' · goal in ~' + fmtDur(st.etaH) : ''}</small>`;
+    }
+    function openShift() {
+      document.getElementById('shiftGoal').value = (loadShift() || {}).goal || shiftGoal();
+      renderShiftSheet();
+      document.getElementById('shiftSheet').style.display = 'flex';
+    }
+    function closeShift() { document.getElementById('shiftSheet').style.display = 'none'; }
+    function onShiftGoal() {
+      const g = parseFloat(document.getElementById('shiftGoal').value);
+      if (!(g > 0)) return;
+      lsSet('shiftGoal', g);
+      const s = loadShift(); if (s) { s.goal = g; lsSet(SHIFT_KEY, JSON.stringify(s)); }
+      renderShiftBar(); renderShiftSheet(true);
+    }
+    function renderShiftSheet(keepInput) {
+      const s = loadShift(), box = document.getElementById('shiftNow');
+      document.getElementById('shiftBtn').textContent = s ? '■ End shift' : '▶ Start shift';
+      document.getElementById('shiftBtn').classList.toggle('stop', !!s);
+      if (s) {
+        const st = shiftStats(s);
+        box.innerHTML = `<div class="sh-grid">
+          <div><span>Time</span><b>${fmtDur(st.hrs)}</b></div><div><span>Trips</span><b>${st.trips}</b></div>
+          <div><span>Fares</span><b>$${st.earn.toFixed(0)}</b></div><div><span>Driven</span><b>${st.km.toFixed(1)} km</b></div>
+          <div><span>Car costs</span><b>$${st.cost.toFixed(0)}</b></div><div><span>Take-home</span><b class="net">$${st.net.toFixed(0)}</b></div></div>
+          <div class="sh-prog"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>
+          <div class="autoread-hint">${st.pct >= 1 ? '🎯 Daily goal reached. Nice work.' : `$${(st.goal - st.net).toFixed(0)} to go at $${st.netHr.toFixed(0)}/hr net` +
+            (st.etaH ? `: about ${fmtDur(st.etaH)} more (around ${new Date(Date.now() + st.etaH * 3600000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}).` : '.')}
+            Started ${new Date(s.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</div>`;
+      } else box.innerHTML = '<div class="autoread-hint">Tap Start when you go online. Trips you mark ✓ Took it (or that Auto-Read detects) count towards the goal; kilometres come from GPS while the pilot is open.</div>';
+      const hist = (() => { try { return JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) { return []; } })();
+      document.getElementById('shiftHist').innerHTML = hist.length ? hist.slice(-8).reverse().map(h =>
+        `<div class="fl-row"><span>${new Date(h.start).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtDur(h.hrs)} · ${h.trips} trips · ${h.km.toFixed(0)} km</span>` +
+        `<b style="color:${h.net >= h.goal ? 'var(--green)' : 'var(--text)'}">$${h.net.toFixed(0)}${h.net >= h.goal ? ' 🎯' : ''}</b></div>`).join('')
+        : '<div class="autoread-hint">No past shifts yet.</div>';
+    }
+    function toggleShift() {
+      const s = loadShift();
+      if (!s) {
+        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: parseFloat(document.getElementById('shiftGoal').value) || shiftGoal() }));
+        toast('▶ Shift started');
+      } else {
+        s.end = Date.now(); s.km1 = trackedKm();
+        const st = shiftStats(s);
+        let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
+        hist.push({ start: s.start, end: s.end, hrs: st.hrs, trips: st.trips, earn: st.earn, km: st.km, net: st.net, goal: st.goal });
+        lsSet(SHIFT_HIST_KEY, JSON.stringify(hist.slice(-100)));
+        try { localStorage.removeItem(SHIFT_KEY); } catch (e) {}
+        toast(`■ Shift ended · $${st.net.toFixed(0)} take-home in ${fmtDur(st.hrs)} ($${st.netHr.toFixed(0)}/hr)`);
+      }
+      renderShiftBar(); renderShiftSheet();
+    }
+
+    // ================= WEEK-ON-WEEK TREND CHANGES =================
+    const PERIODS = [['Morning', 6, 10], ['Midday', 10, 15], ['Afternoon', 15, 19], ['Evening', 19, 23], ['Late night', 23, 27]];
+    // Compare a new chart with what was stored for that zone and day, per part of the day
+    function trendChanges(all, zone, day, levels, liveIdx) {
+      const z = all[zone];
+      if (!z) return [];
+      const out = [];
+      PERIODS.forEach(([name, a, b]) => {
+        let nw = [], old = [];
+        for (let h = a; h < b; h++) {
+          const i = (h - 4 + 24) % 24;
+          if (i === liveIdx || levels[i] == null) continue;
+          const d = h >= 24 ? (day + 1) % 7 : day, e = z.h[d + '-' + (h % 24)];
+          if (!e) continue;
+          nw.push(levels[i] / 4); old.push(e.v);
+        }
+        if (nw.length < 2) return;
+        const diff = nw.reduce((x, y) => x + y, 0) / nw.length - old.reduce((x, y) => x + y, 0) / old.length;
+        if (Math.abs(diff) >= 0.125) out.push({ zone, day, period: name, diff: +diff.toFixed(3) });
+      });
+      return out;
+    }
+    function renderTrendChanges() {
+      const box = document.getElementById('trendChanges');
+      if (!box) return;
+      let ch = null; try { ch = JSON.parse(lsGet('trendChanges')); } catch (e) {}
+      const items = ch && ch.items || [];
+      box.innerHTML = items.length ? items.slice(0, 10).map(c =>
+        `<div class="fl-row"><span>${c.diff > 0 ? '🔼' : '🔽'} <b>${DAYS[c.day]} ${c.period.toLowerCase()}</b> ${c.diff > 0 ? 'up' : 'down'} in ${esc(c.zone)}</span>` +
+        `<b style="color:${c.diff > 0 ? 'var(--green)' : 'var(--red)'}">${c.diff > 0 ? '+' : ''}${(c.diff * 4).toFixed(1)} lvl</b></div>`).join('') +
+        `<div class="autoread-hint">Compared with the week before · ${new Date(ch.at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</div>`
+        : '<div class="autoread-hint">Import next week’s screenshots and changes of half a level or more show here.</div>';
+      // Refresh reminder: any day whose trend is over a week old
+      const dayAt = (() => { try { return JSON.parse(lsGet('trendDayAt')) || {}; } catch (e) { return {}; } })();
+      const seedAt = Math.min(...Object.values(loadTrends()).map(z => z.updated || Date.now()), Date.now());
+      const stale = DAYS.filter((d, i) => Date.now() - (dayAt[i] || seedAt) > 7 * 86400000);
+      const banner = document.getElementById('trendStale');
+      banner.hidden = !stale.length;
+      banner.innerHTML = stale.length ? `🔄 <b>Time to refresh:</b> ${stale.length === 7 ? 'all days are' : stale.join(', ') + (stale.length > 1 ? ' are' : ' is')} over a week old. Screenshot Uber Driver → Earnings trends and tap Import.` : '';
+      return stale;
+    }
+
+    // ================= BEST PICKUP SPOTS (from your offers) =================
+    // Each logged offer remembers where you were; suburbs are ranked by the average $/hr offered there.
+    function stampLoc(e) { if (lastFix && e.lat == null) { e.lat = +lastFix.lat.toFixed(5); e.lng = +lastFix.lng.toFixed(5); } return e; }
+    function spotStats() {
+      const by = new Map();
+      loadLog().forEach(e => {
+        if (e.lat == null || !(e.mins > 0)) return;
+        const a = areaOf(e.lat, e.lng); if (!a) return;
+        if (!by.has(a.name)) by.set(a.name, { a, es: [] });
+        by.get(a.name).es.push(e);
+      });
+      return [...by.values()].filter(x => x.es.length >= 2).map(x => {
+        const g = agg(x.es), blocks = {};
+        x.es.filter(isGoodOffer).forEach(e => { const b = slotOf(e.t).block; blocks[b] = (blocks[b] || 0) + 1; });
+        const bb = Object.entries(blocks).sort((p, q) => q[1] - p[1])[0];
+        return { a: x.a, n: x.es.length, gph: g.gph, nph: g.nph, good: g.goodPct, best: bb ? +bb[0] : null };
+      }).sort((p, q) => q.gph - p.gph);
+    }
+    function renderSpotList() {
+      const box = document.getElementById('spotList');
+      if (!box) return;
+      const s = spotStats();
+      box.innerHTML = s.length ? s.slice(0, 6).map((x, i) => {
+        const r = x.gph / config.minGrossHr, c = r >= 1 ? 'yes' : r >= 0.8 ? 'maybe' : 'no';
+        return `<div class="rank-item"><div><div>${i + 1}. ${esc(x.a.name)}</div><div class="r-sub">${x.n} offers · ${Math.round(x.good * 100)}% worth taking` +
+          `${x.best !== null ? ' · best ' + blockLabel(x.best) : ''}</div></div><i class="pill ${c}">$${x.gph.toFixed(0)}/hr</i></div>`;
+      }).join('') : '<div class="empty">Spots appear after 2+ offers in the same suburb (with location on).</div>';
+    }
+    function drawSpots() {
+      spotStats().forEach(x => {
+        const r = x.gph / config.minGrossHr, col = r >= 1 ? '#16a34a' : r >= 0.8 ? '#eab308' : '#dc2626';
+        x.a.polys.forEach(p => L.polygon(p, { renderer: suburbRenderer, color: col, weight: 2, fillColor: col, fillOpacity: 0.22, interactive: false }).addTo(markerLayer));
+        L.marker([x.a.lat, x.a.lng], { interactive: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+          html: `<div class="zone-tag" style="border-color:${col}">⭐ ${esc(x.a.name)}<span>$${x.gph.toFixed(0)}/hr · ${x.n} offers</span></div>` }) }).addTo(markerLayer);
+      });
+    }
+
+    // ================= AIRPORT RUNS (city ⇄ Melbourne Airport) =================
+    // Estimated from Melbourne Airport's usual flight pattern: first departures from 6am mean city → airport
+    // trips peak 4–7am; arrival waves bring airport pickups in the morning and again from late afternoon
+    // to about 11pm, busiest on Friday and Sunday evenings and Monday mornings. Blended with Uber's
+    // Melbourne City trend for the same hour, plus the rain boost.
+    const AIRPORT = { lat: -37.6690, lng: 144.8410, km: 23 };
+    const ARR = [.25, .1, .05, .05, .1, .35, .6, .75, .75, .65, .55, .5, .5, .5, .55, .6, .65, .75, .8, .8, .8, .75, .65, .45];
+    const DEP = [.05, .05, .05, .2, .6, .85, .8, .65, .55, .45, .4, .4, .45, .5, .55, .6, .6, .55, .5, .4, .3, .2, .1, .05];
+    function airportMins(dt) {
+      const h = dt.getHours(), wk = dayIdx(dt) < 5;
+      return wk && ((h >= 6 && h < 10) || (h >= 15 && h < 19)) ? 45 : h >= 22 || h < 6 ? 22 : 30;
+    }
+    function airportScore(dir, dt) {
+      const d = dayIdx(dt), h = dt.getHours();
+      let p;
+      if (dir === 'in') {      // airport → city: arrivals
+        p = ARR[h] * (d === 4 && h >= 15 ? 1.15 : d === 6 && h >= 14 ? 1.2 : d === 0 && h < 11 ? 1.1 : d === 5 ? 0.85 : 1);
+      } else {                 // city → airport: departures
+        p = DEP[h] * (d === 0 && h < 10 ? 1.15 : d === 4 && h >= 12 && h < 20 ? 1.15 : d === 6 && h >= 12 && h < 21 ? 1.1 : d === 5 ? 0.8 : 1);
+      }
+      const city = demandAt('Melbourne City', d, h);
+      let v = city === null ? p : dir === 'in' ? 0.7 * p + 0.3 * city : 0.6 * p + 0.4 * city;
+      const r = rainAt(dt);
+      if (r && r.wet) v += 0.15;
+      return Math.min(1, v);
+    }
+    // A run out to the airport is better when pickups there are busy as you arrive (no empty drive back)
+    function airportRun(dt) {
+      const out = airportScore('out', dt);
+      const at = new Date(dt.getTime() + (airportMins(dt) + 30) * 60000); at.setMinutes(0, 0, 0);   // nearest hour
+      const back = airportScore('in', at);
+      return { out, back, at, both: (out + back) / 2 };
+    }
+    function renderAirport() {
+      const box = document.getElementById('airportBox');
+      if (!box) return;
+      const dayOff = +document.getElementById('planDay').value;
+      const base = new Date(); base.setHours(0, 0, 0, 0); base.setTime(base.getTime() + dayOff * 86400000);
+      const hrsOfDay = Array.from({ length: 24 }, (_, k) => new Date(base.getTime() + (4 + k) * 3600000));   // 4am–3am
+      const sh = +document.getElementById('planStart').value;
+      const strip = dir => hrsOfDay.map((t, k) => {
+        const v = airportScore(dir, t), c = v >= GOOD ? 'yes' : v >= OK ? 'maybe' : 'no';
+        return `<i class="ap-${c}${t.getHours() === sh ? ' sel' : ''}" title="${fmtHour(t.getHours())}"></i>`;
+      }).join('');
+      const best = dir => {
+        const runs = []; let cur = null;
+        hrsOfDay.forEach(t => {
+          const v = airportScore(dir, t);
+          if (v >= GOOD) { if (!cur) cur = { s: t, e: t, sum: 0, n: 0 }; cur.e = t; cur.sum += v; cur.n++; } else if (cur) { runs.push(cur); cur = null; }
+        });
+        if (cur) runs.push(cur);
+        return runs.sort((a, b) => b.sum - a.sum).slice(0, 2).sort((a, b) => a.s - b.s)
+          .map(r => `${fmtHour(r.s.getHours())}–${fmtHour((r.e.getHours() + 1) % 24)}`).join(' and ');
+      };
+      // Your chosen start time
+      const st = new Date(base.getTime() + sh * 3600000 + (sh < 4 ? 86400000 : 0));
+      const run = airportRun(st), inNow = airportScore('in', st);
+      const vo = VERDICT(run.both), vi = VERDICT(inNow);
+      const bo = best('out'), bi = best('in');
+      box.innerHTML = `
+        <div class="rank-item"><div><div>🏙 → ✈️ City to airport at ${fmtHour(sh)}</div>
+          <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtHour(run.at.getHours())}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
+          `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
+        <div class="rank-item"><div><div>✈️ → 🏙 Airport to city at ${fmtHour(sh)}</div>
+          <div class="r-sub">Arrivals ${demandName(inNow).toLowerCase()} · wait in the airport queue, pick up at the Uber zone (T1, T2 or T4 car park)</div></div><i class="pill ${vi.c}">${vi.t}</i></div>
+        <div class="ap-strip"><span>🏙→✈️</span><div>${strip('out')}</div></div>
+        <div class="ap-strip"><span>✈️→🏙</span><div>${strip('in')}</div></div>
+        <div class="demand-axis ap-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
+        <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.
+          Estimated from typical Melbourne Airport flight times and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</div>`;
+      return { out: run, in: inNow };
+    }
+
+    // ================= BACKUP (Google Drive via the share sheet) =================
+    function backupData() {
+      const data = {};
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); data[k] = localStorage.getItem(k); } } catch (e) {}
+      return { app: 'offer-pilot', version: APP_VERSION, at: new Date().toISOString(), data };
+    }
+    async function makeBackup() {
+      const b = backupData();
+      const name = `offer-pilot-backup-${ymd(new Date())}.json`;
+      const blob = new Blob([JSON.stringify(b)], { type: 'application/json' });
+      const file = new File([blob], name, { type: 'application/json' });
+      lsSet('lastBackup', Date.now());
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Offer Pilot backup' });
+          toast('☁️ Backup ready · choose Google Drive');
+          renderBackupInfo(); return;
+        }
+      } catch (e) { if (e && e.name === 'AbortError') { renderBackupInfo(); return; } }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast('☁️ Backup saved · upload it to Google Drive');
+      renderBackupInfo();
+    }
+    let pendingRestore = null;
+    function onRestoreFile(ev) {
+      const f = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => {
+        try {
+          const b = JSON.parse(r.result);
+          if (b.app !== 'offer-pilot' || !b.data) throw new Error('not a backup');
+          pendingRestore = b;
+          const btn = document.getElementById('restoreGo');
+          btn.hidden = false;
+          btn.textContent = `Replace everything with the backup from ${new Date(b.at).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}`;
+        } catch (e) { toast('That file isn’t an Offer Pilot backup'); }
+      };
+      r.readAsText(f);
+    }
+    function doRestore() {
+      if (!pendingRestore) return;
+      try {
+        localStorage.clear();
+        Object.entries(pendingRestore.data).forEach(([k, v]) => localStorage.setItem(k, v));
+      } catch (e) { toast('Restore failed: storage is full or blocked'); return; }
+      toast('✓ Restored · reloading');
+      setTimeout(() => location.reload(), 800);
+    }
+    function renderBackupInfo() {
+      const el = document.getElementById('backupInfo');
+      if (!el) return;
+      const t = parseFloat(lsGet('lastBackup'));
+      el.textContent = t ? `Last backup ${new Date(t).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}.` : 'No backup yet.';
+    }
+    // Once a day, nudge when trends or the backup are over a week old
+    function weeklyReminders() {
+      if (lsGet('remindDay') === ymd(new Date())) return;
+      const stale = renderTrendChanges() || [];
+      const lb = parseFloat(lsGet('lastBackup')) || 0;
+      const msgs = [];
+      if (stale.length) msgs.push(['📈 Uber trends are over a week old', 'Refresh', () => showTab('trends')]);
+      if (loadLog().length >= 5 && Date.now() - lb > 7 * 86400000) msgs.push(['☁️ Back up to Google Drive', 'Back up', makeBackup]);
+      if (!msgs.length) return;
+      lsSet('remindDay', ymd(new Date()));
+      msgs.forEach((m, i) => setTimeout(() => toast(...m), 2500 + i * 4500));
+    }
+
     seedTrends(); // built-in Uber week, first run only
     window.onload = () => {
       // iPhone allows the compass and sound only after a tap: unlock both on the first one
@@ -3768,6 +4350,10 @@
       setInterval(checkVersion, 10 * 60000);
       initTimeFilter(); initAutoRead(); loadAutoOpts(); syncSoundBtn(); syncNotifBtn(); initStream();
       initPlanner();
+      document.getElementById('evZone').innerHTML = Object.keys(UBER_ZONE_SHAPES).map(z => `<option>${esc(z)}</option>`).join('');
+      loadWeather(); setInterval(loadWeather, 3600000);
+      renderShiftBar(); setInterval(renderShiftBar, 30000);
+      renderBackupInfo(); weeklyReminders();
       showTab('drive');
       // Keep live-surge ages and predictions current while driving
       setInterval(() => {
