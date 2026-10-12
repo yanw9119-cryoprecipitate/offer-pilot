@@ -356,6 +356,7 @@
     .plan-row select:disabled { opacity: .45; }
     .plan-lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .plan-end input { width: 18px; height: 18px; accent-color: var(--accent); }
+    #planEndWrap[hidden] { display: none; }
     #planResult .rank-item { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
     /* ================= UBER DEMAND (Best Times) ================= */
@@ -722,9 +723,12 @@
             <label class="plan-lbl">From <select id="planStart" onchange="renderPlan()" aria-label="Start time"></select></label>
           </div>
           <div class="plan-row">
-            <label class="plan-lbl plan-end"><input type="checkbox" id="planHasEnd" onchange="onPlanEndToggle()" /> Until
-              <select id="planEnd" onchange="renderPlan()" disabled aria-label="End time"></select></label>
-            <span class="autoread-hint" id="planHint" style="margin:0;">No end time: looks at the first 2 hours</span>
+            <select id="planMode" onchange="onPlanMode()" aria-label="End time">
+              <option value="suggest">Suggest an end time</option>
+              <option value="end">Set an end time</option>
+              <option value="two">Just the start (next 2 hours)</option>
+            </select>
+            <label class="plan-lbl" id="planEndWrap" hidden>Until <select id="planEnd" onchange="renderPlan()" aria-label="End time"></select></label>
           </div>
           <div id="planResult"></div>
         </div>
@@ -1821,13 +1825,30 @@
       document.getElementById('planStart').innerHTML = hours;
       document.getElementById('planEnd').innerHTML = hours;
       const next = (today.getHours() + 1) % 24;
+      document.getElementById('planMode').value = 'suggest';
       document.getElementById('planStart').value = String(next);
       document.getElementById('planEnd').value = String((next + 3) % 24);
     }
-    function onPlanEndToggle() {
-      document.getElementById('planEnd').disabled = !document.getElementById('planHasEnd').checked;
-      document.getElementById('planHint').hidden = document.getElementById('planHasEnd').checked;
+    function onPlanMode() {
+      document.getElementById('planEndWrap').hidden = document.getElementById('planMode').value !== 'end';
       renderPlan();
+    }
+
+    // Suggested shift length from a start time: keep going while the best zone stays Medium or better.
+    // One quiet hour is allowed if it picks up again straight after. Max 8 hours (fatigue).
+    const MAX_SHIFT_H = 8;
+    function suggestShift(start, zone) {
+      const at = k => { const t = new Date(start.getTime() + k * 3600000); return demandAt(zone, dayIdx(t), t.getHours()); };
+      let len = 0;
+      for (let k = 0; k < MAX_SHIFT_H; k++) {
+        const v = at(k);
+        if (v !== null && v >= OK) { len = k + 1; continue; }
+        const next = at(k + 1);
+        if (k > 0 && next !== null && next >= OK && k + 1 < MAX_SHIFT_H) continue;   // short dip
+        break;
+      }
+      const stopV = at(len);
+      return { len, stopV };
     }
 
     function renderPlan() {
@@ -1837,11 +1858,26 @@
       if (!zones.length) { out.innerHTML = '<div class="empty">Import Uber trends to plan a shift.</div>'; return; }
       const dayOff = +document.getElementById('planDay').value;
       const sh = +document.getElementById('planStart').value;
-      const hasEnd = document.getElementById('planHasEnd').checked;
-      const eh = +document.getElementById('planEnd').value;
-      const len = hasEnd ? (((eh - sh + 24) % 24) || 24) : 2;      // no end: look at the first 2 hours
+      const mode = document.getElementById('planMode').value;
+      let eh = +document.getElementById('planEnd').value;
       const start = new Date(); start.setHours(0, 0, 0, 0);
       start.setTime(start.getTime() + dayOff * 86400000 + sh * 3600000);
+      let len, suggestNote = '';
+      if (mode === 'end') len = ((eh - sh + 24) % 24) || 24;
+      else if (mode === 'two') len = 2;
+      else {
+        // Suggest: follow the best zone at the start time for as long as it stays worth it
+        const b = bestZoneAt(start);
+        const sug = b && b.v >= OK ? suggestShift(start, b.z) : { len: 0 };
+        if (sug.len >= 1) {
+          len = Math.max(2, sug.len);
+          eh = (sh + len) % 24;
+          suggestNote = ` <b>Suggested end: ${fmtHour(eh)}</b> (${len} h)` +
+            (sug.len >= MAX_SHIFT_H ? `, the ${MAX_SHIFT_H}-hour limit for a safe shift; demand is still good after that.`
+              : sug.stopV !== null && sug.stopV !== undefined ? `, after that ${esc(b.z)} drops to ${demandName(sug.stopV).toLowerCase()}.` : '.');
+        } else len = 2;   // start is quiet: rank the next 2 hours and suggest a better time below
+      }
+      const hasEnd = mode !== 'two';
       const hrs = Array.from({ length: len }, (_, k) => new Date(start.getTime() + k * 3600000));
 
       const rows = zones.map(z => {
@@ -1869,7 +1905,7 @@
       let head;
       if (top.avg >= OK) {
         const win = top.best ? ` Busiest ${fmtHour(hrs[top.best[0]].getHours())}–${fmtHour((hrs[top.best[1]].getHours() + 1) % 24)}.` : '';
-        head = `${v.c === 'yes' ? '🟢' : '🟡'} <b>${esc(top.z)}</b> is the best area for ${span}: ${demandName(top.avg).toLowerCase()} demand on average.${win}`;
+        head = `${v.c === 'yes' ? '🟢' : '🟡'} <b>${esc(top.z)}</b> is the best area for ${span}: ${demandName(top.avg).toLowerCase()} demand on average.${win}${suggestNote}`;
       } else {
         // Suggest the nearest better time on the same day
         let alt = null;
@@ -3672,7 +3708,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.14.0';
+    const APP_VERSION = '1.15.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
