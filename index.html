@@ -245,6 +245,22 @@
 
     /* Live location: blue dot, pulse and heading cone */
     .me-icon { background: none; border: none; }
+    .me-arrow {
+      position: absolute; left: 10px; top: 10px; width: 44px; height: 44px; color: #1a73e8;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); transition: transform .3s linear;
+    }
+    .me-arrow svg { display: block; }
+    .me-arrow.no-heading { color: #4b8ff0; }
+    .me-arrow.stale { color: #94a3b8; }
+    .loc-pill {
+      position: absolute; right: 8px; top: 48px; z-index: 600; border-radius: 999px; padding: 5px 9px;
+      font-size: .7rem; font-weight: 700; border: 1px solid var(--card-border); background: rgba(15,23,42,.92); color: var(--muted);
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    }
+    .loc-pill.on { color: #93c5fd; border-color: #1a73e8; }
+    .loc-pill.wait { color: var(--amber); border-color: var(--amber); }
+    .loc-pill.off { color: #fff; background: #b91c1c; border-color: #ef4444; }
+    .map-wrap.card-open .loc-pill { display: none; }
     .me-wrap { position: relative; width: 64px; height: 64px; }
     .me-dot {
       position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
@@ -534,6 +550,7 @@
           </div>
         </div>
 
+        <button type="button" class="loc-pill wait" id="locPill" onclick="locPillTap()">📍 Locating…</button>
         <div class="map-note" id="mapNote"></div>
         <div class="surge-card" id="surgeCard" hidden></div>
       </div>
@@ -1985,7 +2002,9 @@
     }
 
     function startTracking() {
-      if (watchId !== null || !navigator.geolocation) return;
+      if (!navigator.geolocation) { setLocPill('off', '📍 No GPS in this browser'); return; }
+      if (watchId !== null) return;
+      if (!lastFix) setLocPill('wait', '📍 Locating…');
       watchId = navigator.geolocation.watchPosition(onFix, onFixError,
         { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
     }
@@ -2001,27 +2020,48 @@
       return null;
     }
 
+    // Navigation arrow: blue when GPS is live, grey while locating. Points where you face / travel.
+    const ARROW_SVG = '<svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">' +
+      '<circle cx="22" cy="22" r="19" fill="#fff"/>' +
+      '<path d="M22 6 L33 33 L22 27 L11 33 Z" fill="currentColor" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+
     function drawMe() {
-      if (!map || !lastFix) return;
-      const ll = [lastFix.lat, lastFix.lng];
+      if (!map) return;
+      const live = !!(lastFix && Date.now() - lastFix.t < 60000);
+      const ll = lastFix ? [lastFix.lat, lastFix.lng] : (map.getCenter && [map.getCenter().lat, map.getCenter().lng]);
+      if (!lastFix) { if (meMarker) meMarker.setLatLng(ll); return; } // nothing to place yet
       if (!meMarker) {
         meAcc = L.circle(ll, { radius: lastFix.acc, color: '#1a73e8', weight: 1, opacity: 0.5,
           fillColor: '#1a73e8', fillOpacity: 0.12, interactive: false }).addTo(map);
         meMarker = L.marker(ll, {
           interactive: false, keyboard: false, zIndexOffset: 1000,
           icon: L.divIcon({ className: 'me-icon', iconSize: [64, 64], iconAnchor: [32, 32],
-            html: '<div class="me-wrap"><div class="me-cone" id="meCone"></div><div class="me-pulse"></div><div class="me-dot"></div></div>' })
+            html: '<div class="me-wrap"><div class="me-pulse"></div><div class="me-arrow" id="meArrow">' + ARROW_SVG + '</div></div>' })
         }).addTo(map);
       } else {
         meMarker.setLatLng(ll);
         meAcc.setLatLng(ll).setRadius(lastFix.acc);
       }
-      const cone = document.getElementById('meCone');
+      const arrow = document.getElementById('meArrow');
       const h = currentHeading();
-      if (cone) {
-        cone.style.display = h === null ? 'none' : 'block';
-        if (h !== null) cone.style.transform = `rotate(${h}deg)`;
+      if (arrow) {
+        arrow.style.transform = `rotate(${h === null ? 0 : h}deg)`;
+        arrow.classList.toggle('stale', !live);
+        arrow.classList.toggle('no-heading', h === null);
       }
+    }
+
+    // Small status pill on the map: is location working?
+    function setLocPill(state, text) {
+      const el = document.getElementById('locPill');
+      if (!el) return;
+      el.className = 'loc-pill ' + state;
+      el.textContent = text;
+    }
+    function locPillTap() {
+      if (document.getElementById('locPill').classList.contains('off')) {
+        toast('Turn on location: iPhone Settings → Privacy & Security → Location Services → Safari Websites → While Using, then reload');
+      } else if (!compassOn) { enableCompass(); toast('Compass on: the arrow now turns with your phone'); }
     }
 
     function onFix(p) {
@@ -2029,6 +2069,7 @@
       lastFix = { lat: p.coords.latitude, lng: p.coords.longitude, acc: Math.min(p.coords.accuracy || 30, 2000),
         heading: p.coords.heading, speed: p.coords.speed || 0, t: Date.now() };
       locErrShown = false;
+      setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m${compassOn ? ' · 🧭' : ''}`);
       if (!map) return;
       drawMe();
       if (followMe) {
@@ -2041,10 +2082,12 @@
       if (locErrShown) return;
       locErrShown = true;
       if (err && err.code === 1) {
-        toast('Allow location: Settings → Privacy → Location Services → Safari Websites');
+        setLocPill('off', '📍 Location off · tap');
+        toast('Allow location: Settings → Privacy & Security → Location Services → Safari Websites → While Using');
         setFollow(false);
       } else {
-        toast('Waiting for GPS signal…');
+        setLocPill('wait', '📍 Waiting for GPS…');
+        locErrShown = false; // keep trying quietly
       }
     }
 
@@ -2056,6 +2099,8 @@
       if (h === null) return;
       const o = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
       compassHeading = (h + o + 360) % 360;
+      if (lastFix && document.getElementById('locPill').classList.contains('on'))
+        setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m · 🧭`);
       drawMe();
     }
     function enableCompass() {
@@ -2138,6 +2183,7 @@
       });
       map.addControl(new Ctl());
       setNightMap(nightMap);
+      drawMe();
       map.on('dragstart', () => setFollow(false));
       if (lastFix) map.setView([lastFix.lat, lastFix.lng], 15);
 
@@ -2532,7 +2578,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.6.1';
+    const APP_VERSION = '1.6.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -2568,6 +2614,7 @@
     }
 
     window.onload = () => {
+      document.addEventListener('click', enableCompass, { once: true }); // iPhone allows the compass only after a tap
       checkVersion();
       setInterval(checkVersion, 10 * 60000);
       initTimeFilter(); initAutoRead(); loadAutoOpts(); syncSoundBtn(); syncNotifBtn(); initStream();
