@@ -118,12 +118,13 @@
     .ver-badge {
       position: fixed; right: 0; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 30;
       background: #0f172a; border: 1px solid #334155; border-right: none; border-radius: 8px 0 0 8px;
-      color: var(--muted); font: 600 0.62rem/1.25 ui-monospace, SFMono-Regular, Menlo, monospace;
-      padding: 4px 6px; text-align: right; max-width: 48px; white-space: normal; word-break: break-word;
+      color: var(--muted); font: 600 0.66rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding: 6px 8px; white-space: nowrap; /* one line */
     }
-    .ver-badge b { display: block; color: var(--text); font-weight: 800; }
+    .ver-badge b { color: var(--text); font-weight: 800; }
     .ver-badge.ok b { color: var(--green); }
-    .ver-badge.update { background: #7c2d12; border-color: #f97316; color: #fed7aa; max-width: 64px; }
+    .ver-badge.update { background: #7c2d12; border-color: #f97316; color: #fed7aa; }
+    body { padding-bottom: calc(36px + env(safe-area-inset-bottom, 0px)); } /* room for the version line */
     .ver-badge.update b { color: #fff; }
     .side-btn .live-dot {
       display: none; position: absolute; top: 6px; left: 6px; width: 9px; height: 9px; border-radius: 50%;
@@ -2531,7 +2532,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.6.0';
+    const APP_VERSION = '1.6.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -2543,7 +2544,7 @@
     function setVerBadge(state, label) {
       const b = document.getElementById('verBadge');
       b.className = 'ver-badge' + (state ? ' ' + state : '');
-      b.innerHTML = `<b>v${APP_VERSION}</b>${label}`;
+      b.innerHTML = `<b>v${APP_VERSION}</b> · ${label}`;
       b.setAttribute('aria-label', `Version ${APP_VERSION}, ${label.replace(/<[^>]+>/g, ' ')}`);
     }
     async function checkVersion() {
@@ -2554,7 +2555,7 @@
         const m = (await r.text()).match(/const APP_VERSION = '([\d.]+)'/);
         if (!m) throw new Error('no version');
         const live = m[1];
-        if (cmpVer(live, APP_VERSION) > 0) { newerVersion = live; setVerBadge('update', `↻ v${live} ready`); }
+        if (cmpVer(live, APP_VERSION) > 0) { newerVersion = live; setVerBadge('update', `↻ tap for v${live}`); }
         else { newerVersion = null; setVerBadge('ok', cmpVer(live, APP_VERSION) === 0 ? '✓ latest' : 'ahead of site'); }
       } catch (e) {
         setVerBadge('', location.protocol === 'file:' ? 'file copy' : navigator.onLine === false ? 'offline' : 'can’t check');
