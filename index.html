@@ -301,7 +301,12 @@
     .veh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
     .veh-grid .setting-item label { font-size: .72rem; min-height: 2.2em; }
     .veh-cost { font-size: .8rem; background: rgba(56,189,248,.08); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px; margin: 2px 0 10px; }
-    #settingsModal .modal-content { max-height: 90vh; overflow-y: auto; }
+    #settingsModal .modal-content { max-height: 90vh; overflow-y: auto; padding-top: 0; }
+    .settings-head {
+      position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between;
+      background: var(--card); padding: 12px 0 8px; margin-bottom: 4px; border-bottom: 1px solid var(--card-border);
+    }
+    .settings-head span { font-weight: 800; font-size: 1.05rem; }
 
     /* ================= FUEL STOPS ================= */
     .chase-toast.fuel { background: #1e3a8a; }
@@ -899,8 +904,12 @@
   </div>
 
   <!-- Configurable Preferences Modal -->
-  <div id="settingsModal">
+  <div id="settingsModal" onclick="if (event.target === this) cancelSettings()">
     <div class="modal-content">
+      <div class="settings-head">
+        <span>⚙️ Settings</span>
+        <button type="button" class="x-btn" onclick="cancelSettings()" aria-label="Close without saving">✕</button>
+      </div>
       <h3 style="margin-top:0; color:var(--accent);">🚗 Your vehicle</h3>
       <div class="veh-panel">
         <div class="setting-item">
@@ -1284,6 +1293,12 @@
         document.getElementById('vehNote').textContent = VEHICLES.custom.note;
       }
     }));
+
+    // Close without saving: fields are refilled from the saved settings next time it opens
+    function cancelSettings() {
+      toggleSettings(false);
+      toast('Changes discarded');
+    }
 
     function toggleSettings(show) {
       document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
@@ -3409,7 +3424,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.12.0';
+    const APP_VERSION = '1.12.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
