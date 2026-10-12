@@ -3074,7 +3074,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.10.0';
+    const APP_VERSION = '1.10.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -3113,7 +3113,16 @@
     }
 
     window.onload = () => {
-      document.addEventListener('click', enableCompass, { once: true }); // iPhone allows the compass only after a tap
+      // iPhone allows the compass and sound only after a tap: unlock both on the first one
+      document.addEventListener('click', () => {
+        enableCompass();
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          const o = audioCtx.createOscillator(), g = audioCtx.createGain(); g.gain.value = 0; // silent unlock
+          o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.01);
+        } catch (e) {}
+      }, { once: true });
       checkVersion();
       setInterval(checkVersion, 10 * 60000);
       initTimeFilter(); initAutoRead(); loadAutoOpts(); syncSoundBtn(); syncNotifBtn(); initStream();
