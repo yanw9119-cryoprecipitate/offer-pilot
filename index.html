@@ -698,7 +698,7 @@
     <button class="side-btn" id="pipSideBtn" onclick="togglePiP()" aria-label="Floating overlay">📺<span>Overlay</span></button>
     <button class="side-btn" id="autoSideBtn" onclick="openAutoSheet()" aria-label="Auto-Read">🔎<span>Auto</span><i class="live-dot"></i></button>
     <a class="side-btn side-link" id="siteSideBtn" href="https://yanw9119-cryoprecipitate.github.io/offer-pilot/"
-       target="_blank" rel="noopener" aria-label="Open the live site on GitHub Pages">🌐<span>Site</span></a>
+       target="_blank" rel="noopener" onclick="this.href = freshSiteUrl()" aria-label="Open the latest version of the live site">🌐<span>Site</span></a>
   </div>
 
   <!-- Version status -->
@@ -2578,7 +2578,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.6.2';
+    const APP_VERSION = '1.6.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -2607,8 +2607,11 @@
         setVerBadge('', location.protocol === 'file:' ? 'file copy' : navigator.onLine === false ? 'offline' : 'can’t check');
       }
     }
+    // Site link that skips the phone's cached copy, so it always opens the newest version
+    function freshSiteUrl() { return SITE_URL + '?v=' + (newerVersion || APP_VERSION) + '-' + Date.now().toString(36); }
+
     function onVersionTap() {
-      if (newerVersion) { location.replace(SITE_URL + '?v=' + newerVersion); return; } // fresh copy of the new version
+      if (newerVersion) { location.replace(freshSiteUrl()); return; } // fresh copy of the new version
       toast(`Offer Pilot v${APP_VERSION} · checking for updates…`);
       checkVersion();
     }
