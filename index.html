@@ -392,9 +392,14 @@
       box-shadow: 0 3px 10px rgba(0,0,0,.45); border: 2px solid #fff; cursor: pointer;
     }
     .surge-pin i { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: inline-block; }
-    .surge-pin.live { background: #dc2626; }
+    .surge-pin.live { background: #f2602a; }
+    .surge-pin.pred { flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 9px; border-radius: 10px; border-style: solid; }
+    .surge-pin.pred b { font-size: 13px; }
+    .surge-pin.pred span { font-weight: 700; font-size: 10.5px; }
+    .surge-pin.pred.yes, .surge-pin.pred.here { background: #16a34a; }
+    .surge-pin.pred.maybe { background: #facc15; color: #1c1917; border-color: #1c1917; }
     .surge-pin.live i { animation: livePulse 1.2s ease-in-out infinite; }
-    .surge-pin.pred { background: #7c3aed; border-style: dashed; }
+
     @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 
     /* Surge card (bottom of the map) */
@@ -2071,7 +2076,7 @@
     // ================= SURGE SNAPSHOTS =================
     const SNAP_KEY = 'surgeSnaps';
     const LEVELS = ['Quiet', 'Busy', 'Surge', 'Big surge'];
-    const LEVEL_COLORS = ['#64748b', '#facc15', '#f97316', '#ef4444'];
+    const LEVEL_COLORS = ['#64748b', '#fdba74', '#f2602a', '#b3122b']; // Uber: light orange → dark red
     let pendingPos = null;      // {lat,lng} from GPS for the open sheet
     let pendingImg = null;      // downscaled dataURL
     let placeSnapId = null;     // snapshot waiting for a map tap (no GPS)
@@ -2598,6 +2603,8 @@
           out.push({ key: 'pred:' + st.a.name, kind: 'pred', name: st.a.name, lat: st.a.lat, lng: st.a.lng,
             level: st.p > 0.66 ? 3 : 2, amt: avg, p: st.p, n: st.n, surges: st.surges,
             band: st.p > 0.66 ? 'High' : 'Medium' });
+          const pd = predDuration(st.a.name);
+          out[out.length - 1].dur = pd.min; out[out.length - 1].durKnown = pd.known;
         });
       }
       return out;
@@ -2662,7 +2669,12 @@
       const amt = sg.amt != null ? sg.amt : LEVEL_AMT[sg.level];
       let chance;
       if (sg.kind === 'live') chance = Math.pow(0.5, (sg.ageMin + route.min) / SURGE_HALF_LIFE_MIN);
-      else chance = Math.min(0.7, sg.p * Math.min(1, sg.n / 4)) * 0.8; // history-based, capped
+      else {
+        // History-based chance a surge happens there now, reduced if it usually ends before you'd arrive
+        const base = Math.min(0.7, sg.p * Math.min(1, sg.n / 4)) * 0.8;
+        const dur = sg.dur || 10;
+        chance = base * Math.min(1, (dur + 5) / Math.max(dur + 5, route.min));
+      }
       const expected = chance * amt;
       const fuel = route.km * config.costPerKm;
       const time = route.min / 60 * config.minGrossHr * 0.5;
@@ -2674,6 +2686,40 @@
       else if (net >= -1) { verdict = 'Marginal'; cls = 'maybe'; }
       else { verdict = 'Not worth it'; cls = 'no'; }
       return { amt, amtKnown: sg.amt != null, chance, expected, fuel, time, net, verdict, cls };
+    }
+
+    // How long surges usually last in a suburb, from runs of your snapshots (gaps under 25 min = same surge)
+    function predDuration(areaName) {
+      const ts = loadSnaps().filter(s => s.level >= 2 && s.lat != null && (areaOf(s.lat, s.lng) || {}).name === areaName)
+        .map(s => s.t).sort((a, b) => a - b);
+      const runs = [];
+      let start = null, last = null;
+      ts.forEach(t => {
+        if (start === null || t - last > 25 * 60000) { if (start !== null && last > start) runs.push(last - start); start = t; }
+        last = t;
+      });
+      if (start !== null && last > start) runs.push(last - start);
+      if (!runs.length) return { min: 10, known: false };   // research: often under 10 minutes
+      const avg = runs.reduce((a, b) => a + b, 0) / runs.length / 60000 + 3; // + one snapshot interval
+      return { min: Math.max(5, Math.min(90, Math.round(avg))), known: true };
+    }
+
+    // Instant estimate from cache or straight-line; real routes are fetched in the background
+    function routeNow(from, to) {
+      const key = [from.lat, from.lng, to.lat, to.lng].map(v => v.toFixed(3)).join(',') + '|' + (chaseCfg.tomtom ? 'tt' : 'osrm');
+      const hit = routeCache.get(key);
+      if (hit && Date.now() - hit.at < 3 * 60000) return { r: hit.r, real: true };
+      const km = distM(from.lat, from.lng, to.lat, to.lng) / 1000 * 1.35;
+      return { r: { min: km / 28 * 60 * trafficFactor(), km, coords: [[from.lat, from.lng], [to.lat, to.lng]], source: 'estimate' }, real: false };
+    }
+    let routeFetching = false;
+    async function fetchMissingRoutes(list) {
+      if (routeFetching || !list.length) return;
+      routeFetching = true;
+      const from = myPos();
+      try { for (const sg of list.slice(0, 8)) await getRoute(from, sg); }  // one at a time, kind to the free router
+      finally { routeFetching = false; }
+      renderMap();
     }
 
     function myPos() {
@@ -2696,7 +2742,7 @@
         return `Seen ${age < 1 ? 'just now' : age + ' min ago'}${sg.geo ? ' on the Uber map' : sg.auto ? ' (auto)' : ''} · ` +
           (sg.amt != null ? `+$${sg.amt.toFixed(2)}` : `${LEVELS[sg.level]} (about +$${LEVEL_AMT[sg.level]})`);
       }
-      return `${sg.band} chance now–next 2 h · from ${sg.n} past snapshot${sg.n === 1 ? '' : 's'}` +
+      return `${sg.band} chance now–next 2 h · usually lasts ~${sg.dur} min${sg.durKnown ? '' : ' (typical)'} · from ${sg.n} past snapshot${sg.n === 1 ? '' : 's'}` +
         (sg.amt != null ? ` · avg +$${sg.amt.toFixed(2)}` : '');
     }
 
@@ -2787,13 +2833,20 @@
       }
     }
 
-    function surgeIcon(sg) {
-      const label = sg.kind === 'live'
-        ? (sg.amt != null ? `LIVE +$${sg.amt % 1 ? sg.amt.toFixed(2) : sg.amt.toFixed(0)}` : `LIVE ${LEVELS[sg.level]}`)
-        : `PREDICTED · ${sg.band}`;
+    const fmtAmt = a => a % 1 ? a.toFixed(2) : a.toFixed(0);
+    function surgeIcon(sg, ev) {
+      if (sg.kind === 'live') {
+        const label = sg.amt != null ? `LIVE +$${fmtAmt(sg.amt)}` : `LIVE ${LEVELS[sg.level]}`;
+        return L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+          html: `<div class="surge-pin live" style="background:${LEVEL_COLORS[sg.level]}"><i></i>${label}</div>` });
+      }
+      const w = ev.w, amt = w.amt;
       return L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
-        html: `<div class="surge-pin ${sg.kind}"><i></i>${label}</div>` });
+        html: `<div class="surge-pin pred ${w.cls}"><b>+$${fmtAmt(amt)}${w.amtKnown ? '' : '?'}</b>` +
+          `<span>⏱ ~${sg.dur} min · 🚗 ${Math.max(1, Math.round(ev.r.min))} min${ev.real ? '' : '≈'}</span></div>` });
     }
+    // Zone colour for a predicted surge: green = worth chasing, yellow = optional, red = not worth it
+    const PRED_COLORS = { yes: '#16a34a', here: '#16a34a', maybe: '#eab308', no: '#dc2626' };
 
     function filterNow() {
       const s = slotOf(Date.now());
@@ -2812,6 +2865,14 @@
       surgeLayer.clearLayers();
 
       const surges = buildSurges();
+      // Judge every predicted surge now (cached road route, else a quick estimate), refine in the background
+      const from = myPos(), evals = new Map(), missing = [];
+      surges.filter(sg => sg.kind === 'pred').forEach(sg => {
+        const q = routeNow(from, sg);
+        evals.set(sg.key, { r: q.r, real: q.real, w: worthIt(sg, q.r) });
+        if (!q.real) missing.push(sg);
+      });
+      if (missing.length) fetchMissingRoutes(missing);
       const surgeAreas = new Map(surges.filter(s => s.kind === 'pred' || areaOf(s.lat, s.lng)).map(s => [s.kind === 'pred' ? s.name : areaOf(s.lat, s.lng).name, s]));
 
       // Suburb zones along real boundaries: filled where there's a live or predicted surge,
@@ -2822,22 +2883,28 @@
         if (!sg && zoom < 11) return;               // zoomed far out: only surge suburbs
         const live = sg && sg.kind === 'live';
         const edge = nightMap ? '#cbd5e1' : '#1e293b';   // suburb lines: strong on the grey street map
-        const col = !sg ? edge : live ? LEVEL_COLORS[sg.level] : '#8b5cf6';
+        const col = !sg ? edge : live ? LEVEL_COLORS[sg.level] : PRED_COLORS[evals.get(sg.key).w.cls];
         const shape = L.polygon(a.polys, {
           renderer: suburbRenderer, color: col, weight: sg ? 3 : (zoom >= 13 ? 1.6 : 1.2), opacity: sg ? 1 : 0.7,
-          dashArray: sg && !live ? '6 5' : null, fillColor: col, fillOpacity: sg ? (live ? 0.32 : 0.2) : 0,
+          dashArray: sg && !live ? '6 5' : null, fillColor: col, fillOpacity: sg ? (live ? 0.38 : 0.26) : 0,
           interactive: !!sg
         });
         if (sg) {
           shape.on('click', () => openSurgeCard(sg.key));
-          shape.bindTooltip(a.name, { permanent: zoom >= 12, direction: 'center', className: 'area-label' });
+          // Name sits just below the pin's anchor so it never covers the pin
+          const hasPin = live || ['yes', 'here', 'maybe'].includes(evals.get(sg.key).w.cls);
+          shape.bindTooltip(a.name, hasPin
+            ? { permanent: zoom >= 12, direction: 'bottom', offset: [0, 4], className: 'area-label' }
+            : { permanent: zoom >= 12, direction: 'center', className: 'area-label' });
         }
         shape.addTo(areaLayer);
       });
 
-      // Surge pins
+      // Pins: every live surge; predicted ones only when worth it (green) or optional (yellow)
       surges.forEach(sg => {
-        L.marker([sg.lat, sg.lng], { icon: surgeIcon(sg), zIndexOffset: sg.kind === 'live' ? 600 : 400 })
+        const ev = evals.get(sg.key);
+        if (sg.kind === 'pred' && !['yes', 'here', 'maybe'].includes(ev.w.cls)) return;
+        L.marker([sg.lat, sg.lng], { icon: surgeIcon(sg, ev), zIndexOffset: sg.kind === 'live' ? 600 : 400 })
           .on('click', () => openSurgeCard(sg.key)).addTo(surgeLayer);
       });
 
@@ -2897,7 +2964,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.8.0';
+    const APP_VERSION = '1.9.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
