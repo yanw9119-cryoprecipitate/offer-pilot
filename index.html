@@ -1621,6 +1621,14 @@
         '333322121223322211234434', '432311332343223444444444', null]
     };
     const SEED_VERSION_2 = 'trends-2026-10-13-outer';
+    // Mondays and Sundays for the same outer zones (screenshots 13 Oct 2026), indexed Mon..Sun
+    const SEED_TRENDS_3 = {
+      'Brighton to Dandenong': ['344444321223322123233311', null, null, null, null, null, '444443443333344443444312'],
+      'Cragieburn to Mill Park': ['244333111112211111133412', null, null, null, null, null, '334411111111111111344422'],
+      'Melton to Taylors Lakes': ['123233121122211111121121', null, null, null, null, null, '332311211111111111334312'],
+      'Lillydale to Ferntree Gully': ['244444322233432122344213', null, null, null, null, null, '443444444433444434443233'],
+      'Frankston to Packenham': ['233333111112211111132232', null, null, null, null, null, '433432221122221221433222']
+    };
     const DEMAND_NAMES = ['None', 'Low', 'Medium', 'High', 'Very high'];
     let trendQueue = [], trendPending = null, demandDay = null;
 
@@ -1652,6 +1660,7 @@
       };
       seed(SEED_TRENDS, 'trendSeed', SEED_VERSION);
       seed(SEED_TRENDS_2, 'trendSeed2', SEED_VERSION_2);
+      seed(SEED_TRENDS_3, 'trendSeed3', 'trends-2026-10-13-monsun');
       // Events saved under the old descriptive zone names
       const OLD = { 'North · Craigieburn': 'Cragieburn to Mill Park', 'North-west · Sunbury & Melton': 'Melton to Taylors Lakes',
         'East · Ringwood': 'Lillydale to Ferntree Gully', 'South-east · Frankston': 'Frankston to Packenham' };
@@ -4018,7 +4027,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.17.1';
+    const APP_VERSION = '1.17.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
