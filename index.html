@@ -296,6 +296,34 @@
       font-size: 0.6rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;
     }
     .area-label::before { display: none; }
+    /* ================= UBER DEMAND (Best Times) ================= */
+    .demand-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 4px; }
+    .demand-head { display: flex; align-items: center; gap: 8px; }
+    .demand-titles { flex: 1; min-width: 0; }
+    .demand-title { font-weight: 800; font-size: .95rem; }
+    .demand-sub { font-size: .7rem; color: var(--muted); margin-top: 2px; }
+    #demandZone { background: #0f172a; color: var(--text); border: 1px solid var(--card-border); border-radius: 8px; padding: 6px; font-size: .75rem; max-width: 110px; }
+    .imp-btn { flex: none; background: #0284c7; color: #fff; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: .8rem; cursor: pointer; }
+    .day-chips { display: flex; gap: 4px; margin: 8px 0; overflow-x: auto; }
+    .day-chips .chip { padding: 5px 8px; box-shadow: none; }
+    .day-chips .chip.empty { opacity: .55; }
+    .demand-chart { display: flex; align-items: flex-end; gap: 2px; height: 90px; padding: 4px 2px 0; background: #0f172a; border-radius: 8px; }
+    .demand-chart i { flex: 1; border-radius: 2px 2px 0 0; background: #475569; min-width: 0; }
+    .demand-chart i.lv1 { background: #64748b; }
+    .demand-chart i.lv2 { background: #38bdf8; opacity: .6; }
+    .demand-chart i.lv3 { background: #38bdf8; opacity: .85; }
+    .demand-chart i.lv4 { background: #22c55e; }
+    .demand-chart i.live { background: #fde68a; opacity: 1; }
+    .demand-chart i.nodata { height: 100%; background: none; border: 1px dashed #334155; border-bottom: none; }
+    .demand-chart i.now { outline: 2px solid #f97316; outline-offset: 1px; }
+    .demand-chart .empty { width: 100%; align-self: center; }
+    .demand-axis { display: flex; justify-content: space-between; font-size: .62rem; color: var(--muted); padding: 3px 2px 0; }
+    .score-bar { width: 70px; height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; flex: none; }
+    .score-bar i { display: block; height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); }
+    .sel-full { width: 100%; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; padding: 8px; color: var(--text); font-size: 1rem; }
+    #trendSheet .sheet-content { max-height: 88vh; overflow-y: auto; }
+    #trendSave:disabled { opacity: .4; }
+
     /* ================= DRIVE SCREEN (map + offer) ================= */
     .tabs.tabs-2 { grid-template-columns: 1fr 1fr; }
     .drive { display: flex; flex-direction: column; gap: 8px; height: calc(100dvh - 150px); min-height: 560px; }
@@ -304,6 +332,8 @@
       border: 1px solid var(--card-border); isolation: isolate; z-index: 0; /* map layers stay below panels */
     }
     .drive #surgeMap { height: 100%; min-height: 0; border: none; border-radius: 0; }
+    /* Greyscale streets so suburb boundaries and surge colours stand out */
+    .drive #surgeMap .leaflet-tile-pane { filter: grayscale(1) contrast(0.9) brightness(1.04); }
     .drive-top {
       position: absolute; top: 8px; left: 8px; right: 8px; z-index: 600;
       display: flex; flex-direction: column; gap: 6px; pointer-events: none;
@@ -610,6 +640,23 @@
 
     <!-- ================= INSIGHTS VIEW ================= -->
     <div id="view-insights" style="display:none;">
+      <div class="demand-card">
+        <div class="demand-head">
+          <div class="demand-titles">
+            <div class="demand-title">📈 Uber demand</div>
+            <div class="demand-sub" id="demandSub"></div>
+          </div>
+          <select id="demandZone" onchange="onDemandZone(this.value)" aria-label="Zone" hidden></select>
+          <label class="imp-btn">Import
+            <input type="file" id="trendFile" accept="image/*" multiple hidden onchange="onTrendFiles(event)" /></label>
+        </div>
+        <div class="day-chips" id="demandDays"></div>
+        <div class="demand-chart" id="demandChart"></div>
+        <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
+      </div>
+      <div class="section-title">Best times to drive</div>
+      <div class="rank" id="bestDrive"></div>
+      <div class="autoread-hint" style="margin-bottom:8px;">Ranked by Uber demand (60%), your offers' $/hr (25%) and surges you've seen (15%).</div>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Offers Logged</div>
@@ -657,6 +704,30 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Uber trend import sheet -->
+  <div class="sheet" id="trendSheet" onclick="if (event.target === this) closeTrendSheet()">
+    <div class="sheet-content">
+      <div class="sheet-head">
+        <h3 style="color: var(--accent);">📈 Uber hourly trend</h3>
+        <button class="x-btn" onclick="closeTrendSheet()" aria-label="Close">✕</button>
+      </div>
+      <div class="autoread-hint" id="trendErr" hidden></div>
+      <div class="demand-chart" id="trendPreview"></div>
+      <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
+      <div class="autoread-hint" id="trendRead"></div>
+      <div class="setting-item" style="margin-top:10px;">
+        <label for="trendDay">Day this chart is for</label>
+        <select id="trendDay" class="sel-full"></select>
+      </div>
+      <div class="setting-item">
+        <label for="trendZone">Uber zone (shown under “Earnings trends”)</label>
+        <input id="trendZone" list="zoneList" autocomplete="off" />
+        <datalist id="zoneList"><option value="Melbourne City"></option><option value="Sunbury"></option><option value="Melton"></option><option value="Werribee"></option><option value="South Morang"></option><option value="Bentleigh"></option><option value="Dandenong"></option><option value="Frankston"></option></datalist>
+      </div>
+      <button class="pip-btn" id="trendSave" onclick="saveTrend()">Save trend</button>
+    </div>
   </div>
 
   <!-- Surge Snapshot sheet -->
@@ -1160,6 +1231,210 @@
       return grid;
     }
 
+    // ================= UBER DEMAND TRENDS (from "Hourly trends" screenshots) =================
+    // Uber's Earnings trends card shows 24 bars, one per hour from 4am to 3am, in four heights.
+    // A screenshot is measured on the phone, then stored per zone, weekday and hour.
+    const TRENDS_KEY = 'uberTrends';
+    const UBER_ZONES = ['Melbourne City', 'Sunbury', 'Melton', 'Werribee', 'South Morang', 'Bentleigh', 'Dandenong', 'Frankston'];
+    const DEMAND_NAMES = ['None', 'Low', 'Medium', 'High', 'Very high'];
+    let trendQueue = [], trendPending = null, demandDay = null;
+
+    function loadTrends() { try { return JSON.parse(lsGet(TRENDS_KEY)) || {}; } catch (e) { return {}; } }
+    function saveTrends(t) { lsSet(TRENDS_KEY, JSON.stringify(t)); }
+    function trendZone() { return lsGet('trendZone') || 'Melbourne City'; }
+
+    // The chart's day runs 4am to 3am, so before 4am it still belongs to yesterday
+    function businessDay(ts) { const d = new Date(ts); if (d.getHours() < 4) d.setDate(d.getDate() - 1); return (d.getDay() + 6) % 7; }
+
+    // Measure the 24 bars. Returns { levels[24], liveIdx } or { error }.
+    function analyseTrendImage(img) {
+      const s = Math.min(1, 900 / img.naturalWidth);
+      const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const cx = c.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(img, 0, 0, w, h);
+      const px = cx.getImageData(0, 0, w, h).data;
+      const lum = (x, y) => { const i = (y * w + x) * 4; return 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2]; };
+      const sat = (x, y) => { const i = (y * w + x) * 4; return Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]); };
+      const segs = y => {
+        const out = []; let run = -1;
+        for (let x = 0; x < w; x++) {
+          const on = lum(x, y) > 45;
+          if (on && run < 0) run = x;
+          if (!on && run >= 0) { out.push([run, x - 1]); run = -1; }
+        }
+        if (run >= 0) out.push([run, w - 1]);
+        return out.filter(([a, b]) => b - a + 1 >= w * 0.012 && b - a + 1 <= w * 0.07);
+      };
+      // Bottom edge of the bars: the lowest row crossed by a long run of evenly sized bars
+      let base = -1, bars = null;
+      for (let y = Math.floor(h * 0.97); y > h * 0.2; y--) {
+        const sg = segs(y);
+        if (sg.length >= 20 && sg.length <= 28) { base = y; bars = sg; break; }
+      }
+      if (!bars) return { error: 'Couldn’t find the Hourly trends bars. Screenshot the whole chart in the Uber Driver app (Earnings trends → Hourly trends).' };
+      if (bars.length !== 24) return { error: `Found ${bars.length} bars, expected 24 (one per hour). Try a fresh screenshot of the whole chart.` };
+      const heights = [], live = [];
+      let barW = 0;
+      bars.forEach(([a, b]) => {
+        const x = Math.round((a + b) / 2);
+        let y = base; while (y > 0 && lum(x, y) > 45) y--;
+        heights.push(base - y);
+        live.push(sat(x, base - 2) > 40);   // the live bar is coloured, history is grey
+        barW += b - a + 1;
+      });
+      barW /= bars.length;
+      // Four height steps. Use the smallest bar as one step when it looks like one.
+      const byWidth = barW * 1.59, minH = Math.min(...heights.filter(v => v > 2));
+      const unit = minH / byWidth > 0.8 && minH / byWidth < 1.25 ? minH : byWidth;
+      const levels = heights.map(v => Math.max(0, Math.min(4, Math.round(v / unit))));
+      if (!levels.some(v => v > 0)) return { error: 'The bars look empty. Try another screenshot.' };
+      return { levels, liveIdx: live.indexOf(true) };
+    }
+
+    function onTrendFiles(ev) {
+      trendQueue = [...(ev.target.files || [])];
+      ev.target.value = '';
+      nextTrend();
+    }
+    function nextTrend() {
+      const f = trendQueue.shift();
+      if (!f) return;
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.onload = () => {
+        const r = analyseTrendImage(img);
+        URL.revokeObjectURL(url);
+        // Default day: when the photo was taken if the phone tells us, else now
+        const t = f.lastModified && Date.now() - f.lastModified < 8 * 86400000 ? f.lastModified : Date.now();
+        trendPending = Object.assign(r, { day: businessDay(t), name: f.name });
+        openTrendSheet();
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); toast('That file isn’t an image'); nextTrend(); };
+      img.src = url;
+    }
+
+    function barsHTML(levels, liveIdx, nowIdx) {
+      return levels.map((l, i) => `<i class="lv${l}${i === liveIdx ? ' live' : ''}${i === nowIdx ? ' now' : ''}" style="height:${Math.max(4, l * 25)}%"></i>`).join('');
+    }
+
+    function openTrendSheet() {
+      const p = trendPending;
+      const sheet = document.getElementById('trendSheet');
+      const err = document.getElementById('trendErr');
+      document.getElementById('trendDay').innerHTML = DAYS.map((d, i) =>
+        `<option value="${i}"${i === p.day ? ' selected' : ''}>${d} (4am ${d} – 3am ${DAYS[(i + 1) % 7]})</option>`).join('');
+      document.getElementById('trendZone').value = trendZone();
+      if (p.error) {
+        err.textContent = p.error; err.hidden = false;
+        document.getElementById('trendPreview').innerHTML = '';
+        document.getElementById('trendSave').disabled = true;
+      } else {
+        err.hidden = true;
+        document.getElementById('trendSave').disabled = false;
+        document.getElementById('trendPreview').innerHTML = barsHTML(p.levels, p.liveIdx, -1);
+        const peak = Math.max(...p.levels);
+        const peaks = p.levels.map((l, i) => l === peak ? fmtHour((4 + i) % 24) : null).filter(Boolean);
+        document.getElementById('trendRead').textContent =
+          `Read 24 hours. Busiest: ${peaks.slice(0, 6).join(', ')}${peaks.length > 6 ? '…' : ''}` +
+          (p.liveIdx >= 0 ? ` · live bar at ${fmtHour((4 + p.liveIdx) % 24)} (not saved, it's today's live value)` : '');
+      }
+      sheet.style.display = 'flex';
+    }
+    function closeTrendSheet() { document.getElementById('trendSheet').style.display = 'none'; trendPending = null; nextTrend(); }
+
+    function saveTrend() {
+      const p = trendPending;
+      if (!p || p.error) return;
+      const day = +document.getElementById('trendDay').value;
+      const zone = (document.getElementById('trendZone').value || 'Melbourne City').trim();
+      lsSet('trendZone', zone);
+      const all = loadTrends();
+      const z = all[zone] || (all[zone] = { h: {}, shots: 0, updated: 0 });
+      p.levels.forEach((l, i) => {
+        if (i === p.liveIdx) return;                       // live value, not the usual pattern
+        const hour = (4 + i) % 24, d = i >= 20 ? (day + 1) % 7 : day;   // 12am–3am is the next calendar day
+        const k = d + '-' + hour, old = z.h[k];
+        const n = old ? Math.min(old.n, 7) : 0;             // average, favouring recent screenshots
+        z.h[k] = { v: old ? (old.v * n + l / 4) / (n + 1) : l / 4, n: n + 1 };
+      });
+      z.shots++; z.updated = Date.now();
+      saveTrends(all);
+      demandDay = day;
+      toast(`📈 Saved ${DAYS[day]} demand for ${zone}`);
+      closeTrendSheet();
+      renderInsights();
+    }
+
+    function demandAt(zone, d, hour) {
+      const z = loadTrends()[zone];
+      const e = z && z.h[d + '-' + hour];
+      return e ? e.v : null;
+    }
+    function blockDemand(zone, d, b) {
+      const v = [demandAt(zone, d, b * 2), demandAt(zone, d, b * 2 + 1)].filter(x => x !== null);
+      return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null;
+    }
+    const demandName = v => v === null ? '—' : DEMAND_NAMES[Math.max(1, Math.round(v * 4))];
+
+    // Combined score for each 2-hour slot: Uber demand 60%, your offers 25%, surges 15%
+    function slotScores(zone) {
+      const log = loadLog(), grid = buildGrid(log), sgrid = surgeGrid();
+      let maxSurge = 0;
+      for (let b = 0; b < BLOCKS; b++) for (let d = 0; d < 7; d++) maxSurge = Math.max(maxSurge, sgrid[b][d].filter(s => s.level >= 2).length);
+      const out = [];
+      for (let d = 0; d < 7; d++) for (let b = 0; b < BLOCKS; b++) {
+        const u = blockDemand(zone, d, b);
+        const es = grid[b][d];
+        const a = es.length ? agg(es) : null;
+        const o = a ? Math.min(1.5, a.gph / config.minGrossHr) / 1.5 : null;
+        const nS = sgrid[b][d].filter(s => s.level >= 2).length;
+        const sv = maxSurge ? nS / maxSurge : null;
+        const parts = [[u, 0.6], [o, 0.25], [sv, 0.15]].filter(([v]) => v !== null);
+        if (u === null && o === null) continue;
+        const wsum = parts.reduce((x, [, w]) => x + w, 0);
+        out.push({ d, b, u, a, nS, score: parts.reduce((x, [v, w]) => x + v * w, 0) / wsum });
+      }
+      return out;
+    }
+
+    function renderDemand() {
+      const all = loadTrends(), zones = Object.keys(all);
+      const zone = zones.includes(trendZone()) ? trendZone() : (zones[0] || trendZone());
+      const zSel = document.getElementById('demandZone');
+      zSel.hidden = zones.length < 2;
+      zSel.innerHTML = zones.map(z => `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('');
+      const z = all[zone];
+      document.getElementById('demandSub').textContent = z
+        ? `${zone} · ${z.shots} screenshot${z.shots === 1 ? '' : 's'} · updated ${new Date(z.updated).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}`
+        : 'Screenshot Uber’s Earnings trends → Hourly trends, then import it here';
+      const today = businessDay(Date.now());
+      if (demandDay === null) demandDay = today;
+      document.getElementById('demandDays').innerHTML = DAYS.map((d, i) => {
+        const has = z && Array.from({ length: 24 }, (_, k) => z.h[(k >= 20 ? (i + 1) % 7 : i) + '-' + ((4 + k) % 24)]).some(Boolean);
+        return `<button class="chip${i === demandDay ? ' on' : ''}${has ? '' : ' empty'}" onclick="demandDay=${i};renderDemand()">${d}</button>`;
+      }).join('');
+      const levels = Array.from({ length: 24 }, (_, k) => {
+        const v = demandAt(zone, k >= 20 ? (demandDay + 1) % 7 : demandDay, (4 + k) % 24);
+        return v === null ? -1 : Math.round(v * 4);
+      });
+      const nowIdx = demandDay === today ? (new Date().getHours() - 4 + 24) % 24 : -1;
+      document.getElementById('demandChart').innerHTML = levels.every(l => l < 0)
+        ? `<div class="empty">No ${DAYS[demandDay]} trend yet. Import a screenshot taken on a ${DAYS[demandDay]}.</div>`
+        : levels.map((l, i) => l < 0 ? `<i class="nodata${i === nowIdx ? ' now' : ''}"></i>` : `<i class="lv${l}${i === nowIdx ? ' now' : ''}" style="height:${Math.max(4, l * 25)}%"></i>`).join('');
+
+      // Best times to drive (combined)
+      const scores = slotScores(zone).sort((x, y) => y.score - x.score);
+      document.getElementById('bestDrive').innerHTML = scores.length
+        ? scores.slice(0, 8).map((s, i) => `<div class="rank-item">
+            <div><div>${i + 1}. ${DAYS[s.d]} ${blockLabel(s.b)}</div>
+            <div class="r-sub">Uber demand ${demandName(s.u)}${s.a ? ` · your offers $${s.a.gph.toFixed(0)}/hr` : ''}${s.nS ? ` · 🔥${s.nS}` : ''}</div></div>
+            <div class="score-bar"><i style="width:${Math.round(s.score * 100)}%"></i></div></div>`).join('')
+        : '<div class="empty">Import an Uber trend screenshot or log some offers to rank the best times.</div>';
+      return scores;
+    }
+    function onDemandZone(v) { lsSet('trendZone', v); renderInsights(); }
+
     function renderInsights() {
       const log = loadLog();
       const all = agg(log);
@@ -1180,6 +1455,16 @@
       }
       document.getElementById('insBestDay').textContent = bestDay ? `${DAYS[bestDay.d]} $${bestDay.gph.toFixed(0)}` : '—';
       document.getElementById('insBestTime').textContent = bestTime ? blockLabel(bestTime.b) : '—';
+      const ranked = renderDemand();
+      if (Object.keys(loadTrends()).length && ranked.length) {
+        const byDay = {}, byBlock = {};
+        ranked.forEach(r => { (byDay[r.d] = byDay[r.d] || []).push(r.score); (byBlock[r.b] = byBlock[r.b] || []).push(r.score); });
+        const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+        const bd = Object.entries(byDay).sort((x, y) => avg(y[1]) - avg(x[1]))[0];
+        const bt = Object.entries(byBlock).sort((x, y) => avg(y[1]) - avg(x[1]))[0];
+        document.getElementById('insBestDay').textContent = DAYS[+bd[0]];
+        document.getElementById('insBestTime').textContent = blockLabel(+bt[0]);
+      }
 
       // Heatmap (offers + surge snapshots)
       const sgrid = surgeGrid();
@@ -1946,6 +2231,7 @@
       if (!map.hasLayer(add)) add.addTo(map);
       const b = document.getElementById('fabNight');
       if (b) { b.textContent = on ? '☀️' : '🌙'; b.setAttribute('aria-label', on ? 'Day map' : 'Night map'); }
+      if (areaLayer) renderMap();
     }
     const MELB = [-37.8136, 144.9631];
 
@@ -2535,9 +2821,10 @@
         const sg = surgeAreas.get(a.name);
         if (!sg && zoom < 11) return;               // zoomed far out: only surge suburbs
         const live = sg && sg.kind === 'live';
-        const col = !sg ? '#64748b' : live ? LEVEL_COLORS[sg.level] : '#8b5cf6';
+        const edge = nightMap ? '#cbd5e1' : '#1e293b';   // suburb lines: strong on the grey street map
+        const col = !sg ? edge : live ? LEVEL_COLORS[sg.level] : '#8b5cf6';
         const shape = L.polygon(a.polys, {
-          renderer: suburbRenderer, color: col, weight: sg ? 2.5 : 0.8, opacity: sg ? 0.95 : 0.35,
+          renderer: suburbRenderer, color: col, weight: sg ? 3 : (zoom >= 13 ? 1.6 : 1.2), opacity: sg ? 1 : 0.7,
           dashArray: sg && !live ? '6 5' : null, fillColor: col, fillOpacity: sg ? (live ? 0.32 : 0.2) : 0,
           interactive: !!sg
         });
@@ -2610,7 +2897,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.7.0';
+    const APP_VERSION = '1.8.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
