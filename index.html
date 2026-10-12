@@ -359,7 +359,7 @@
     #planEndWrap[hidden] { display: none; }
     #planResult .rank-item { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
-    /* ================= UBER DEMAND (Best Times) ================= */
+    /* ================= UBER DEMAND (Uber Trends tab) ================= */
     .demand-card { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 4px; }
     .demand-head { display: flex; align-items: center; gap: 8px; }
     .demand-titles { flex: 1; min-width: 0; }
@@ -393,7 +393,6 @@
     .tc-row input[list] { flex: 1; min-width: 0; background: #0f172a; border: 1px solid var(--card-border); border-radius: 6px; padding: 7px; color: var(--text); font-size: .9rem; }
 
     /* ================= DRIVE SCREEN (map + offer) ================= */
-    .tabs.tabs-2 { grid-template-columns: 1fr 1fr; }
     .drive { display: flex; flex-direction: column; gap: 8px; height: calc(100dvh - 150px); min-height: 560px; }
     .map-wrap {
       position: relative; flex: 1; min-height: 260px; border-radius: 14px; overflow: hidden;
@@ -620,9 +619,10 @@
       <button class="gear-btn" onclick="toggleSettings(true)" aria-label="Settings">⚙️</button>
     </div>
 
-    <div class="tabs tabs-2">
+    <div class="tabs">
       <button class="tab active" id="tab-drive" onclick="showTab('drive')">🚗 Drive</button>
-      <button class="tab" id="tab-insights" onclick="showTab('insights')">📊 Best Times</button>
+      <button class="tab" id="tab-insights" onclick="showTab('insights')">🗓 Plan a Shift</button>
+      <button class="tab" id="tab-trends" onclick="showTab('trends')">📈 Uber Trends</button>
     </div>
 
     <!-- ================= DRIVE VIEW: live map + offer in one ================= -->
@@ -711,13 +711,32 @@
       </div>
     </div>
 
+    <!-- ================= UBER TRENDS VIEW ================= -->
+    <div id="view-trends" style="display:none;">
+      <div class="demand-card">
+        <div class="demand-head">
+          <div class="demand-titles">
+            <div class="demand-title">📈 Uber demand</div>
+            <div class="demand-sub" id="demandSub"></div>
+          </div>
+          <label class="imp-btn">Import
+            <input type="file" id="trendFile" accept="image/*" multiple hidden onchange="onTrendFiles(event)" /></label>
+        </div>
+        <select id="demandZone" onchange="onDemandZone(this.value)" aria-label="Uber zone" hidden></select>
+        <div class="day-chips" id="demandDays"></div>
+        <div class="demand-chart" id="demandChart"></div>
+        <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
+      </div>
+      <div class="autoread-hint">Screenshot Uber Driver → Earnings trends (each day tab), then Import. Several charts per screenshot are read at once.</div>
+    </div>
+
     <!-- ================= INSIGHTS VIEW ================= -->
     <div id="view-insights" style="display:none;">
       <div class="demand-card where-card">
         <div class="demand-title">📍 Where to drive</div>
         <div id="whereNow"></div>
         <div class="plan-box">
-          <div class="plan-title">🗓 Plan a shift</div>
+          <div class="plan-title">🕘 Choose your hours</div>
           <div class="plan-row">
             <select id="planDay" onchange="renderPlan()" aria-label="Day"></select>
             <label class="plan-lbl">From <select id="planStart" onchange="renderPlan()" aria-label="Start time"></select></label>
@@ -732,20 +751,6 @@
           </div>
           <div id="planResult"></div>
         </div>
-      </div>
-      <div class="demand-card">
-        <div class="demand-head">
-          <div class="demand-titles">
-            <div class="demand-title">📈 Uber demand</div>
-            <div class="demand-sub" id="demandSub"></div>
-          </div>
-          <label class="imp-btn">Import
-            <input type="file" id="trendFile" accept="image/*" multiple hidden onchange="onTrendFiles(event)" /></label>
-        </div>
-        <select id="demandZone" onchange="onDemandZone(this.value)" aria-label="Uber zone" hidden></select>
-        <div class="day-chips" id="demandDays"></div>
-        <div class="demand-chart" id="demandChart"></div>
-        <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
       </div>
       <div class="section-title">Best times to drive</div>
       <div class="rank" id="bestDrive"></div>
@@ -1662,6 +1667,7 @@
       if (!lsGet('trendZone')) lsSet('trendZone', saved[0]);
       demandDay = day;
       toast(`📈 Saved ${DAYS[day]} · ${saved.length > 1 ? saved.length + ' zones' : saved[0]}`);
+      if (document.getElementById('view-trends').style.display === 'none') showTab('trends');
       closeTrendSheet();
       renderInsights();
     }
@@ -3697,18 +3703,18 @@
     }
 
     function showTab(tab) {
-      ['drive', 'insights'].forEach(t => {
+      ['drive', 'insights', 'trends'].forEach(t => {
         document.getElementById('view-' + t).style.display = tab === t ? '' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', tab === t);
       });
-      if (tab === 'insights') renderInsights();
+      if (tab === 'insights' || tab === 'trends') renderInsights();
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else stopTracking(); // save battery when the map isn't showing
     }
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.15.0';
+    const APP_VERSION = '1.16.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
