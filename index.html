@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Rideshare Pro Overlay</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card: #151e2e;
+      --card-border: #23324a;
+      --accent: #38bdf8;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; padding: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Roboto, sans-serif;
+      background: var(--bg); color: var(--text);
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .app-container { width: 100%; max-width: 420px; }
+
+    /* Header & Navigation */
+    .top-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .logo { width: 44px; height: 44px; flex: none; display: block; }
+    .gear-btn {
+      flex: none; width: 44px; height: 44px; background: var(--card); border: 1px solid var(--card-border);
+      color: var(--text); border-radius: 10px; font-size: 1.2rem; padding: 0;
+    }
+
+    .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+    .tab {
+      background: var(--card); border: 1px solid var(--card-border); color: var(--muted);
+      border-radius: 8px; padding: 9px 4px; font-weight: 700; font-size: 0.82rem; white-space: nowrap;
+    }
+    .tab.active { color: var(--accent); border-color: var(--accent); background: rgba(56,189,248,0.1); }
+
+    /* PiP Video Canvas container */
+    .pip-section {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 12px; padding: 10px; margin-bottom: 12px; text-align: center;
+    }
+    canvas { display: none; }
+    video { width: 100%; height: 90px; background: #000; border-radius: 8px; object-fit: contain; }
+    .pip-btn {
+      margin-top: 8px; width: 100%; padding: 10px;
+      background: #0284c7; border: none; color: white;
+      font-weight: 700; border-radius: 8px; font-size: 0.95rem;
+    }
+
+    /* Active Metric Cards */
+    .decision-banner {
+      font-size: 1.25rem; font-weight: 800; text-align: center;
+      padding: 10px; border-radius: 10px; margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+    .decision-banner.accept { background: rgba(34, 197, 94, 0.2); color: var(--green); border: 1px solid var(--green); }
+    .decision-banner.decline { background: rgba(239, 68, 68, 0.2); color: var(--red); border: 1px solid var(--red); }
+    .decision-banner.waiting { background: rgba(148, 163, 184, 0.1); color: var(--muted); border: 1px dashed var(--muted); }
+
+    .stats-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;
+    }
+    .stat-card {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 8px; padding: 8px; text-align: center;
+    }
+    .stat-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .stat-value { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-top: 2px; }
+
+    /* Fast Inputs */
+    .input-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .input-box {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 8px; padding: 6px 8px;
+    }
+    .input-box label { font-size: 0.65rem; color: var(--muted); display: block; }
+    .input-box input {
+      width: 100%; background: transparent; border: none;
+      color: var(--text); font-size: 1.1rem; font-weight: 700; outline: none;
+    }
+
+    /* Keypad */
+    .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .key {
+      background: #1e293b; border: 1px solid #334155; color: white;
+      font-size: 1.2rem; font-weight: 600; padding: 12px 0; border-radius: 8px;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .key:active { background: #334155; }
+    .key.action { background: #334155; color: var(--accent); font-size: 0.95rem; }
+    .key.reset { background: rgba(239, 68, 68, 0.2); color: var(--red); border-color: var(--red); }
+    .keypad { margin-bottom: 4px; }
+
+    /* Side keypad button */
+    .side-btn {
+      position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 30;
+      background: #0284c7; color: #fff; border: none; border-radius: 12px 0 0 12px;
+      padding: 14px 8px; font-size: 1.4rem; font-weight: 800;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      box-shadow: -2px 4px 14px rgba(0,0,0,0.45);
+    }
+    .side-btn span { font-size: 0.6rem; letter-spacing: .5px; text-transform: uppercase; }
+    .side-btn.open { background: #334155; color: var(--accent); }
+
+    /* Log buttons */
+    .log-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .log-btn { border-radius: 8px; padding: 13px 0; font-weight: 700; font-size: 0.95rem; border: 1px solid; }
+    .log-btn.took { background: rgba(34,197,94,0.18); color: var(--green); border-color: var(--green); }
+    .log-btn.passed { background: rgba(148,163,184,0.12); color: var(--muted); border-color: var(--muted); }
+    .log-btn:active { filter: brightness(1.4); }
+    .hint { font-size: 0.7rem; color: var(--muted); text-align: center; margin-top: 6px; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      background: #1e293b; border: 1px solid var(--accent); color: var(--text);
+      padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 0.9rem;
+      opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50;
+    }
+    .toast.show { opacity: 1; }
+
+    /* Insights */
+    .section-title { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin: 14px 0 6px; font-weight: 700; }
+    .heat-wrap { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 8px; }
+    table.heat { width: 100%; border-collapse: separate; border-spacing: 2px; table-layout: fixed; }
+    table.heat th { font-size: 0.65rem; color: var(--muted); font-weight: 600; padding: 2px 0; }
+    table.heat th.rowh { text-align: right; padding-right: 4px; width: 54px; white-space: nowrap; }
+    table.heat td {
+      height: 32px; border-radius: 5px; text-align: center; vertical-align: middle;
+      background: rgba(148,163,184,0.06); font-size: 0.68rem; line-height: 1.05; cursor: pointer;
+    }
+    table.heat td b { display: block; font-size: 0.75rem; }
+    table.heat td small { color: rgba(248,250,252,0.7); font-size: 0.58rem; }
+    table.heat td.sel { outline: 2px solid var(--accent); }
+    .legend { display: flex; gap: 10px; justify-content: center; font-size: 0.65rem; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+    .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; background: var(--c); }
+    .detail { font-size: 0.8rem; color: var(--text); background: rgba(56,189,248,0.08); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px; margin-top: 8px; min-height: 18px; }
+
+    .rank { background: var(--card); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; }
+    .rank-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--card-border); font-size: 0.88rem; }
+    .rank-item:last-child { border-bottom: none; }
+    .rank-item .r-sub { font-size: 0.7rem; color: var(--muted); }
+    .rank-item .r-val { font-weight: 800; }
+    .empty { padding: 12px; color: var(--muted); font-size: 0.82rem; text-align: center; }
+
+    .log-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--card-border); font-size: 0.78rem; }
+    .log-item:last-child { border-bottom: none; }
+    .del { background: none; border: none; color: var(--muted); font-size: 1rem; padding: 2px 6px; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+    .sec-btn { background: var(--card); border: 1px solid var(--card-border); color: var(--text); border-radius: 8px; padding: 10px; font-weight: 600; font-size: 0.85rem; }
+    .sec-btn.danger { color: var(--red); border-color: rgba(239,68,68,0.5); }
+
+    /* Surge snapshot */
+    .snap-btn {
+      flex: 1; height: 44px; padding: 0 10px; border-radius: 10px; font-weight: 800; font-size: 1rem;
+      background: rgba(249,115,22,0.18); color: #fb923c; border: 1px solid #f97316;
+    }
+    .snap-btn:active { filter: brightness(1.4); }
+    .sheet {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+      justify-content: center; align-items: flex-end; padding: 12px; z-index: 45;
+    }
+    .sheet-content {
+      background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
+      padding: 14px; width: 100%; max-width: 420px;
+    }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .sheet-head h3 { margin: 0; color: #fb923c; font-size: 1.05rem; }
+    .x-btn { background: none; border: none; color: var(--muted); font-size: 1.3rem; }
+    .snap-meta { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+    .snap-photo-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .snap-photo-row img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--card-border); display: none; }
+    .attach-btn {
+      flex: 1; padding: 11px; border-radius: 8px; background: #1e293b; border: 1px dashed #475569;
+      color: var(--text); font-weight: 600; font-size: 0.85rem; text-align: center;
+    }
+    .amt-box { background: #0f172a; border: 1px solid var(--card-border); border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; }
+    .amt-box label { font-size: 0.65rem; color: var(--muted); display: block; }
+    .amt-box input { width: 100%; background: transparent; border: none; color: var(--text); font-size: 1.1rem; font-weight: 700; outline: none; }
+    .level-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .lvl { padding: 16px 0; border-radius: 10px; font-weight: 800; font-size: 1rem; border: 1px solid; }
+    .lvl0 { background: rgba(100,116,139,0.2); color: #cbd5e1; border-color: #64748b; }
+    .lvl1 { background: rgba(250,204,21,0.15); color: #facc15; border-color: #facc15; }
+    .lvl2 { background: rgba(249,115,22,0.18); color: #fb923c; border-color: #f97316; }
+    .lvl3 { background: rgba(239,68,68,0.2); color: #f87171; border-color: #ef4444; }
+
+    /* Map */
+    .filter-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 8px; }
+    .filter-row select {
+      background: var(--card); border: 1px solid var(--card-border); color: var(--text);
+      border-radius: 8px; padding: 9px 8px; font-size: 0.85rem; font-weight: 600; width: 100%;
+    }
+    .now-btn { background: rgba(56,189,248,0.12); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 0 12px; font-weight: 700; font-size: 0.85rem; }
+    #surgeMap { width: 100%; height: 380px; border-radius: 12px; border: 1px solid var(--card-border); background: #0f172a; }
+    .map-note { font-size: 0.75rem; color: var(--muted); margin-top: 6px; text-align: center; min-height: 16px; }
+    .map-note.place { color: #fb923c; font-weight: 700; }
+    .leaflet-popup-content { font-size: 0.8rem; margin: 10px 12px; }
+    .leaflet-popup-content img { width: 160px; border-radius: 6px; margin-top: 6px; display: block; }
+    .fire { color: #fb923c; font-size: 0.55rem; display: block; }
+    .area-label {
+      background: rgba(255,255,255,0.85); border: none; box-shadow: none; color: #0f172a;
+      font-size: 0.6rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;
+    }
+    .area-label::before { display: none; }
+    #hotAreas .rank-item { cursor: pointer; }
+
+    /* Settings Modal */
+    #settingsModal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
+      justify-content: center; align-items: center; padding: 16px; z-index: 40;
+    }
+    .modal-content {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 18px; width: 100%; max-width: 360px;
+    }
+    .setting-item { margin-bottom: 12px; }
+    .setting-item label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+    .setting-item input {
+      width: 100%; background: #0f172a; border: 1px solid var(--card-border);
+      border-radius: 6px; padding: 8px; color: white; font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <div class="top-bar">
+      <!-- Logo: a decision gauge (red = decline, green = accept) with the needle in the green -->
+      <svg class="logo" viewBox="0 0 44 44" role="img" aria-label="Offer Pilot">
+        <title>Offer Pilot</title>
+        <defs>
+          <linearGradient id="lgBg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#16243a" />
+            <stop offset="1" stop-color="#0b1220" />
+          </linearGradient>
+          <linearGradient id="lgArc" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#ef4444" />
+            <stop offset="0.5" stop-color="#f59e0b" />
+            <stop offset="1" stop-color="#22c55e" />
+          </linearGradient>
+        </defs>
+        <rect x="1" y="1" width="42" height="42" rx="11" fill="url(#lgBg)" stroke="#23324a" />
+        <path d="M9 30 A13 13 0 0 1 35 30" fill="none" stroke="url(#lgArc)" stroke-width="4.5" stroke-linecap="round" />
+        <line x1="22" y1="30" x2="31" y2="19" stroke="#f8fafc" stroke-width="2.8" stroke-linecap="round" />
+        <circle cx="22" cy="30" r="3.4" fill="#38bdf8" stroke="#f8fafc" stroke-width="1.5" />
+        <text x="22" y="40.5" text-anchor="middle" font-family="-apple-system, sans-serif" font-size="6.5" font-weight="800" fill="#38bdf8">$</text>
+      </svg>
+      <button class="snap-btn" onclick="openSnap()">📸 Surge Snapshot</button>
+      <button class="gear-btn" onclick="toggleSettings(true)" aria-label="Settings">⚙️</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-offer" onclick="showTab('offer')">🚗 Offer</button>
+      <button class="tab" id="tab-insights" onclick="showTab('insights')">📊 Best Times</button>
+      <button class="tab" id="tab-map" onclick="showTab('map')">🗺 Surge Map</button>
+    </div>
+
+    <!-- ================= OFFER VIEW ================= -->
+    <div id="view-offer">
+      <!-- Floating Picture-in-Picture Display Element -->
+      <div class="pip-section">
+        <canvas id="pipCanvas" width="400" height="200"></canvas>
+        <video id="pipVideo" autoplay muted playsinline></video>
+        <button class="pip-btn" id="pipToggleBtn" onclick="togglePiP()">📺 Open Floating iOS Overlay</button>
+      </div>
+
+      <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)" style="cursor:pointer;">ENTER OFFER DETAILS</div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Gross Hourly</div>
+          <div class="stat-value" id="grossHr">$0.00/hr</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Rate / KM</div>
+          <div class="stat-value" id="rateKm">$0.00/km</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net In-Pocket</div>
+          <div class="stat-value" id="netHr" style="color: var(--green);">$0.00/hr</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Running Cost</div>
+          <div class="stat-value" id="fuelCost" style="color: var(--muted);">$0.00</div>
+        </div>
+      </div>
+
+      <!-- Inputs -->
+      <div class="input-row">
+        <div class="input-box" onclick="setActiveField('fare'); toggleKeypad(true)" id="box-fare" style="border-color: var(--accent);">
+          <label>FARE ($ AUD)</label>
+          <input type="text" id="fareVal" placeholder="0.00" readonly />
+        </div>
+        <div class="input-box" onclick="setActiveField('mins'); toggleKeypad(true)" id="box-mins">
+          <label>TIME (MIN)</label>
+          <input type="text" id="minsVal" placeholder="0" readonly />
+        </div>
+        <div class="input-box" onclick="setActiveField('kms'); toggleKeypad(true)" id="box-kms">
+          <label>DIST (KM)</label>
+          <input type="text" id="kmsVal" placeholder="0" readonly />
+        </div>
+      </div>
+
+      <!-- Side button that opens / closes the keypad -->
+      <button class="side-btn" id="keypadToggle" onclick="toggleKeypad()" aria-label="Number pad">🔢<span>Keypad</span></button>
+
+      <!-- Rapid In-Car Touch Keypad (hidden until opened) -->
+      <div class="keypad" id="keypad" style="display:none;">
+        <button class="key" onclick="pressKey('1')">1</button>
+        <button class="key" onclick="pressKey('2')">2</button>
+        <button class="key" onclick="pressKey('3')">3</button>
+        <button class="key action" onclick="nextField()">NEXT ❯</button>
+
+        <button class="key" onclick="pressKey('4')">4</button>
+        <button class="key" onclick="pressKey('5')">5</button>
+        <button class="key" onclick="pressKey('6')">6</button>
+        <button class="key action" onclick="backspace()">⌫</button>
+
+        <button class="key" onclick="pressKey('7')">7</button>
+        <button class="key" onclick="pressKey('8')">8</button>
+        <button class="key" onclick="pressKey('9')">9</button>
+        <button class="key reset" onclick="resetAll()">CLR</button>
+
+        <button class="key action" onclick="pressKey('.')">.</button>
+        <button class="key" onclick="pressKey('0')">0</button>
+        <button class="key action" style="grid-column: span 2;" onclick="quickPreset(15)">+15m Quick</button>
+      </div>
+
+      <!-- Log the offer so Best Times can learn -->
+      <div class="log-row">
+        <button class="log-btn took" onclick="logOffer(true)">✓ Took it</button>
+        <button class="log-btn passed" onclick="logOffer(false)">✗ Passed</button>
+      </div>
+      <div class="hint">CLR auto-logs the offer using the pilot's verdict (tap “Flip” if you did the opposite). Use ✓ / ✗ to log it yourself.</div>
+    </div>
+
+    <!-- ================= INSIGHTS VIEW ================= -->
+    <div id="view-insights" style="display:none;">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Offers Logged</div>
+          <div class="stat-value" id="insCount">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Offer</div>
+          <div class="stat-value" id="insAvg">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Day</div>
+          <div class="stat-value" id="insBestDay" style="color: var(--green);">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Best Time</div>
+          <div class="stat-value" id="insBestTime" style="color: var(--green);">—</div>
+        </div>
+      </div>
+
+      <div class="section-title">Offer $/hr by day &amp; time</div>
+      <div class="heat-wrap">
+        <table class="heat" id="heatTable"></table>
+        <div class="legend">
+          <span style="--c: var(--green)">At/above target</span>
+          <span style="--c: var(--amber)">Within 20%</span>
+          <span style="--c: var(--red)">Below</span>
+          <span style="--c: rgba(148,163,184,0.25)">No data</span>
+        </div>
+        <div class="detail" id="cellDetail">Tap a square for details. Brighter = more offers logged there.</div>
+      </div>
+
+      <div class="section-title">Top slots (3+ offers)</div>
+      <div class="rank" id="topSlots"></div>
+
+      <div class="section-title">Recent offers</div>
+      <div class="rank" id="recentLog"></div>
+
+      <div class="btn-row">
+        <button class="sec-btn" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="sec-btn danger" onclick="clearLog()">🗑 Clear all</button>
+      </div>
+    </div>
+
+    <!-- ================= SURGE MAP VIEW ================= -->
+    <div id="view-map" style="display:none;">
+      <div class="filter-row">
+        <select id="fDay" onchange="renderMap()">
+          <option value="all">All days</option>
+          <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
+          <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option>
+        </select>
+        <select id="fTime" onchange="renderMap()"></select>
+        <button class="now-btn" onclick="filterNow()">Now</button>
+      </div>
+      <div id="surgeMap"></div>
+      <div class="legend" style="margin-top:8px;">
+        <span style="--c:#64748b">Quiet</span>
+        <span style="--c:#facc15">Busy</span>
+        <span style="--c:#f97316">Surge</span>
+        <span style="--c:#ef4444">Big surge</span>
+      </div>
+      <div class="map-note" id="mapNote"></div>
+      <div class="section-title">Hot areas for this filter</div>
+      <div class="rank" id="hotAreas"></div>
+      <div class="btn-row">
+        <button class="sec-btn" onclick="exportSnapsCSV()">⬇ Export snapshots</button>
+        <button class="sec-btn danger" onclick="clearSnaps()">🗑 Clear snapshots</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Surge Snapshot sheet -->
+  <div class="sheet" id="snapSheet">
+    <div class="sheet-content">
+      <div class="sheet-head">
+        <h3>📸 Surge Snapshot</h3>
+        <button class="x-btn" onclick="closeSnap()">✕</button>
+      </div>
+      <div class="snap-meta" id="snapMeta">Getting location…</div>
+      <div class="snap-photo-row">
+        <img id="snapThumb" alt="" />
+        <label class="attach-btn">
+          🖼 Add Uber screenshot (optional)
+          <input type="file" id="snapFile" accept="image/*" style="display:none" onchange="onSnapFile(event)" />
+        </label>
+      </div>
+      <div class="amt-box">
+        <label>SURGE AMOUNT SHOWN ($ or ×, optional)</label>
+        <input type="text" id="snapAmt" inputmode="decimal" placeholder="e.g. 4.50" />
+      </div>
+      <div class="level-grid">
+        <button class="lvl lvl0" onclick="saveSnap(0)">Quiet</button>
+        <button class="lvl lvl1" onclick="saveSnap(1)">Busy</button>
+        <button class="lvl lvl2" onclick="saveSnap(2)">🔥 Surge</button>
+        <button class="lvl lvl3" onclick="saveSnap(3)">🔥🔥 Big surge</button>
+      </div>
+      <div class="hint">Tap a level to save. Only use while parked.</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Configurable Preferences Modal -->
+  <div id="settingsModal">
+    <div class="modal-content">
+      <h3 style="margin-top:0; color:var(--accent);">⚙️ Profitability Thresholds</h3>
+      <div class="setting-item">
+        <label>Target Minimum $/Hour Gross ($ AUD)</label>
+        <input type="number" id="cfgMinHr" value="42.0" step="1" />
+      </div>
+      <div class="setting-item">
+        <label>Target Minimum $/Kilometre ($ AUD)</label>
+        <input type="number" id="cfgMinKm" value="1.20" step="0.1" />
+      </div>
+      <div class="setting-item">
+        <label>Direct Vehicle Cost / KM (RAV4 = 0.14)</label>
+        <input type="number" id="cfgCostKm" value="0.14" step="0.01" />
+      </div>
+      <button class="pip-btn" onclick="saveSettings()">Save & Close</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+    // ---------- Safe storage helpers ----------
+    function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+    // State & Config (Persistent in localStorage)
+    let config = {
+      minGrossHr: parseFloat(lsGet('cfgMinHr')) || 42.0,
+      minRateKm: parseFloat(lsGet('cfgMinKm')) || 1.20,
+      costPerKm: parseFloat(lsGet('cfgCostKm')) || 0.14
+    };
+
+    let activeField = 'fare';
+    let data = { fare: '', mins: '', kms: '' };
+
+    const canvas = document.getElementById('pipCanvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.getElementById('pipVideo');
+
+    function toggleKeypad(force) {
+      const pad = document.getElementById('keypad');
+      const btn = document.getElementById('keypadToggle');
+      const open = typeof force === 'boolean' ? force : pad.style.display === 'none';
+      pad.style.display = open ? '' : 'none';
+      btn.classList.toggle('open', open);
+      btn.innerHTML = open ? '✕<span>Close</span>' : '🔢<span>Keypad</span>';
+      if (open) pad.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function setActiveField(field) {
+      activeField = field;
+      ['fare', 'mins', 'kms'].forEach(f => {
+        document.getElementById(`box-${f}`).style.borderColor = (f === field) ? 'var(--accent)' : 'var(--card-border)';
+      });
+    }
+
+    function pressKey(key) {
+      if (key === '.' && data[activeField].includes('.')) return;
+      data[activeField] += key;
+      updateDisplay();
+    }
+
+    function backspace() {
+      data[activeField] = data[activeField].slice(0, -1);
+      updateDisplay();
+    }
+
+    function nextField() {
+      if (activeField === 'fare') setActiveField('mins');
+      else if (activeField === 'mins') setActiveField('kms');
+      else setActiveField('fare');
+    }
+
+    // Adds minutes to the time field (was referenced but missing before)
+    function quickPreset(m) {
+      const cur = parseFloat(data.mins) || 0;
+      data.mins = String(cur + m);
+      updateDisplay();
+    }
+
+    // CLR auto-logs the offer on screen (took = the pilot's ACCEPT/DECLINE verdict).
+    // The toast offers a one-tap flip if you did the opposite in the Uber app.
+    function resetAll() {
+      const fare = parseFloat(data.fare) || 0, mins = parseFloat(data.mins) || 0, kms = parseFloat(data.kms) || 0;
+      if (fare > 0 && mins > 0) {
+        const entry = { t: Date.now(), fare, mins, kms };
+        entry.took = isGoodOffer(entry);
+        const log = loadLog();
+        log.push(entry);
+        saveLog(log);
+        toast(entry.took ? '✓ Auto-logged as took' : '✗ Auto-logged as passed', 'Flip', () => {
+          const l = loadLog();
+          const e = l.find(x => x.t === entry.t);
+          if (e) { e.took = !e.took; saveLog(l); toast(e.took ? '✓ Changed to took' : '✗ Changed to passed'); renderInsights(); }
+        });
+      }
+      clearInputs();
+    }
+
+    function clearInputs() {
+      data = { fare: '', mins: '', kms: '' };
+      setActiveField('fare');
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      document.getElementById('fareVal').value = data.fare;
+      document.getElementById('minsVal').value = data.mins;
+      document.getElementById('kmsVal').value = data.kms;
+      recalculate();
+    }
+
+    function recalculate() {
+      const fare = parseFloat(data.fare) || 0;
+      const mins = parseFloat(data.mins) || 0;
+      const kms = parseFloat(data.kms) || 0;
+
+      const banner = document.getElementById('decisionBanner');
+      let statusText = "WAITING FOR INPUT";
+      let statusClass = "waiting";
+      let grossHrStr = "$0.00/hr";
+      let rateKmStr = "$0.00/km";
+      let netHrStr = "$0.00/hr";
+      let expStr = "$0.00";
+
+      if (fare > 0 && mins > 0) {
+        const grossPerHour = (fare / mins) * 60;
+        const ratePerKm = kms > 0 ? (fare / kms) : 0;
+        const totalExpense = kms * config.costPerKm;
+        const netProfit = fare - totalExpense;
+        const netPerHour = (netProfit / mins) * 60;
+
+        grossHrStr = `$${grossPerHour.toFixed(0)}/hr`;
+        rateKmStr = kms > 0 ? `$${ratePerKm.toFixed(2)}/km` : '—';
+        netHrStr = `$${netPerHour.toFixed(0)}/hr`;
+        expStr = `-$${totalExpense.toFixed(2)}`;
+
+        const isGood = grossPerHour >= config.minGrossHr && (kms === 0 || ratePerKm >= config.minRateKm);
+
+        if (isGood) {
+          statusText = `✓ ACCEPT ($${grossPerHour.toFixed(0)}/HR)`;
+          statusClass = "accept";
+        } else {
+          statusText = `✗ DECLINE ($${grossPerHour.toFixed(0)}/HR)`;
+          statusClass = "decline";
+        }
+      }
+
+      banner.textContent = statusText;
+      banner.className = `decision-banner ${statusClass}`;
+      document.getElementById('grossHr').textContent = grossHrStr;
+      document.getElementById('rateKm').textContent = rateKmStr;
+      document.getElementById('netHr').textContent = netHrStr;
+      document.getElementById('fuelCost').textContent = expStr;
+
+      // Redraw onto the PiP Canvas
+      drawToCanvas(statusText, statusClass, grossHrStr, rateKmStr, netHrStr);
+    }
+
+    // Render PiP Overlay Stream
+    function drawToCanvas(status, statusClass, gross, rateKm, net) {
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = (statusClass === 'accept') ? '#16a34a' : (statusClass === 'decline' ? '#dc2626' : '#334155');
+      ctx.fillRect(10, 10, 380, 50);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 24px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(status, 200, 44);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '16px -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Gross Rate:', 20, 95);
+      ctx.fillText('Per KM:', 20, 130);
+      ctx.fillText('Net / Hr:', 20, 165);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 18px -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(gross, 380, 95);
+      ctx.fillText(rateKm, 380, 130);
+
+      ctx.fillStyle = '#22c55e';
+      ctx.fillText(net, 380, 165);
+    }
+
+    async function initStream() {
+      drawToCanvas("READY FOR OFFERS", "waiting", "$0/hr", "$0/km", "$0/hr");
+      try {
+        const stream = canvas.captureStream(15);
+        video.srcObject = stream;
+        await video.play();
+      } catch (e) { /* user can tap to start */ }
+    }
+
+    async function togglePiP() {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else {
+          await video.requestPictureInPicture();
+        }
+      } catch (err) {
+        alert("PiP requires tapping play on iOS Safari first.");
+      }
+    }
+
+    function toggleSettings(show) {
+      document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
+      if (show) {
+        document.getElementById('cfgMinHr').value = config.minGrossHr;
+        document.getElementById('cfgMinKm').value = config.minRateKm;
+        document.getElementById('cfgCostKm').value = config.costPerKm;
+      }
+    }
+
+    function saveSettings() {
+      config.minGrossHr = parseFloat(document.getElementById('cfgMinHr').value) || 42.0;
+      config.minRateKm = parseFloat(document.getElementById('cfgMinKm').value) || 1.20;
+      config.costPerKm = parseFloat(document.getElementById('cfgCostKm').value) || 0.14;
+
+      lsSet('cfgMinHr', config.minGrossHr);
+      lsSet('cfgMinKm', config.minRateKm);
+      lsSet('cfgCostKm', config.costPerKm);
+
+      toggleSettings(false);
+      recalculate();
+      renderInsights();
+    }
+
+    // ================= OFFER LOG & BEST TIMES =================
+    const LOG_KEY = 'offerLog';
+    const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const BLOCKS = 12; // 2-hour blocks
+    let selectedCell = null;
+
+    function loadLog() {
+      try { return JSON.parse(lsGet(LOG_KEY)) || []; } catch (e) { return []; }
+    }
+    function saveLog(log) { lsSet(LOG_KEY, JSON.stringify(log)); }
+
+    function toast(msg, actionLabel, onAction) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.onclick = null;
+      t.style.pointerEvents = 'none';
+      if (actionLabel && onAction) {
+        const b = document.createElement('span');
+        b.textContent = ' · ' + actionLabel;
+        b.style.cssText = 'color:var(--accent);font-weight:800;margin-left:6px;';
+        t.appendChild(b);
+        t.style.pointerEvents = 'auto';
+        t.onclick = () => { t.classList.remove('show'); onAction(); };
+      }
+      t.classList.add('show');
+      clearTimeout(toast._h);
+      toast._h = setTimeout(() => { t.classList.remove('show'); t.style.pointerEvents = 'none'; }, actionLabel ? 4000 : 1500);
+    }
+
+    function logOffer(took) {
+      const fare = parseFloat(data.fare) || 0;
+      const mins = parseFloat(data.mins) || 0;
+      const kms = parseFloat(data.kms) || 0;
+      if (!(fare > 0 && mins > 0)) { toast('Enter fare and time first'); return; }
+      const log = loadLog();
+      log.push({ t: Date.now(), fare, mins, kms, took });
+      saveLog(log);
+      toast(took ? '✓ Logged — took it' : '✗ Logged — passed');
+      clearInputs();
+    }
+
+    function slotOf(ts) {
+      const d = new Date(ts);
+      return { day: (d.getDay() + 6) % 7, block: Math.floor(d.getHours() / 2) };
+    }
+    function fmtHour(h) {
+      h = h % 24;
+      const ap = h < 12 ? 'a' : 'p';
+      const hh = h % 12 === 0 ? 12 : h % 12;
+      return hh + ap;
+    }
+    function blockLabel(b) { return fmtHour(b * 2) + '–' + fmtHour(b * 2 + 2); }
+
+    function isGoodOffer(e) {
+      const gph = e.fare / e.mins * 60;
+      const rk = e.kms > 0 ? e.fare / e.kms : Infinity;
+      return gph >= config.minGrossHr && rk >= config.minRateKm;
+    }
+
+    // Time-weighted averages: total fare / total minutes
+    function agg(entries) {
+      let fare = 0, mins = 0, kms = 0, good = 0, took = 0;
+      entries.forEach(e => {
+        fare += e.fare; mins += e.mins; kms += e.kms;
+        if (isGoodOffer(e)) good++;
+        if (e.took) took++;
+      });
+      return {
+        n: entries.length,
+        took,
+        gph: mins > 0 ? fare / mins * 60 : 0,
+        nph: mins > 0 ? (fare - kms * config.costPerKm) / mins * 60 : 0,
+        goodPct: entries.length ? good / entries.length : 0
+      };
+    }
+
+    function colorFor(gph, n) {
+      const a = 0.25 + Math.min(n, 5) / 5 * 0.6;
+      const ratio = gph / config.minGrossHr;
+      if (ratio >= 1) return `rgba(34,197,94,${a})`;
+      if (ratio >= 0.8) return `rgba(245,158,11,${a})`;
+      return `rgba(239,68,68,${a})`;
+    }
+
+    function buildGrid(log) {
+      const grid = Array.from({ length: BLOCKS }, () => Array.from({ length: 7 }, () => []));
+      log.forEach(e => { const s = slotOf(e.t); grid[s.block][s.day].push(e); });
+      return grid;
+    }
+
+    function renderInsights() {
+      const log = loadLog();
+      const all = agg(log);
+      const grid = buildGrid(log);
+
+      document.getElementById('insCount').textContent = log.length + (all.took ? ` (${all.took} ✓)` : '');
+      document.getElementById('insAvg').textContent = log.length ? `$${all.gph.toFixed(0)}/hr` : '—';
+
+      // Best day / best time (need 3+ offers)
+      let bestDay = null, bestTime = null;
+      for (let d = 0; d < 7; d++) {
+        const es = log.filter(e => slotOf(e.t).day === d);
+        if (es.length >= 3) { const a = agg(es); if (!bestDay || a.gph > bestDay.gph) bestDay = { d, gph: a.gph }; }
+      }
+      for (let b = 0; b < BLOCKS; b++) {
+        const es = log.filter(e => slotOf(e.t).block === b);
+        if (es.length >= 3) { const a = agg(es); if (!bestTime || a.gph > bestTime.gph) bestTime = { b, gph: a.gph }; }
+      }
+      document.getElementById('insBestDay').textContent = bestDay ? `${DAYS[bestDay.d]} $${bestDay.gph.toFixed(0)}` : '—';
+      document.getElementById('insBestTime').textContent = bestTime ? blockLabel(bestTime.b) : '—';
+
+      // Heatmap (offers + surge snapshots)
+      const sgrid = surgeGrid();
+      let html = '<tr><th class="rowh"></th>' + DAYS.map(d => `<th>${d}</th>`).join('') + '</tr>';
+      for (let b = 0; b < BLOCKS; b++) {
+        html += `<tr><th class="rowh">${blockLabel(b)}</th>`;
+        for (let d = 0; d < 7; d++) {
+          const es = grid[b][d];
+          const ss = sgrid[b][d];
+          const sel = selectedCell && selectedCell.b === b && selectedCell.d === d ? ' sel' : '';
+          const surges = ss.filter(s => s.level >= 2).length;
+          const fire = surges ? `<span class="fire">🔥${surges}</span>` : '';
+          if (es.length) {
+            const a = agg(es);
+            html += `<td class="${sel}" style="background:${colorFor(a.gph, a.n)}" onclick="pickCell(${b},${d})"><b>$${a.gph.toFixed(0)}</b><small>×${a.n}</small>${fire}</td>`;
+          } else if (ss.length) {
+            const avg = ss.reduce((x, s) => x + s.level, 0) / ss.length;
+            html += `<td class="${sel}" style="background:rgba(249,115,22,${0.08 + avg / 3 * 0.35})" onclick="pickCell(${b},${d})">${fire || '<small>·' + ss.length + '</small>'}</td>`;
+          } else {
+            html += `<td class="${sel}" onclick="pickCell(${b},${d})"></td>`;
+          }
+        }
+        html += '</tr>';
+      }
+      document.getElementById('heatTable').innerHTML = html;
+
+      // Top slots
+      const slots = [];
+      for (let b = 0; b < BLOCKS; b++) for (let d = 0; d < 7; d++) {
+        if (grid[b][d].length >= 3) slots.push({ b, d, ...agg(grid[b][d]) });
+      }
+      slots.sort((x, y) => y.gph - x.gph);
+      const top = document.getElementById('topSlots');
+      top.innerHTML = slots.length
+        ? slots.slice(0, 5).map((s, i) => `
+            <div class="rank-item">
+              <div><div>${i + 1}. ${DAYS[s.d]} ${blockLabel(s.b)}</div>
+              <div class="r-sub">${s.n} offers · ${Math.round(s.goodPct * 100)}% met target · net $${s.nph.toFixed(0)}/hr</div></div>
+              <div class="r-val" style="color:${s.gph >= config.minGrossHr ? 'var(--green)' : 'var(--amber)'}">$${s.gph.toFixed(0)}/hr</div>
+            </div>`).join('')
+        : '<div class="empty">Log at least 3 offers in the same day &amp; time slot to rank it.</div>';
+
+      // Recent log
+      const recent = document.getElementById('recentLog');
+      if (!log.length) {
+        recent.innerHTML = '<div class="empty">No offers logged yet. Use ✓ Took it / ✗ Passed on the Offer tab.</div>';
+      } else {
+        const rows = [];
+        for (let i = log.length - 1; i >= Math.max(0, log.length - 15); i--) {
+          const e = log[i];
+          const dt = new Date(e.t);
+          const time = dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+          const gph = e.fare / e.mins * 60;
+          rows.push(`
+            <div class="log-item">
+              <div>${DAYS[(dt.getDay() + 6) % 7]} ${time} · $${e.fare.toFixed(2)} · ${e.mins}m${e.kms ? ' · ' + e.kms + 'km' : ''}<br>
+              <span style="color:${isGoodOffer(e) ? 'var(--green)' : 'var(--red)'}">$${gph.toFixed(0)}/hr</span>
+              <span style="color:var(--muted)">· ${e.took ? '✓ took' : '✗ passed'}</span></div>
+              <button class="del" onclick="deleteEntry(${i})">✕</button>
+            </div>`);
+        }
+        recent.innerHTML = rows.join('');
+      }
+
+      if (selectedCell) pickCell(selectedCell.b, selectedCell.d, true);
+    }
+
+    function pickCell(b, d, silent) {
+      const prev = selectedCell;
+      selectedCell = { b, d };
+      const es = buildGrid(loadLog())[b][d];
+      const ss = surgeGrid()[b][d];
+      const el = document.getElementById('cellDetail');
+      let txt;
+      if (!es.length) {
+        txt = `${DAYS[d]} ${blockLabel(b)}: no offers logged yet.`;
+      } else {
+        const a = agg(es);
+        txt = `${DAYS[d]} ${blockLabel(b)}: ${a.n} offer${a.n > 1 ? 's' : ''}, $${a.gph.toFixed(0)}/hr gross, $${a.nph.toFixed(0)}/hr net, ${Math.round(a.goodPct * 100)}% met your targets, took ${a.took}.`;
+      }
+      if (ss.length) {
+        const surges = ss.filter(s => s.level >= 2).length;
+        txt += ` Snapshots: ${ss.length} (${surges} surge).`;
+      }
+      el.textContent = txt;
+      if (!silent && (!prev || prev.b !== b || prev.d !== d)) renderInsights();
+    }
+
+    function deleteEntry(i) {
+      const log = loadLog();
+      log.splice(i, 1);
+      saveLog(log);
+      renderInsights();
+    }
+
+    function clearLog() {
+      if (!confirm('Delete all logged offers? This cannot be undone.')) return;
+      saveLog([]);
+      selectedCell = null;
+      document.getElementById('cellDetail').textContent = 'Tap a square for details. Brighter = more offers logged there.';
+      renderInsights();
+    }
+
+    function exportCSV() {
+      const log = loadLog();
+      if (!log.length) { toast('Nothing to export yet'); return; }
+      const lines = ['datetime,day,fare_aud,minutes,km,gross_per_hr,per_km,net_per_hr,met_target,took'];
+      log.forEach(e => {
+        const dt = new Date(e.t);
+        const gph = e.fare / e.mins * 60;
+        const pk = e.kms > 0 ? (e.fare / e.kms).toFixed(2) : '';
+        const nph = (e.fare - e.kms * config.costPerKm) / e.mins * 60;
+        lines.push([dt.toISOString(), DAYS[(dt.getDay() + 6) % 7], e.fare, e.mins, e.kms,
+          gph.toFixed(2), pk, nph.toFixed(2), isGoodOffer(e) ? 'yes' : 'no', e.took ? 'yes' : 'no'].join(','));
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `uber-offers-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // ================= SURGE SNAPSHOTS =================
+    const SNAP_KEY = 'surgeSnaps';
+    const LEVELS = ['Quiet', 'Busy', 'Surge', 'Big surge'];
+    const LEVEL_COLORS = ['#64748b', '#facc15', '#f97316', '#ef4444'];
+    let pendingPos = null;      // {lat,lng} from GPS for the open sheet
+    let pendingImg = null;      // downscaled dataURL
+    let placeSnapId = null;     // snapshot waiting for a map tap (no GPS)
+
+    function loadSnaps() { try { return JSON.parse(lsGet(SNAP_KEY)) || []; } catch (e) { return []; } }
+    function saveSnaps(s) { lsSet(SNAP_KEY, JSON.stringify(s)); }
+
+    function surgeGrid() {
+      const g = Array.from({ length: BLOCKS }, () => Array.from({ length: 7 }, () => []));
+      loadSnaps().forEach(s => { const k = slotOf(s.t); g[k.block][k.day].push(s); });
+      return g;
+    }
+
+    // --- Screenshot images live in IndexedDB (too big for localStorage) ---
+    let dbP = null;
+    function db() {
+      if (dbP) return dbP;
+      dbP = new Promise((res, rej) => {
+        try {
+          const r = indexedDB.open('pilotDB', 1);
+          r.onupgradeneeded = () => r.result.createObjectStore('imgs');
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        } catch (e) { rej(e); }
+      });
+      return dbP;
+    }
+    async function putImg(id, dataUrl) {
+      try { const d = await db(); d.transaction('imgs', 'readwrite').objectStore('imgs').put(dataUrl, id); } catch (e) {}
+    }
+    async function getImg(id) {
+      try {
+        const d = await db();
+        return await new Promise(res => {
+          const r = d.transaction('imgs').objectStore('imgs').get(id);
+          r.onsuccess = () => res(r.result || null);
+          r.onerror = () => res(null);
+        });
+      } catch (e) { return null; }
+    }
+    async function clearImgs() {
+      try { const d = await db(); d.transaction('imgs', 'readwrite').objectStore('imgs').clear(); } catch (e) {}
+    }
+
+    function openSnap() {
+      pendingPos = null; pendingImg = null;
+      document.getElementById('snapThumb').style.display = 'none';
+      document.getElementById('snapFile').value = '';
+      document.getElementById('snapAmt').value = '';
+      const meta = document.getElementById('snapMeta');
+      const now = new Date();
+      const when = `${DAYS[(now.getDay() + 6) % 7]} ${now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+      meta.textContent = `${when} · getting location…`;
+      document.getElementById('snapSheet').style.display = 'flex';
+      if (!navigator.geolocation) { meta.textContent = `${when} · no GPS — you'll place it on the map`; return; }
+      navigator.geolocation.getCurrentPosition(
+        p => { pendingPos = { lat: p.coords.latitude, lng: p.coords.longitude }; meta.textContent = `${when} · 📍 location locked (±${Math.round(p.coords.accuracy)}m)`; },
+        () => { meta.textContent = `${when} · GPS unavailable — you'll place it on the map`; },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    }
+    function closeSnap() { document.getElementById('snapSheet').style.display = 'none'; }
+
+    function onSnapFile(ev) {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const img = new Image();
+      const url = URL.createObjectURL(f);
+      img.onload = () => {
+        const scale = Math.min(1, 360 / img.width);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        pendingImg = c.toDataURL('image/jpeg', 0.6);
+        URL.revokeObjectURL(url);
+        const th = document.getElementById('snapThumb');
+        th.src = pendingImg; th.style.display = 'block';
+      };
+      img.src = url;
+    }
+
+    function saveSnap(level) {
+      const id = 's' + Date.now();
+      const amt = document.getElementById('snapAmt').value.trim();
+      const snap = { id, t: Date.now(), level, amt, img: !!pendingImg,
+        lat: pendingPos ? pendingPos.lat : null, lng: pendingPos ? pendingPos.lng : null };
+      const snaps = loadSnaps();
+      snaps.push(snap);
+      saveSnaps(snaps);
+      if (pendingImg) putImg(id, pendingImg);
+      closeSnap();
+      if (!pendingPos) {
+        placeSnapId = id;
+        showTab('map');
+        toast('Tap the map where you are');
+      } else {
+        toast(`📸 Saved — ${LEVELS[level]}`);
+        renderMap();
+      }
+      renderInsights();
+    }
+
+    function deleteSnap(id) {
+      saveSnaps(loadSnaps().filter(s => s.id !== id));
+      try { db().then(d => d.transaction('imgs', 'readwrite').objectStore('imgs').delete(id)); } catch (e) {}
+      if (map) map.closePopup();
+      renderMap(); renderInsights();
+    }
+
+    function clearSnaps() {
+      if (!confirm('Delete all surge snapshots? This cannot be undone.')) return;
+      saveSnaps([]); clearImgs();
+      renderMap(); renderInsights();
+    }
+
+    function exportSnapsCSV() {
+      const s = loadSnaps();
+      if (!s.length) { toast('No snapshots yet'); return; }
+      const lines = ['datetime,day,level,level_name,area,amount,lat,lng,has_screenshot'];
+      s.forEach(x => {
+        const dt = new Date(x.t);
+        const ar = areaOf(x.lat, x.lng);
+        lines.push([dt.toISOString(), DAYS[(dt.getDay() + 6) % 7], x.level, LEVELS[x.level], ar ? ar.name : 'Other',
+          '"' + String(x.amt || '').replace(/"/g, '') + '"', x.lat ?? '', x.lng ?? '', x.img ? 'yes' : 'no'].join(','));
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `surge-snapshots-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // ================= SURGE MAP =================
+    let map = null, markerLayer = null, areaLayer = null, tilesBlocked = false;
+    const MELB = [-37.8136, 144.9631];
+
+    // Melbourne rideshare areas (approximate centres, radius in metres)
+    const AREAS = [
+      { name: 'CBD', lat: -37.8136, lng: 144.9631, r: 1100 },
+      { name: 'Southbank / Crown', lat: -37.8237, lng: 144.9580, r: 650 },
+      { name: 'Docklands / Marvel', lat: -37.8166, lng: 144.9450, r: 650 },
+      { name: 'Carlton / Lygon St', lat: -37.7990, lng: 144.9670, r: 700 },
+      { name: 'Fitzroy / Collingwood', lat: -37.8000, lng: 144.9810, r: 800 },
+      { name: 'MCG / Olympic Park', lat: -37.8200, lng: 144.9834, r: 600 },
+      { name: 'Richmond', lat: -37.8235, lng: 145.0000, r: 750 },
+      { name: 'South Yarra / Chapel St', lat: -37.8390, lng: 144.9930, r: 750 },
+      { name: 'Prahran / Windsor', lat: -37.8530, lng: 144.9930, r: 650 },
+      { name: 'St Kilda', lat: -37.8676, lng: 144.9810, r: 900 },
+      { name: 'South Melb / Albert Park', lat: -37.8340, lng: 144.9580, r: 800 },
+      { name: 'Port Melbourne', lat: -37.8420, lng: 144.9330, r: 700 },
+      { name: 'Brunswick', lat: -37.7670, lng: 144.9610, r: 900 },
+      { name: 'Footscray', lat: -37.8000, lng: 144.9000, r: 900 },
+      { name: 'Flemington Racecourse', lat: -37.7880, lng: 144.9120, r: 750 },
+      { name: 'Caulfield Racecourse', lat: -37.8790, lng: 145.0410, r: 750 },
+      { name: 'Chadstone', lat: -37.8860, lng: 145.0830, r: 850 },
+      { name: 'Box Hill', lat: -37.8190, lng: 145.1220, r: 850 },
+      { name: 'Monash Clayton', lat: -37.9105, lng: 145.1340, r: 1000 },
+      { name: 'Melbourne Airport', lat: -37.6690, lng: 144.8410, r: 1600 }
+    ];
+
+    function distM(aLat, aLng, bLat, bLng) {
+      const R = 6371000, toR = Math.PI / 180;
+      const dLat = (bLat - aLat) * toR, dLng = (bLng - aLng) * toR;
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * toR) * Math.cos(bLat * toR) * Math.sin(dLng / 2) ** 2;
+      return 2 * R * Math.asin(Math.sqrt(x));
+    }
+    // Nearest area within 1.5× its radius, else null
+    function areaOf(lat, lng) {
+      if (lat == null) return null;
+      let best = null, bestScore = Infinity;
+      AREAS.forEach(a => {
+        const d = distM(lat, lng, a.lat, a.lng);
+        const score = d / a.r;
+        if (score <= 1.5 && score < bestScore) { best = a; bestScore = score; }
+      });
+      return best;
+    }
+
+    function initTimeFilter() {
+      const sel = document.getElementById('fTime');
+      let h = '<option value="all">All times</option>';
+      for (let b = 0; b < BLOCKS; b++) h += `<option value="${b}">${blockLabel(b)}</option>`;
+      sel.innerHTML = h;
+    }
+
+    function ensureMap() {
+      if (map || typeof L === 'undefined') return !!map;
+      map = L.map('surgeMap', { zoomControl: true }).setView(MELB, 12);
+      // Each base map tries several tile providers and falls back if one is blocked.
+      const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+      const STREET_SOURCES = [
+        { url: ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, attribution: 'Tiles &copy; Esri' } },
+        { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', opt: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' } },
+        { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opt: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
+      ];
+      const NIGHT_SOURCES = [
+        { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', opt: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' } },
+        { url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 16, attribution: 'Tiles &copy; Esri' } }
+      ];
+      function fallbackBase(sources) {
+        const group = L.layerGroup();
+        let i = 0, layer = null;
+        function use(idx) {
+          if (layer) group.removeLayer(layer);
+          if (idx >= sources.length) { tilesBlocked = true; renderMap(); return; }
+          i = idx;
+          let loaded = 0, errors = 0;
+          layer = L.tileLayer(sources[idx].url, sources[idx].opt);
+          layer.on('tileload', () => { if (tilesBlocked) { tilesBlocked = false; renderMap(); } });
+          layer.on('tileload', () => { loaded++; });
+          layer.on('tileerror', () => { errors++; if (!loaded && errors >= 3) use(i + 1); });
+          group.addLayer(layer);
+        }
+        group.on('add', () => { if (!layer) use(0); });
+        return group;
+      }
+      const streets = fallbackBase(STREET_SOURCES);
+      const dark = fallbackBase(NIGHT_SOURCES);
+      streets.addTo(map); // default: standard street map
+      L.control.layers({ 'Street map': streets, 'Night': dark }, null, { position: 'topright' }).addTo(map);
+
+      // Home + locate-me buttons
+      const Ctl = L.Control.extend({
+        options: { position: 'topleft' },
+        onAdd: function () {
+          const box = L.DomUtil.create('div', 'leaflet-bar');
+          box.innerHTML = '<a href="#" title="Melbourne" style="font-size:15px">🏙</a><a href="#" title="My location" style="font-size:15px">📍</a>';
+          const [home, me] = box.querySelectorAll('a');
+          L.DomEvent.disableClickPropagation(box);
+          home.onclick = e => { e.preventDefault(); map.setView(MELB, 12); };
+          me.onclick = e => {
+            e.preventDefault();
+            if (!navigator.geolocation) return toast('Location not available');
+            navigator.geolocation.getCurrentPosition(
+              p => map.setView([p.coords.latitude, p.coords.longitude], 14),
+              () => toast('Location not available'), { timeout: 8000, maximumAge: 60000 });
+          };
+          return box;
+        }
+      });
+      map.addControl(new Ctl());
+
+      areaLayer = L.layerGroup().addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+      map.on('click', e => {
+        if (!placeSnapId) return;
+        const snaps = loadSnaps();
+        const s = snaps.find(x => x.id === placeSnapId);
+        if (s) { s.lat = e.latlng.lat; s.lng = e.latlng.lng; saveSnaps(snaps); toast(`📸 Saved — ${LEVELS[s.level]}`); }
+        placeSnapId = null;
+        renderMap();
+      });
+      return true;
+    }
+
+    function filterNow() {
+      const s = slotOf(Date.now());
+      document.getElementById('fDay').value = String(s.day);
+      document.getElementById('fTime').value = String(s.block);
+      renderMap();
+    }
+
+    function renderMap() {
+      const note = document.getElementById('mapNote');
+      if (document.getElementById('view-map').style.display === 'none') return;
+      if (!ensureMap()) { note.textContent = 'Map needs an internet connection to load.'; return; }
+      map.invalidateSize();
+      markerLayer.clearLayers();
+
+      const fd = document.getElementById('fDay').value;
+      const ft = document.getElementById('fTime').value;
+      const all = loadSnaps();
+      const shown = all.filter(s => {
+        if (s.lat == null) return false;
+        const k = slotOf(s.t);
+        return (fd === 'all' || k.day === +fd) && (ft === 'all' || k.block === +ft);
+      });
+
+      // Draw quieter first so surges sit on top
+      shown.sort((a, b) => a.level - b.level).forEach(s => {
+        const dt = new Date(s.t);
+        const m = L.circleMarker([s.lat, s.lng], {
+          radius: 7 + s.level * 4, color: LEVEL_COLORS[s.level], weight: 2,
+          fillColor: LEVEL_COLORS[s.level], fillOpacity: s.level >= 2 ? 0.55 : 0.35
+        });
+        const ar = areaOf(s.lat, s.lng);
+        const head = `<b>${LEVELS[s.level]}</b>${s.amt ? ' · ' + String(s.amt).replace(/[<>&"]/g, '') : ''}<br>` +
+          (ar ? `📍 ${ar.name}<br>` : '') +
+          `${DAYS[(dt.getDay() + 6) % 7]} ${dt.toLocaleDateString([], { day: 'numeric', month: 'short' })} ` +
+          `${dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+        const del = `<br><a href="#" onclick="deleteSnap('${s.id}');return false;" style="color:#ef4444">Delete</a>`;
+        m.bindPopup(head + (s.img ? '<div class="pimg">Loading screenshot…</div>' : '') + del);
+        if (s.img) m.on('popupopen', async ev => {
+          const src = await getImg(s.id);
+          const el = ev.popup.getElement() && ev.popup.getElement().querySelector('.pimg');
+          if (el) el.innerHTML = src ? `<img src="${src}" alt="Uber screenshot">` : '(screenshot not found)';
+        });
+        m.addTo(markerLayer);
+      });
+
+      if (placeSnapId) {
+        note.className = 'map-note place';
+        note.textContent = '👆 Tap the map where you took the snapshot';
+      } else if (tilesBlocked) {
+        note.className = 'map-note place';
+        note.textContent = '⚠️ Street map can’t load here. Open the page in Safari or Chrome with internet on.';
+      } else {
+        note.className = 'map-note';
+        const surges = shown.filter(s => s.level >= 2).length;
+        const unplaced = all.filter(s => s.lat == null).length;
+        note.textContent = all.length
+          ? `${shown.length} snapshot${shown.length === 1 ? '' : 's'} shown · ${surges} surge${unplaced ? ` · ${unplaced} without location` : ''}`
+          : 'No snapshots yet — tap 📸 Surge Snapshot when you see a surge.';
+      }
+
+      // Area zones, coloured by snapshots inside them (for the current filter)
+      areaLayer.clearLayers();
+      const stats = AREAS.map(a => ({ a, n: 0, surges: 0, sum: 0 }));
+      shown.forEach(s => {
+        const a = areaOf(s.lat, s.lng);
+        if (!a) return;
+        const st = stats.find(x => x.a === a);
+        st.n++; st.sum += s.level; if (s.level >= 2) st.surges++;
+      });
+      stats.forEach(st => {
+        const avg = st.n ? st.sum / st.n : -1;
+        const lvl = avg < 0 ? -1 : Math.round(avg);
+        const col = lvl < 0 ? '#0284c7' : LEVEL_COLORS[lvl];
+        const c = L.circle([st.a.lat, st.a.lng], {
+          radius: st.a.r, color: col, weight: lvl < 0 ? 1.5 : 2.5, dashArray: lvl < 0 ? '5 5' : null,
+          fillColor: col, fillOpacity: lvl < 0 ? 0.04 : 0.12 + Math.max(lvl, 0) * 0.08
+        });
+        // Permanent labels only where there's data, so the map stays readable
+        if (st.n) c.bindTooltip(st.a.name + (st.surges ? ` 🔥${st.surges}` : ''),
+          { permanent: true, direction: 'center', className: 'area-label' });
+        c.bindPopup(`<b>${st.a.name}</b><br>` + (st.n
+          ? `${st.n} snapshot${st.n === 1 ? '' : 's'} · ${st.surges} surge<br>Average: ${LEVELS[lvl]}`
+          : 'No snapshots here for this filter yet'));
+        c.addTo(areaLayer);
+      });
+
+      // Hot areas list
+      const ranked = stats.filter(s => s.n).sort((x, y) => (y.surges - x.surges) || (y.sum / y.n - x.sum / x.n));
+      document.getElementById('hotAreas').innerHTML = ranked.length
+        ? ranked.slice(0, 6).map((s, i) => `
+            <div class="rank-item" onclick="map.setView([${s.a.lat},${s.a.lng}],14)">
+              <div><div>${i + 1}. ${s.a.name}</div>
+              <div class="r-sub">${s.n} snapshot${s.n === 1 ? '' : 's'} · avg ${LEVELS[Math.round(s.sum / s.n)]}</div></div>
+              <div class="r-val" style="color:${LEVEL_COLORS[Math.round(s.sum / s.n)]}">${s.surges ? '🔥' + s.surges : '●'}</div>
+            </div>`).join('')
+        : '<div class="empty">No snapshots in Melbourne areas for this day/time yet.</div>';
+    }
+
+    function showTab(tab) {
+      ['offer', 'insights', 'map'].forEach(t => {
+        document.getElementById('view-' + t).style.display = tab === t ? '' : 'none';
+        document.getElementById('tab-' + t).classList.toggle('active', tab === t);
+      });
+      if (tab === 'insights') renderInsights();
+      if (tab === 'map') setTimeout(renderMap, 50);
+    }
+
+    window.onload = () => { initTimeFilter(); initStream(); renderInsights(); };
+  </script>
+</body>
+</html>
