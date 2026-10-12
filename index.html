@@ -296,6 +296,13 @@
       font-size: 0.6rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;
     }
     .area-label::before { display: none; }
+    /* ================= VEHICLE PANEL ================= */
+    .veh-panel { background: #0f172a; border: 1px solid var(--card-border); border-radius: 10px; padding: 10px; }
+    .veh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; }
+    .veh-grid .setting-item label { font-size: .72rem; min-height: 2.2em; }
+    .veh-cost { font-size: .8rem; background: rgba(56,189,248,.08); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px; margin: 2px 0 10px; }
+    #settingsModal .modal-content { max-height: 90vh; overflow-y: auto; }
+
     /* ================= CHASE ALERT POPUP ================= */
     .chase-toast {
       position: fixed; left: 50%; top: -240px; transform: translateX(-50%); width: 92%; max-width: 400px; z-index: 1100;
@@ -859,17 +866,48 @@
   <!-- Configurable Preferences Modal -->
   <div id="settingsModal">
     <div class="modal-content">
-      <h3 style="margin-top:0; color:var(--accent);">⚙️ Profitability Thresholds</h3>
+      <h3 style="margin-top:0; color:var(--accent);">🚗 Your vehicle</h3>
+      <div class="veh-panel">
+        <div class="setting-item">
+          <label for="vehModel">Car model</label>
+          <select id="vehModel" class="sel-full" onchange="onVehicleChange()">
+            <option value="rav4h">Toyota RAV4 Hybrid</option>
+            <option value="camryh">Toyota Camry Hybrid</option>
+            <option value="xtrail">Nissan X-Trail (2.5 petrol)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="veh-grid">
+          <div class="setting-item"><label for="vehL100">Fuel use (L/100 km, city)</label>
+            <input type="number" id="vehL100" step="0.1" min="1" oninput="onVehicleEdit()" /></div>
+          <div class="setting-item"><label for="vehFuel">Fuel price ($/L)</label>
+            <input type="number" id="vehFuel" step="0.01" min="0.5" oninput="onVehicleEdit()" /></div>
+          <div class="setting-item"><label for="vehMaint">Servicing &amp; tyres ($/km)</label>
+            <input type="number" id="vehMaint" step="0.01" min="0" oninput="onVehicleEdit()" /></div>
+          <div class="setting-item"><label for="vehKmh">Avg km per working hour</label>
+            <input type="number" id="vehKmh" step="1" min="5" oninput="onVehicleEdit()" /></div>
+        </div>
+        <div class="veh-cost" id="vehCost"></div>
+        <div class="veh-grid">
+          <div class="setting-item"><label for="goalHr">Take-home goal ($/hr after car costs)</label>
+            <input type="number" id="goalHr" step="1" min="0" oninput="onVehicleEdit()" /></div>
+          <div class="setting-item"><label for="goalKm">Take-home goal ($/km after car costs)</label>
+            <input type="number" id="goalKm" step="0.05" min="0" oninput="onVehicleEdit()" /></div>
+        </div>
+        <div class="autoread-hint" id="vehNote"></div>
+      </div>
+
+      <h3 style="margin: 16px 0 8px; color:var(--accent); font-size: 1rem;">⚙️ Offer targets (set from your vehicle)</h3>
       <div class="setting-item">
-        <label>Target Minimum $/Hour Gross ($ AUD)</label>
+        <label for="cfgMinHr">Minimum $/hour gross ($ AUD)</label>
         <input type="number" id="cfgMinHr" value="42.0" step="1" />
       </div>
       <div class="setting-item">
-        <label>Target Minimum $/Kilometre ($ AUD)</label>
+        <label for="cfgMinKm">Minimum $/kilometre ($ AUD)</label>
         <input type="number" id="cfgMinKm" value="1.20" step="0.1" />
       </div>
       <div class="setting-item">
-        <label>Direct Vehicle Cost / KM (RAV4 = 0.14)</label>
+        <label for="cfgCostKm">Vehicle running cost / km ($ AUD)</label>
         <input type="number" id="cfgCostKm" value="0.14" step="0.01" />
       </div>
       <h3 style="margin: 16px 0 8px; color:var(--accent); font-size: 1rem;">🔥 Surge chasing</h3>
@@ -1136,6 +1174,78 @@
     video.addEventListener('leavepictureinpicture', () => syncPiPBtn(false));
     video.addEventListener('webkitpresentationmodechanged', () => syncPiPBtn(video.webkitPresentationMode === 'picture-in-picture'));
 
+    // ================= VEHICLE PRESETS =================
+    // City rideshare estimates (stop-start traffic uses more than the brochure figure). Fuel: Melbourne
+    // unleaded 91 averaged $2.43/L on 12 Oct 2026. Edit any value; the targets follow.
+    const VEHICLES = {
+      rav4h:  { name: 'Toyota RAV4 Hybrid',      l100: 5.8, maint: 0.05, note: 'Claimed 5.0 L/100 km urban; real-world tests 5.5–7.3.' },
+      camryh: { name: 'Toyota Camry Hybrid',     l100: 5.0, maint: 0.05, note: 'Claimed about 4.2 L/100 km combined; city driving uses a little more.' },
+      xtrail: { name: 'Nissan X-Trail 2.5 petrol', l100: 9.0, maint: 0.07, note: 'About 7.7 L/100 km combined claimed; stop-start city driving is higher. (X-Trail e-Power hybrid: use Custom, about 6.5.)' },
+      custom: { name: 'Custom', l100: null, maint: null, note: 'Enter your own fuel use and costs.' }
+    };
+    const DEFAULT_FUEL = 2.43, DEFAULT_KMH = 25;
+    const veh = {
+      model: lsGet('vehModel') || 'rav4h',
+      l100: parseFloat(lsGet('vehL100')) || VEHICLES.rav4h.l100,
+      fuel: parseFloat(lsGet('vehFuel')) || DEFAULT_FUEL,
+      maint: lsGet('vehMaint') !== null ? parseFloat(lsGet('vehMaint')) : VEHICLES.rav4h.maint,
+      kmh: parseFloat(lsGet('vehKmh')) || DEFAULT_KMH,
+      // First run: keep today's targets as the take-home goals (42/hr and 1.20/km with the old 0.14 cost)
+      goalHr: lsGet('goalHr') !== null ? parseFloat(lsGet('goalHr')) : Math.round((config.minGrossHr - config.costPerKm * DEFAULT_KMH) * 2) / 2,
+      goalKm: lsGet('goalKm') !== null ? parseFloat(lsGet('goalKm')) : Math.round((config.minRateKm - config.costPerKm) * 100) / 100
+    };
+    const vv = id => parseFloat(document.getElementById(id).value);
+
+    function vehicleNumbers() {
+      const l100 = vv('vehL100'), fuel = vv('vehFuel'), maint = vv('vehMaint'), kmh = vv('vehKmh');
+      const fuelKm = (l100 || 0) * (fuel || 0) / 100;
+      const cost = fuelKm + (maint || 0);
+      return { l100, fuel, maint, kmh: kmh || DEFAULT_KMH, fuelKm, cost,
+        minHr: (vv('goalHr') || 0) + cost * (kmh || DEFAULT_KMH), minKm: (vv('goalKm') || 0) + cost };
+    }
+    // Recalculate running cost and fill the offer targets as you type
+    function onVehicleEdit() {
+      const n = vehicleNumbers();
+      document.getElementById('vehCost').innerHTML =
+        `Running cost <b>$${n.cost.toFixed(2)}/km</b> (fuel $${n.fuelKm.toFixed(2)} + servicing $${(n.maint || 0).toFixed(2)})` +
+        ` · about <b>$${(n.cost * n.kmh).toFixed(2)}/hr</b> at ${n.kmh} km/h`;
+      document.getElementById('cfgCostKm').value = n.cost.toFixed(2);
+      document.getElementById('cfgMinHr').value = Math.round(n.minHr);
+      document.getElementById('cfgMinKm').value = n.minKm.toFixed(2);
+    }
+    function onVehicleChange() {
+      const m = document.getElementById('vehModel').value, p = VEHICLES[m];
+      if (p.l100 !== null) {
+        document.getElementById('vehL100').value = p.l100;
+        document.getElementById('vehMaint').value = p.maint.toFixed(2);
+      }
+      document.getElementById('vehNote').textContent = p.note;
+      onVehicleEdit();
+    }
+    function fillVehicleUI() {
+      document.getElementById('vehModel').value = veh.model;
+      document.getElementById('vehL100').value = veh.l100;
+      document.getElementById('vehFuel').value = veh.fuel.toFixed(2);
+      document.getElementById('vehMaint').value = veh.maint.toFixed(2);
+      document.getElementById('vehKmh').value = veh.kmh;
+      document.getElementById('goalHr').value = veh.goalHr;
+      document.getElementById('goalKm').value = veh.goalKm.toFixed(2);
+      document.getElementById('vehNote').textContent = VEHICLES[veh.model].note;
+      const n = vehicleNumbers();
+      document.getElementById('vehCost').innerHTML =
+        `Running cost <b>$${n.cost.toFixed(2)}/km</b> (fuel $${n.fuelKm.toFixed(2)} + servicing $${(n.maint || 0).toFixed(2)})` +
+        ` · about <b>$${(n.cost * n.kmh).toFixed(2)}/hr</b> at ${n.kmh} km/h`;
+    }
+    // Typing your own L/100 km or servicing cost switches the model to Custom
+    ['vehL100', 'vehMaint'].forEach(id => document.addEventListener('input', e => {
+      if (e.target.id !== id) return;
+      const p = VEHICLES[document.getElementById('vehModel').value];
+      if (p.l100 !== null && (vv('vehL100') !== p.l100 || Math.abs(vv('vehMaint') - p.maint) > 1e-9)) {
+        document.getElementById('vehModel').value = 'custom';
+        document.getElementById('vehNote').textContent = VEHICLES.custom.note;
+      }
+    }));
+
     function toggleSettings(show) {
       document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
       if (show) {
@@ -1145,6 +1255,7 @@
         document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
         document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
+        fillVehicleUI();
       }
     }
 
@@ -1163,6 +1274,13 @@
       lsSet('cfgMinHr', config.minGrossHr);
       lsSet('cfgMinKm', config.minRateKm);
       lsSet('cfgCostKm', config.costPerKm);
+      veh.model = document.getElementById('vehModel').value;
+      veh.l100 = vv('vehL100') || veh.l100; veh.fuel = vv('vehFuel') || veh.fuel;
+      veh.maint = isNaN(vv('vehMaint')) ? veh.maint : vv('vehMaint'); veh.kmh = vv('vehKmh') || veh.kmh;
+      veh.goalHr = isNaN(vv('goalHr')) ? veh.goalHr : vv('goalHr'); veh.goalKm = isNaN(vv('goalKm')) ? veh.goalKm : vv('goalKm');
+      lsSet('vehModel', veh.model); lsSet('vehL100', veh.l100); lsSet('vehFuel', veh.fuel);
+      lsSet('vehMaint', veh.maint); lsSet('vehKmh', veh.kmh);
+      lsSet('goalHr', veh.goalHr); lsSet('goalKm', veh.goalKm);
       chaseCfg.maxMin = parseFloat(document.getElementById('cfgMaxChase').value) || 12;
       chaseCfg.tomtom = document.getElementById('cfgTomTom').value.trim();
       chaseCfg.alerts = document.getElementById('cfgAlerts').value;
@@ -3074,7 +3192,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.10.1';
+    const APP_VERSION = '1.11.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
