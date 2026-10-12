@@ -115,6 +115,16 @@
     @media (max-width: 520px) { .app-container { padding-right: 46px; } }
     .side-btn.open, .side-btn.on { background: #334155; color: var(--accent); }
     .side-link { text-decoration: none; background: #1e293b; border: 1px solid #334155; border-right: none; }
+    .ver-badge {
+      position: fixed; right: 0; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 30;
+      background: #0f172a; border: 1px solid #334155; border-right: none; border-radius: 8px 0 0 8px;
+      color: var(--muted); font: 600 0.62rem/1.25 ui-monospace, SFMono-Regular, Menlo, monospace;
+      padding: 4px 6px; text-align: right; max-width: 48px; white-space: normal; word-break: break-word;
+    }
+    .ver-badge b { display: block; color: var(--text); font-weight: 800; }
+    .ver-badge.ok b { color: var(--green); }
+    .ver-badge.update { background: #7c2d12; border-color: #f97316; color: #fed7aa; max-width: 64px; }
+    .ver-badge.update b { color: #fff; }
     .side-btn .live-dot {
       display: none; position: absolute; top: 6px; left: 6px; width: 9px; height: 9px; border-radius: 50%;
       background: var(--green); box-shadow: 0 0 0 2px #0b0f19;
@@ -672,6 +682,9 @@
     <a class="side-btn side-link" id="siteSideBtn" href="https://yanw9119-cryoprecipitate.github.io/offer-pilot/"
        target="_blank" rel="noopener" aria-label="Open the live site on GitHub Pages">🌐<span>Site</span></a>
   </div>
+
+  <!-- Version status -->
+  <button type="button" class="ver-badge" id="verBadge" onclick="onVersionTap()" aria-live="polite">v—</button>
 
   <!-- Auto-Read panel -->
   <div class="sheet" id="autoSheet" onclick="if (event.target === this) closeAutoSheet()">
@@ -2516,7 +2529,46 @@
       else stopTracking(); // save battery when the map isn't showing
     }
 
+    // ================= VERSION STATUS =================
+    // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
+    const APP_VERSION = '1.6.0';
+    const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
+    let newerVersion = null;
+
+    function cmpVer(a, b) {
+      const x = a.split('.').map(Number), y = b.split('.').map(Number);
+      for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); }
+      return 0;
+    }
+    function setVerBadge(state, label) {
+      const b = document.getElementById('verBadge');
+      b.className = 'ver-badge' + (state ? ' ' + state : '');
+      b.innerHTML = `<b>v${APP_VERSION}</b>${label}`;
+      b.setAttribute('aria-label', `Version ${APP_VERSION}, ${label.replace(/<[^>]+>/g, ' ')}`);
+    }
+    async function checkVersion() {
+      const onSite = location.href.startsWith(SITE_URL);
+      if (location.protocol === 'file:') { setVerBadge('', 'file copy'); }
+      try {
+        const r = await fetch((onSite ? location.pathname : SITE_URL) + '?vcheck=' + Date.now(), { cache: 'no-store' });
+        const m = (await r.text()).match(/const APP_VERSION = '([\d.]+)'/);
+        if (!m) throw new Error('no version');
+        const live = m[1];
+        if (cmpVer(live, APP_VERSION) > 0) { newerVersion = live; setVerBadge('update', `↻ v${live} ready`); }
+        else { newerVersion = null; setVerBadge('ok', cmpVer(live, APP_VERSION) === 0 ? '✓ latest' : 'ahead of site'); }
+      } catch (e) {
+        setVerBadge('', location.protocol === 'file:' ? 'file copy' : navigator.onLine === false ? 'offline' : 'can’t check');
+      }
+    }
+    function onVersionTap() {
+      if (newerVersion) { location.replace(SITE_URL + '?v=' + newerVersion); return; } // fresh copy of the new version
+      toast(`Offer Pilot v${APP_VERSION} · checking for updates…`);
+      checkVersion();
+    }
+
     window.onload = () => {
+      checkVersion();
+      setInterval(checkVersion, 10 * 60000);
       initTimeFilter(); initAutoRead(); loadAutoOpts(); syncSoundBtn(); syncNotifBtn(); initStream();
       showTab('drive');
       // Keep live-surge ages and predictions current while driving
