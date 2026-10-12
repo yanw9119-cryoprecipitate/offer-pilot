@@ -98,16 +98,46 @@
     .key.reset { background: rgba(239, 68, 68, 0.2); color: var(--red); border-color: var(--red); }
     .keypad { margin-bottom: 4px; }
 
-    /* Side keypad button */
-    .side-btn {
+    /* Side buttons */
+    .side-stack {
       position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 30;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .side-btn {
+      position: relative; width: 48px;
       background: #0284c7; color: #fff; border: none; border-radius: 12px 0 0 12px;
-      padding: 14px 8px; font-size: 1.4rem; font-weight: 800;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 9px 2px; font-size: 1.15rem; font-weight: 800;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
       box-shadow: -2px 4px 14px rgba(0,0,0,0.45);
     }
-    .side-btn span { font-size: 0.6rem; letter-spacing: .5px; text-transform: uppercase; }
-    .side-btn.open { background: #334155; color: var(--accent); }
+    .side-btn span { font-size: 0.5rem; letter-spacing: .3px; text-transform: uppercase; }
+    /* Keep content clear of the side buttons on phones */
+    @media (max-width: 520px) { .app-container { padding-right: 46px; } }
+    .side-btn.open, .side-btn.on { background: #334155; color: var(--accent); }
+    .side-link { text-decoration: none; background: #1e293b; border: 1px solid #334155; border-right: none; }
+    .side-btn .live-dot {
+      display: none; position: absolute; top: 6px; left: 6px; width: 9px; height: 9px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 0 2px #0b0f19;
+    }
+    .side-btn.live .live-dot { display: block; }
+    #pipVideo.pip-src {
+      position: fixed; left: 0; bottom: 0; width: 2px; height: 2px; opacity: 0.01; pointer-events: none;
+    }
+
+    /* Auto-Read panel toggles */
+    .tgl-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .cal-box { margin-top: 10px; background: #0f172a; border: 1px solid var(--card-border); border-radius: 10px; padding: 8px; }
+    .cal-title { font-size: .8rem; font-weight: 800; margin-bottom: 6px; }
+    .cal-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .cal-span { font-size: .78rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+    .cal-span input { width: 64px; background: #1e293b; border: 1px solid var(--card-border); color: var(--text); border-radius: 6px; padding: 6px; font-size: .9rem; }
+    #calBtn.on { color: #fff; background: #f97316; border-color: #f97316; }
+    .tgl { display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem; cursor: pointer; }
+    .tgl input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; margin: 1px 0 0; }
+    .tgl small { display: block; color: var(--muted); font-size: 0.7rem; margin-top: 2px; }
+    #autoSheet .sheet-content { max-height: 88vh; overflow-y: auto; }
+    #autoSheet .sheet-head { gap: 8px; }
+    #autoSheet .sheet-head h3 { flex: 1; }
 
     /* Log buttons */
     .log-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
@@ -164,7 +194,7 @@
     .snap-btn:active { filter: brightness(1.4); }
     .sheet {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
-      justify-content: center; align-items: flex-end; padding: 12px; z-index: 45;
+      justify-content: center; align-items: flex-end; padding: 12px; z-index: 1000;
     }
     .sheet-content {
       background: var(--card); border: 1px solid var(--card-border); border-radius: 14px;
@@ -191,7 +221,10 @@
     .lvl3 { background: rgba(239,68,68,0.2); color: #f87171; border-color: #ef4444; }
 
     /* Map */
-    .filter-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; margin-bottom: 8px; }
+    .filter-row { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 6px; margin-bottom: 8px; }
+    .filter-row select { min-width: 0; }
+    .likely-btn.on { background: #7c3aed; border-color: #a78bfa; color: #fff; }
+    .filter-row.forecast select { opacity: 0.4; pointer-events: none; }
     .filter-row select {
       background: var(--card); border: 1px solid var(--card-border); color: var(--text);
       border-radius: 8px; padding: 9px 8px; font-size: 0.85rem; font-weight: 600; width: 100%;
@@ -236,7 +269,126 @@
       font-size: 0.6rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;
     }
     .area-label::before { display: none; }
-    #hotAreas .rank-item { cursor: pointer; }
+    /* ================= DRIVE SCREEN (map + offer) ================= */
+    .tabs.tabs-2 { grid-template-columns: 1fr 1fr; }
+    .drive { display: flex; flex-direction: column; gap: 8px; height: calc(100dvh - 150px); min-height: 560px; }
+    .map-wrap {
+      position: relative; flex: 1; min-height: 260px; border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--card-border); isolation: isolate; z-index: 0; /* map layers stay below panels */
+    }
+    .drive #surgeMap { height: 100%; min-height: 0; border: none; border-radius: 0; }
+    .drive-top {
+      position: absolute; top: 8px; left: 8px; right: 8px; z-index: 600;
+      display: flex; flex-direction: column; gap: 6px; pointer-events: none;
+    }
+    .drive-top > * { pointer-events: auto; }
+    .drive-top .decision-banner { margin: 0; padding: 8px; font-size: 1.05rem; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+    .drive-top .decision-banner.waiting { background: rgba(15,23,42,.92); }
+    .drive-top .decision-banner.accept { background: #14532d; }
+    .drive-top .decision-banner.decline { background: #4c1414; }
+    .mini-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); background: rgba(15,23,42,.92);
+      border: 1px solid var(--card-border); border-radius: 10px; padding: 5px 4px; text-align: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.35); font-variant-numeric: tabular-nums;
+    }
+    .mini-stats span { display: block; font-size: .58rem; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+    .mini-stats b { font-size: .95rem; }
+    .mini-stats .net { color: var(--green); }
+    .map-chips { display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .map-chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex: none; background: rgba(15,23,42,.92); border: 1px solid var(--card-border); color: var(--muted);
+      border-radius: 999px; padding: 6px 9px; font-size: .7rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    }
+    .hist-bar[hidden] { display: none; }
+    .map-wrap.card-open .leaflet-bottom, .map-wrap.card-open .map-note { display: none; }
+    .sc-rows b { white-space: nowrap; }
+    .chip.on { color: var(--text); border-color: var(--accent); }
+    .chip-go { margin-left: auto; color: #fb923c; border-color: #f97316; }
+    .hist-bar { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
+    .hist-bar select {
+      min-width: 0; background: rgba(15,23,42,.95); border: 1px solid var(--card-border); color: var(--text);
+      border-radius: 8px; padding: 7px; font-size: .8rem; font-weight: 600;
+    }
+    .drive .map-note {
+      position: absolute; left: 8px; right: 60px; bottom: 8px; z-index: 600; margin: 0; text-align: left;
+      background: rgba(15,23,42,.92); border-radius: 8px; padding: 6px 8px;
+    }
+    .drive-bottom { flex: none; }
+    .offer-panel {
+      background: var(--card); border: 1px solid var(--card-border); border-radius: 14px; padding: 8px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .offer-panel .decision-banner { margin: 0; padding: 8px; font-size: 1.05rem; cursor: pointer; }
+    .offer-panel .mini-stats { box-shadow: none; background: #0f172a; }
+    .offer-panel .input-row, .offer-panel .keypad { margin: 0; }
+    .drive-bottom .key { padding: 10px 0; }
+    .drive-bottom .log-row { margin-top: 0; }
+    .drive-bottom .log-btn { padding: 11px 0; }
+
+
+    /* Surge pins on the map */
+    .surge-pin-wrap { background: none; border: none; }
+    .surge-pin {
+      transform: translate(-50%, -120%); white-space: nowrap; font: 800 11px/1 -apple-system, sans-serif;
+      padding: 5px 8px 5px 6px; border-radius: 999px; color: #fff; display: inline-flex; align-items: center; gap: 5px;
+      box-shadow: 0 3px 10px rgba(0,0,0,.45); border: 2px solid #fff; cursor: pointer;
+    }
+    .surge-pin i { width: 8px; height: 8px; border-radius: 50%; background: #fff; display: inline-block; }
+    .surge-pin.live { background: #dc2626; }
+    .surge-pin.live i { animation: livePulse 1.2s ease-in-out infinite; }
+    .surge-pin.pred { background: #7c3aed; border-style: dashed; }
+    @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
+
+    /* Surge card (bottom of the map) */
+    .surge-card {
+      position: absolute; left: 8px; right: 8px; bottom: 8px; z-index: 700; max-height: 70%; overflow-y: auto;
+      background: rgba(15,23,42,.97); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,.5); font-size: .85rem;
+    }
+    .sc-head { display: flex; align-items: center; gap: 8px; }
+    .sc-name { flex: 1; font-size: 1rem; }
+    .sc-sub { color: var(--muted); font-size: .76rem; margin-top: 4px; }
+    .sc-calc { color: var(--muted); margin-top: 10px; }
+    .tag { font-size: .62rem; font-weight: 800; letter-spacing: .5px; padding: 3px 7px; border-radius: 999px; flex: none; }
+    .tag-live { background: #dc2626; color: #fff; }
+    .tag-pred { background: #7c3aed; color: #fff; }
+    .sc-drive { margin-top: 10px; font-size: .95rem; }
+    .sc-drive span { display: block; color: var(--muted); font-size: .7rem; margin-top: 2px; }
+    .sc-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; }
+    .sc-rows > div { display: flex; justify-content: space-between; gap: 8px; }
+    .sc-rows span { color: var(--muted); font-size: .76rem; }
+    .sc-rows .pos { color: var(--green); }
+    .sc-rows .neg { color: var(--red); }
+    .sc-net { border-top: 1px solid var(--card-border); padding-top: 4px; }
+    .sc-net span { color: var(--text); font-weight: 700; font-size: .85rem; }
+    .sc-verdict { margin-top: 8px; text-align: center; font-weight: 800; font-size: 1.05rem; padding: 8px; border-radius: 10px; }
+    .sc-verdict.yes { background: rgba(34,197,94,.18); color: var(--green); border: 1px solid var(--green); }
+    .sc-verdict.maybe { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid var(--amber); }
+    .sc-verdict.no { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid var(--red); }
+    .sc-verdict.here { background: rgba(56,189,248,.12); color: var(--accent); border: 1px solid var(--accent); }
+    .sc-nav { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .nav-btn {
+      flex: 1; text-align: center; text-decoration: none; padding: 9px 6px; border-radius: 8px; font-weight: 700; font-size: .8rem;
+      background: #1e293b; color: var(--text); border: 1px solid var(--card-border); min-width: 0;
+    }
+    .nav-btn.waze { background: #33ccff; color: #05202b; border-color: #33ccff; }
+    .sc-tip { margin-top: 8px; color: var(--muted); font-size: .7rem; line-height: 1.4; }
+    .sc-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .sc-item {
+      display: flex; align-items: center; gap: 8px; text-align: left; width: 100%;
+      background: #0f172a; border: 1px solid var(--card-border); color: var(--text); border-radius: 10px; padding: 9px;
+    }
+    .sc-iname { flex: 1; font-weight: 700; font-size: .85rem; min-width: 0; }
+    .sc-ival { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+    .pill { font-style: normal; font-weight: 800; padding: 2px 6px; border-radius: 999px; margin-left: 4px; font-size: .66rem; }
+    .pill.yes { background: rgba(34,197,94,.2); color: var(--green); }
+    .pill.maybe { background: rgba(245,158,11,.2); color: var(--amber); }
+    .pill.no { background: rgba(239,68,68,.2); color: var(--red); }
+    .pill.here { background: rgba(56,189,248,.2); color: var(--accent); }
+    .where-row { display: flex; gap: 12px; flex-wrap: wrap; font-size: .8rem; margin-bottom: 10px; }
+    .where-row input { accent-color: #f97316; }
+    @media (prefers-reduced-motion: reduce) { .surge-pin.live i { animation: none; } }
 
     /* Banner arrow */
     .banner-arrow { display: inline-block; margin-right: 6px; animation: arrowBounce 1s ease-in-out infinite; }
@@ -262,8 +414,12 @@
     .autoread-hint { font-size: 0.68rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
     #ocrVideo { display: none; }
     .ocr-preview-wrap { position: relative; max-height: 0; overflow: hidden; opacity: 0; transition: max-height .3s ease, opacity .3s ease, margin-bottom .3s ease; }
-    .ocr-preview-wrap.active { max-height: 260px; opacity: 1; margin-bottom: 8px; }
-    #ocrPreviewCanvas { width: 100%; border-radius: 8px; border: 1px solid var(--card-border); display: block; touch-action: none; cursor: crosshair; }
+    .ocr-preview-wrap.active { max-height: 380px; opacity: 1; margin-bottom: 8px; }
+    /* Whole shared screen visible, even a tall phone screen, so the car can be tapped */
+    #ocrPreviewCanvas {
+      width: auto; height: auto; max-width: 100%; max-height: 360px; margin: 0 auto;
+      border-radius: 8px; border: 1px solid var(--card-border); display: block; touch-action: none; cursor: crosshair;
+    }
     .ocr-crop-hint { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
     .ocr-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height .3s ease, opacity .3s ease, margin-bottom .3s ease; }
     .ocr-btn-row.active { max-height: 60px; opacity: 1; margin-bottom: 8px; }
@@ -292,7 +448,7 @@
     #settingsModal {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85); backdrop-filter: blur(4px);
-      justify-content: center; align-items: center; padding: 16px; z-index: 40;
+      justify-content: center; align-items: center; padding: 16px; z-index: 1000;
     }
     .modal-content {
       background: var(--card); border: 1px solid var(--card-border);
@@ -334,69 +490,51 @@
       <button class="gear-btn" onclick="toggleSettings(true)" aria-label="Settings">⚙️</button>
     </div>
 
-    <div class="tabs">
-      <button class="tab active" id="tab-offer" onclick="showTab('offer')">🚗 Offer</button>
+    <div class="tabs tabs-2">
+      <button class="tab active" id="tab-drive" onclick="showTab('drive')">🚗 Drive</button>
       <button class="tab" id="tab-insights" onclick="showTab('insights')">📊 Best Times</button>
-      <button class="tab" id="tab-map" onclick="showTab('map')">🗺 Surge Map</button>
     </div>
 
-    <!-- ================= OFFER VIEW ================= -->
-    <div id="view-offer">
-      <!-- Floating Picture-in-Picture Display Element -->
-      <div class="pip-section">
-        <canvas id="pipCanvas" width="400" height="200"></canvas>
-        <video id="pipVideo" autoplay muted playsinline></video>
-        <button class="pip-btn" id="pipToggleBtn" onclick="togglePiP()">📺 Open Floating iOS Overlay</button>
-      </div>
-
-      <!-- Screen-share Auto-Read (desktop Chrome/Edge, Android Chrome) -->
-      <div class="autoread-section" id="autoreadSection">
-        <div class="autoread-header">
-          <span class="autoread-title">🔎 Auto-Read Offer</span>
-          <span class="autoread-status off" id="ocrStatusBadge">OFF</span>
-        </div>
-        <div id="ocrSupported">
-          <button class="autoread-btn start" id="ocrToggleBtn" onclick="toggleOCR()">Share Screen &amp; Start Auto-Read</button>
-          <div class="ocr-preview-wrap" id="ocrPreviewWrap">
-            <canvas id="ocrPreviewCanvas" width="400" height="225"></canvas>
-            <span class="ocr-crop-hint">Drag a box around the offer card</span>
-          </div>
-          <div class="ocr-btn-row" id="ocrControlsRow">
-            <button onclick="runOCRPass()">🔍 Read now</button>
-            <button onclick="resetOCRCrop()">↺ Full screen</button>
-          </div>
-          <div class="autoread-raw" id="ocrRawText">No reads yet.</div>
-          <div class="alert-controls-row">
-            <button id="notifPermBtn" onclick="requestNotifPermission()">🔔 Notifications</button>
-            <button id="soundToggleBtn" class="active" onclick="toggleSound()">🔊 Sound: On</button>
-          </div>
-          <div class="autoread-hint">Share the screen showing the Uber Driver app. Each offer it reads pops up ACCEPT or DECLINE and is logged automatically.</div>
-        </div>
-        <div class="autoread-hint" id="ocrUnsupported" hidden>Auto-Read needs screen sharing, which iPhone browsers don't allow. It works in Chrome on Android or on a computer. On iPhone, use the keypad.</div>
-      </div>
+    <!-- ================= DRIVE VIEW: live map + offer in one ================= -->
+    <div id="view-drive" class="drive">
+      <!-- Hidden sources: the floating overlay video and the screen-share feed -->
+      <canvas id="pipCanvas" width="400" height="200"></canvas>
+      <video id="pipVideo" class="pip-src" autoplay muted playsinline></video>
       <video id="ocrVideo" autoplay muted playsinline></video>
 
-      <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)" style="cursor:pointer;">ENTER OFFER DETAILS</div>
+      <div class="map-wrap">
+        <div id="surgeMap"></div>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-label">Gross Hourly</div>
-          <div class="stat-value" id="grossHr">$0.00/hr</div>
+        <div class="drive-top">
+          <div class="map-chips">
+            <button class="chip on" id="chipLive" onclick="toggleLayer('live')">🔴 Live</button>
+            <button class="chip on" id="chipPred" onclick="toggleLayer('pred')">🔮 Predicted</button>
+            <button class="chip" id="chipHist" onclick="toggleLayer('hist')">🕘 History</button>
+            <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
+          </div>
+          <div class="hist-bar" id="histBar" hidden>
+            <select id="fDay" onchange="renderMap()" aria-label="Day">
+              <option value="all">All days</option>
+              <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
+              <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option>
+            </select>
+            <select id="fTime" onchange="renderMap()" aria-label="Time"></select>
+            <button class="chip" onclick="filterNow()">Now</button>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">Rate / KM</div>
-          <div class="stat-value" id="rateKm">$0.00/km</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Net In-Pocket</div>
-          <div class="stat-value" id="netHr" style="color: var(--green);">$0.00/hr</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Running Cost</div>
-          <div class="stat-value" id="fuelCost" style="color: var(--muted);">$0.00</div>
-        </div>
+
+        <div class="map-note" id="mapNote"></div>
+        <div class="surge-card" id="surgeCard" hidden></div>
       </div>
 
+      <div class="drive-bottom offer-panel">
+          <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)">ENTER OFFER DETAILS</div>
+        <div class="mini-stats">
+          <div><span>Gross</span><b id="grossHr">$0/hr</b></div>
+          <div><span>Per km</span><b id="rateKm">$0/km</b></div>
+          <div><span>Net</span><b id="netHr" class="net">$0/hr</b></div>
+          <b id="fuelCost" hidden></b>
+        </div>
       <!-- Inputs -->
       <div class="input-row">
         <div class="input-box" onclick="setActiveField('fare'); toggleKeypad(true)" id="box-fare" style="border-color: var(--accent);">
@@ -412,9 +550,6 @@
           <input type="text" id="kmsVal" placeholder="0" readonly />
         </div>
       </div>
-
-      <!-- Side button that opens / closes the keypad -->
-      <button class="side-btn" id="keypadToggle" onclick="toggleKeypad()" aria-label="Number pad">🔢<span>Keypad</span></button>
 
       <!-- Rapid In-Car Touch Keypad (hidden until opened) -->
       <div class="keypad" id="keypad" style="display:none;">
@@ -438,12 +573,11 @@
         <button class="key action" style="grid-column: span 2;" onclick="quickPreset(15)">+15m Quick</button>
       </div>
 
-      <!-- Log the offer so Best Times can learn -->
       <div class="log-row">
-        <button class="log-btn took" onclick="logOffer(true)">✓ Took it</button>
-        <button class="log-btn passed" onclick="logOffer(false)">✗ Passed</button>
+          <button class="log-btn took" onclick="logOffer(true)">✓ Took it</button>
+          <button class="log-btn passed" onclick="logOffer(false)">✗ Passed</button>
+        </div>
       </div>
-      <div class="hint">CLR auto-logs the offer using the pilot's verdict (tap “Flip” if you did the opposite). Use ✓ / ✗ to log it yourself.</div>
     </div>
 
     <!-- ================= INSIGHTS VIEW ================= -->
@@ -486,37 +620,15 @@
       <div class="rank" id="recentLog"></div>
 
       <div class="btn-row">
-        <button class="sec-btn" onclick="exportCSV()">⬇ Export CSV</button>
-        <button class="sec-btn danger" onclick="clearLog()">🗑 Clear all</button>
+        <button class="sec-btn" onclick="exportCSV()">⬇ Export offers</button>
+        <button class="sec-btn danger" onclick="clearLog()">🗑 Clear offers</button>
       </div>
-    </div>
-
-    <!-- ================= SURGE MAP VIEW ================= -->
-    <div id="view-map" style="display:none;">
-      <div class="filter-row">
-        <select id="fDay" onchange="renderMap()">
-          <option value="all">All days</option>
-          <option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option>
-          <option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option>
-        </select>
-        <select id="fTime" onchange="renderMap()"></select>
-        <button class="now-btn" onclick="filterNow()">Now</button>
-      </div>
-      <div id="surgeMap"></div>
-      <div class="legend" style="margin-top:8px;">
-        <span style="--c:#64748b">Quiet</span>
-        <span style="--c:#facc15">Busy</span>
-        <span style="--c:#f97316">Surge</span>
-        <span style="--c:#ef4444">Big surge</span>
-      </div>
-      <div class="map-note" id="mapNote"></div>
-      <div class="section-title">Hot areas for this filter</div>
-      <div class="rank" id="hotAreas"></div>
       <div class="btn-row">
         <button class="sec-btn" onclick="exportSnapsCSV()">⬇ Export snapshots</button>
         <button class="sec-btn danger" onclick="clearSnaps()">🗑 Clear snapshots</button>
       </div>
     </div>
+
   </div>
 
   <!-- Surge Snapshot sheet -->
@@ -534,6 +646,10 @@
           <input type="file" id="snapFile" accept="image/*" style="display:none" onchange="onSnapFile(event)" />
         </label>
       </div>
+      <div class="where-row" role="radiogroup" aria-label="Where is the surge?">
+        <label><input type="radio" name="snapWhere" id="snapWhereMe" checked /> Surge is where I am</label>
+        <label><input type="radio" name="snapWhere" id="snapWherePick" /> Pick it on the map</label>
+      </div>
       <div class="amt-box">
         <label>SURGE AMOUNT SHOWN ($ or ×, optional)</label>
         <input type="text" id="snapAmt" inputmode="decimal" placeholder="e.g. 4.50" />
@@ -545,6 +661,61 @@
         <button class="lvl lvl3" onclick="saveSnap(3)">🔥🔥 Big surge</button>
       </div>
       <div class="hint">Tap a level to save. Only use while parked.</div>
+    </div>
+  </div>
+
+  <!-- Side buttons: keypad, floating overlay, Auto-Read -->
+  <div class="side-stack">
+    <button class="side-btn" id="keypadToggle" onclick="toggleKeypad()" aria-label="Number pad">🔢<span>Keypad</span></button>
+    <button class="side-btn" id="pipSideBtn" onclick="togglePiP()" aria-label="Floating overlay">📺<span>Overlay</span></button>
+    <button class="side-btn" id="autoSideBtn" onclick="openAutoSheet()" aria-label="Auto-Read">🔎<span>Auto</span><i class="live-dot"></i></button>
+    <a class="side-btn side-link" id="siteSideBtn" href="https://yanw9119-cryoprecipitate.github.io/offer-pilot/"
+       target="_blank" rel="noopener" aria-label="Open the live site on GitHub Pages">🌐<span>Site</span></a>
+  </div>
+
+  <!-- Auto-Read panel -->
+  <div class="sheet" id="autoSheet" onclick="if (event.target === this) closeAutoSheet()">
+    <div class="sheet-content">
+      <div class="sheet-head">
+        <h3 style="color: var(--accent);">🔎 Auto-Read</h3>
+        <span class="autoread-status off" id="ocrStatusBadge">OFF</span>
+        <button class="x-btn" onclick="closeAutoSheet()" aria-label="Close">✕</button>
+      </div>
+      <div id="ocrSupported">
+        <button class="autoread-btn start" id="ocrToggleBtn" onclick="toggleOCR()">Share Screen &amp; Start Auto-Read</button>
+        <div class="ocr-preview-wrap" id="ocrPreviewWrap">
+          <canvas id="ocrPreviewCanvas" width="400" height="225"></canvas>
+          <span class="ocr-crop-hint">Drag a box around the offer card</span>
+        </div>
+        <div class="ocr-btn-row" id="ocrControlsRow">
+          <button onclick="runOCRPass()">🔍 Read now</button>
+          <button onclick="resetOCRCrop()">↺ Full screen</button>
+        </div>
+        <div class="autoread-raw" id="ocrRawText">No reads yet.</div>
+        <div class="cal-box">
+          <div class="cal-title">📐 Place surges where they are</div>
+          <div class="cal-row">
+            <button type="button" class="chip" id="calBtn" onclick="startCalib()">📍 Set my car</button>
+            <label class="cal-span">Uber screen width
+              <input type="number" id="uberSpan" inputmode="decimal" min="1" max="50" step="0.5" onchange="saveUberCal()" /> km</label>
+          </div>
+          <div class="autoread-hint" id="calStatus"></div>
+          <div class="autoread-hint">Zoom the Uber map out so it shows about this many km across, and keep it centred on you. Tap “Set my car”, then tap your car on the preview. Boxes on the preview show the surge areas it can see.</div>
+        </div>
+        <div class="tgl-list">
+          <label class="tgl"><input type="checkbox" id="optAutoOutcome" onchange="saveAutoOpts()" checked />
+            <span>Detect <b>took / passed</b> automatically<small>Watches whether the Uber screen moves to picking up the rider</small></span></label>
+          <label class="tgl"><input type="checkbox" id="optAutoSurge" onchange="saveAutoOpts()" checked />
+            <span>Auto <b>surge snapshots</b> every 3 min<small>Finds each surge area on the Uber map and places it on your map, with its +$ amount</small></span></label>
+        </div>
+        <div class="alert-controls-row">
+          <button id="notifPermBtn" onclick="requestNotifPermission()">🔔 Notifications</button>
+          <button id="soundToggleBtn" class="active" onclick="toggleSound()">🔊 Sound: On</button>
+        </div>
+        <div class="autoread-hint" id="notifHelp" hidden></div>
+        <div class="autoread-hint">Share the screen showing the Uber Driver app. Each offer pops up ACCEPT or DECLINE and is logged automatically. You can close this panel while it runs.</div>
+      </div>
+      <div class="autoread-hint" id="ocrUnsupported" hidden>Auto-Read needs screen sharing, which iPhone browsers don't allow. It works in Chrome on Android or on a computer. On iPhone, use the keypad.</div>
     </div>
   </div>
 
@@ -572,6 +743,16 @@
       <div class="setting-item">
         <label>Direct Vehicle Cost / KM (RAV4 = 0.14)</label>
         <input type="number" id="cfgCostKm" value="0.14" step="0.01" />
+      </div>
+      <h3 style="margin: 16px 0 8px; color:var(--accent); font-size: 1rem;">🔥 Surge chasing</h3>
+      <div class="setting-item">
+        <label>Longest drive worth chasing (minutes)</label>
+        <input type="number" id="cfgMaxChase" value="12" step="1" min="1" />
+      </div>
+      <div class="setting-item">
+        <label>TomTom key for live traffic (optional)</label>
+        <input type="text" id="cfgTomTom" placeholder="Leave empty to use free road data" autocomplete="off" spellcheck="false" />
+        <div class="autoread-hint">Without a key, drive times use free road data plus Melbourne rush-hour estimates. A free key from developer.tomtom.com adds live traffic.</div>
       </div>
       <button class="pip-btn" onclick="saveSettings()">Save & Close</button>
     </div>
@@ -601,6 +782,8 @@
     function toggleKeypad(force) {
       const pad = document.getElementById('keypad');
       const btn = document.getElementById('keypadToggle');
+      // The side button works from any tab: jump to the Offer tab to open the pad
+      if (document.getElementById('view-drive').style.display === 'none') { showTab('drive'); force = true; }
       const open = typeof force === 'boolean' ? force : pad.style.display === 'none';
       pad.style.display = open ? '' : 'none';
       btn.classList.toggle('open', open);
@@ -682,7 +865,9 @@
       const fare = parseFloat(data.fare) || 0, mins = parseFloat(data.mins) || 0, kms = parseFloat(data.kms) || 0;
       if (!(fare > 0 && mins > 0)) return;
       const log = loadLog();
-      const existing = curEntryT && Date.now() - curEntryT < 20000 ? log.find(x => x.t === curEntryT) : null;
+      // Same offer card = same fare seen again within 20 s (time/km often arrive a read later)
+      const prev = curEntryT && Date.now() - curEntryT < 20000 ? log.find(x => x.t === curEntryT) : null;
+      const existing = prev && prev.fare === fare ? prev : null;
       if (existing) {
         Object.assign(existing, { fare, mins, kms });
         existing.took = isGoodOffer(existing);
@@ -691,6 +876,7 @@
         entry.took = isGoodOffer(entry);
         log.push(entry);
         curEntryT = entry.t;
+        watchOutcome(entry.t);
       }
       saveLog(log);
       if (document.getElementById('view-insights').style.display !== 'none') renderInsights();
@@ -792,15 +978,27 @@
 
     async function togglePiP() {
       try {
-        if (document.pictureInPictureElement) {
-          await document.exitPictureInPicture();
-        } else {
-          await video.requestPictureInPicture();
+        if (video.paused) await video.play();
+        // iPhone Safari's own picture-in-picture switch
+        if (typeof video.webkitSetPresentationMode === 'function' && !document.pictureInPictureEnabled) {
+          const on = video.webkitPresentationMode === 'picture-in-picture';
+          video.webkitSetPresentationMode(on ? 'inline' : 'picture-in-picture');
+          return;
         }
+        if (document.pictureInPictureElement) await document.exitPictureInPicture();
+        else await video.requestPictureInPicture();
       } catch (err) {
-        alert("PiP requires tapping play on iOS Safari first.");
+        toast('Overlay could not open — tap again, or open the pilot in Safari or Chrome');
       }
     }
+    function syncPiPBtn(on) {
+      const b = document.getElementById('pipSideBtn');
+      b.classList.toggle('on', on);
+      b.innerHTML = on ? '📺<span>Close</span>' : '📺<span>Overlay</span>';
+    }
+    video.addEventListener('enterpictureinpicture', () => syncPiPBtn(true));
+    video.addEventListener('leavepictureinpicture', () => syncPiPBtn(false));
+    video.addEventListener('webkitpresentationmodechanged', () => syncPiPBtn(video.webkitPresentationMode === 'picture-in-picture'));
 
     function toggleSettings(show) {
       document.getElementById('settingsModal').style.display = show ? 'flex' : 'none';
@@ -808,8 +1006,16 @@
         document.getElementById('cfgMinHr').value = config.minGrossHr;
         document.getElementById('cfgMinKm').value = config.minRateKm;
         document.getElementById('cfgCostKm').value = config.costPerKm;
+        document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
+        document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
       }
     }
+
+    // Surge chasing settings
+    const chaseCfg = {
+      maxMin: parseFloat(lsGet('cfgMaxChase')) || 12,
+      tomtom: lsGet('cfgTomTom') || ''
+    };
 
     function saveSettings() {
       config.minGrossHr = parseFloat(document.getElementById('cfgMinHr').value) || 42.0;
@@ -819,10 +1025,16 @@
       lsSet('cfgMinHr', config.minGrossHr);
       lsSet('cfgMinKm', config.minRateKm);
       lsSet('cfgCostKm', config.costPerKm);
+      chaseCfg.maxMin = parseFloat(document.getElementById('cfgMaxChase').value) || 12;
+      chaseCfg.tomtom = document.getElementById('cfgTomTom').value.trim();
+      lsSet('cfgMaxChase', chaseCfg.maxMin);
+      lsSet('cfgTomTom', chaseCfg.tomtom);
+      routeCache.clear();
 
       toggleSettings(false);
       recalculate();
       renderInsights();
+      renderMap();
     }
 
     // ================= OFFER LOG & BEST TIMES =================
@@ -1098,6 +1310,7 @@
       } catch (e) { toast('Reader failed to start'); stopOCR(); return; }
 
       ocrActive = true;
+      if (autoOpt('optAutoSurge')) startTracking(); // location for auto surge snapshots
       cropRect = { x: 0, y: 0, w: 1, h: 1 };
       setOCRStatus(true, 'Watching');
       const btn = document.getElementById('ocrToggleBtn');
@@ -1116,7 +1329,9 @@
       ocrLoopHandle = previewLoopHandle = null;
       if (ocrStream) { ocrStream.getTracks().forEach(t => t.stop()); ocrStream = null; }
       if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; }
+      pendingOutcome = null;
       setOCRStatus(false, 'OFF');
+      if (document.getElementById('view-drive').style.display === 'none') stopTracking();
       const btn = document.getElementById('ocrToggleBtn');
       btn.textContent = 'Share Screen & Start Auto-Read';
       btn.classList.replace('stop', 'start');
@@ -1128,6 +1343,215 @@
       const b = document.getElementById('ocrStatusBadge');
       b.textContent = label;
       b.className = `autoread-status ${on ? 'on' : 'off'}`;
+      document.getElementById('autoSideBtn').classList.toggle('live', !!on && ocrActive);
+    }
+
+    function openAutoSheet() { document.getElementById('autoSheet').style.display = 'flex'; syncNotifBtn(); syncCalUI(); }
+    function closeAutoSheet() { document.getElementById('autoSheet').style.display = 'none'; }
+
+    function autoOpt(id) { const el = document.getElementById(id); return !!(el && el.checked); }
+    function saveAutoOpts() {
+      lsSet('optAutoOutcome', autoOpt('optAutoOutcome') ? '1' : '0');
+      lsSet('optAutoSurge', autoOpt('optAutoSurge') ? '1' : '0');
+      if (ocrActive && autoOpt('optAutoSurge')) startTracking();
+    }
+    function loadAutoOpts() {
+      ['optAutoOutcome', 'optAutoSurge'].forEach(id => { const v = lsGet(id); if (v !== null) document.getElementById(id).checked = v === '1'; });
+    }
+
+    // ---- Took / passed from what the Uber screen does after an offer ----
+    // After an offer is read: if the screen moves to the pickup flow -> took;
+    // if the offer card disappears without that (2 reads in a row) -> passed.
+    const PICKUP_RE = /(picking\s*up|pick\s*up\s+\w|heading\s+to|en\s*route|navigat|arriv|start\s*(uber)?\s*trip|swipe\s+to\s+start|waiting\s+for\s+rider|confirm\s+rider)/i;
+    let pendingOutcome = null; // { t, goneCount, since }
+
+    function watchOutcome(entryT) {
+      if (!autoOpt('optAutoOutcome')) return;
+      pendingOutcome = { t: entryT, goneCount: 0, since: Date.now() };
+    }
+
+    function checkOutcome(norm, offerVisible) {
+      if (!pendingOutcome) return;
+      if (Date.now() - pendingOutcome.since > 60000) { pendingOutcome = null; return; } // gave up: keep the verdict
+      if (offerVisible) { pendingOutcome.goneCount = 0; return; }
+      if (PICKUP_RE.test(norm)) return setOutcome(true);
+      if (++pendingOutcome.goneCount >= 2) setOutcome(false);
+    }
+
+    function setOutcome(took) {
+      const t = pendingOutcome && pendingOutcome.t;
+      pendingOutcome = null;
+      curEntryT = null;                                    // this offer is finished
+      lastApplied = { fare: null, mins: null, kms: null }; // ready for the next offer
+      const log = loadLog();
+      const e = log.find(x => x.t === t);
+      if (!e) return;
+      e.took = took; e.auto = true;
+      saveLog(log);
+      toast(took ? '🔎 Detected: took it ✓' : '🔎 Detected: passed ✗', 'Flip', () => {
+        const l = loadLog(); const x = l.find(y => y.t === t);
+        if (x) { x.took = !x.took; saveLog(l); toast(x.took ? '✓ Changed to took' : '✗ Changed to passed'); renderInsights(); }
+      });
+      renderInsights();
+    }
+
+    // ---- Automatic surge snapshots, placed where each surge is on the Uber map ----
+    // The Uber map is centred on you. After a one-off calibration (where your car sits on the
+    // shared screen, and how many km the screen spans), every patch of surge colour is turned
+    // into a real map position by its distance and direction from your car.
+    const AUTO_SNAP_MS = 3 * 60 * 1000;
+    let lastAutoSnapT = 0;
+    const surgeCanvas = document.createElement('canvas');
+    const surgeCtx = surgeCanvas.getContext('2d', { willReadFrequently: true });
+    const uberCal = {
+      carX: parseFloat(lsGet('uberCarX')) || 0.5,   // car position on the shared screen (0–1)
+      carY: parseFloat(lsGet('uberCarY')) || 0.5,
+      spanKm: parseFloat(lsGet('uberSpanKm')) || 6   // real-world width of the Uber screen
+    };
+    let calibMode = false;
+    const NAV_RE = /(picking\s*up|dropping\s*off|drop\s*off|complete\s*trip|end\s*trip|start\s*(uber)?\s*trip|navigat|turn\s+(left|right)|\d+\s*m\s+then)/i;
+
+    function saveUberCal() {
+      const v = parseFloat(document.getElementById('uberSpan').value);
+      if (v > 0.5 && v < 60) uberCal.spanKm = v;
+      lsSet('uberSpanKm', uberCal.spanKm);
+      lsSet('uberCarX', uberCal.carX); lsSet('uberCarY', uberCal.carY);
+      syncCalUI();
+    }
+    function syncCalUI() {
+      const el = document.getElementById('uberSpan');
+      if (el && document.activeElement !== el) el.value = uberCal.spanKm;
+      const st = document.getElementById('calStatus');
+      if (st) st.textContent = lsGet('uberCarX') ? `Car set at ${Math.round(uberCal.carX * 100)}% across, ${Math.round(uberCal.carY * 100)}% down`
+        : 'Car not set yet: tap “Set my car”, then tap your car on the preview';
+    }
+    function startCalib() {
+      if (!ocrActive) { toast('Start Auto-Read first, then tap your car on the preview'); return; }
+      calibMode = true;
+      document.getElementById('calBtn').classList.add('on');
+      toast('Tap your car on the preview');
+    }
+
+    // Uber surge shading: light orange to dark red. Returns 0 (none), 2 (surge) or 3 (big surge).
+    function surgePixelLevel(r, g, b) {
+      if (r < 170 || r - b < 40) return 0;
+      if (r - g > 120) return 3;   // deep red / crimson
+      if (r - g > 60) return 2;    // orange / red-orange / pink
+      return 0;
+    }
+
+    // Finds surge patches on the Uber map. Returns clusters with screen centre (0–1), size and level.
+    function findSurgePatches() {
+      const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight;
+      const W = 120, H = Math.max(1, Math.round(W * vh / vw));
+      surgeCanvas.width = W; surgeCanvas.height = H;
+      surgeCtx.drawImage(ocrVideo, 0, 0, W, H);
+      const px = surgeCtx.getImageData(0, 0, W, H).data;
+      const C = 6;                                 // cell size in px
+      const cols = Math.floor(W / C), rows = Math.floor(H / C);
+      const top = Math.floor(rows * 0.08), bottom = Math.ceil(rows * 0.78); // skip status bar and Uber's bottom panel
+      const cell = [];
+      for (let cy = 0; cy < rows; cy++) for (let cx = 0; cx < cols; cx++) {
+        let hit = 0, deep = 0;
+        if (cy >= top && cy < bottom) {
+          for (let y = cy * C; y < cy * C + C; y++) for (let x = cx * C; x < cx * C + C; x++) {
+            const i = (y * W + x) * 4, l = surgePixelLevel(px[i], px[i + 1], px[i + 2]);
+            if (l) { hit++; if (l === 3) deep++; }
+          }
+        }
+        cell.push({ on: hit / (C * C) > 0.35, deep: hit ? deep / hit : 0 });
+      }
+      // Join neighbouring surge cells into patches
+      const seen = new Array(cell.length).fill(false), patches = [];
+      for (let i = 0; i < cell.length; i++) {
+        if (!cell[i].on || seen[i]) continue;
+        const q = [i]; seen[i] = true;
+        let n = 0, sx = 0, sy = 0, deepSum = 0;
+        while (q.length) {
+          const k = q.pop(), x = k % cols, y = Math.floor(k / cols);
+          n++; sx += x; sy += y; deepSum += cell[k].deep;
+          [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => {
+            const nx = x + dx, ny = y + dy, j = ny * cols + nx;
+            if (nx >= 0 && ny >= 0 && nx < cols && ny < rows && !seen[j] && cell[j].on) { seen[j] = true; q.push(j); }
+          });
+        }
+        const share = n / (cols * (bottom - top));
+        if (share < 0.004) continue;               // ignore specks
+        patches.push({ x: (sx / n + 0.5) / cols, y: (sy / n + 0.5) / rows, share,
+          level: deepSum / n > 0.4 ? 3 : 2 });
+      }
+      return patches.sort((a, b) => b.share - a.share).slice(0, 8);
+    }
+
+    // Screen position (0–1) on the Uber map -> real lat/lng, using your GPS and the calibration
+    function screenToLatLng(x, y, vw, vh) {
+      const mPerPx = uberCal.spanKm * 1000 / vw;
+      const east = (x - uberCal.carX) * vw * mPerPx;
+      const north = -(y - uberCal.carY) * vh * mPerPx;
+      const lat = lastFix.lat + north / 111320;
+      const lng = lastFix.lng + east / (111320 * Math.cos(lastFix.lat * Math.PI / 180));
+      return { lat, lng, km: Math.hypot(east, north) / 1000 };
+    }
+
+    // "+$3.50" labels with their screen positions, from Tesseract's word boxes
+    function surgeAmountsFromOCR(data, w, h) {
+      const words = data.words && data.words.length ? data.words : [];
+      if (!words.length && data.blocks) data.blocks.forEach(b => (b.paragraphs || []).forEach(p =>
+        (p.lines || []).forEach(l => (l.words || []).forEach(wd => words.push(wd)))));
+      const out = [];
+      words.forEach(wd => {
+        const m = String(wd.text || '').replace(/(\d),(\d)/g, '$1.$2').match(/\+?\s*\$\s*(\d{1,2}(?:\.\d{1,2})?)/);
+        if (!m || !wd.bbox) return;
+        if (!/\+/.test(wd.text) && parseFloat(m[1]) > 15) return; // probably a fare, not a surge label
+        out.push({ amt: parseFloat(m[1]), x: (wd.bbox.x0 + wd.bbox.x1) / 2 / w, y: (wd.bbox.y0 + wd.bbox.y1) / 2 / h });
+      });
+      return out;
+    }
+
+    async function autoSurgeSnapshot() {
+      if (!autoOpt('optAutoSurge') || Date.now() - lastAutoSnapT < AUTO_SNAP_MS) return;
+      if (!lastFix || Date.now() - lastFix.t > 120000) { startTracking(); return; } // need a fresh location
+      if (pendingOutcome) return;                    // an offer is on screen, wait
+      const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight;
+      if (!vw || !vh) return;
+      lastAutoSnapT = Date.now();
+
+      // Read the whole screen: surge labels, and whether you're mid-trip (map rotates and moves)
+      ocrCanvas.width = Math.min(1000, vw); ocrCanvas.height = Math.round(ocrCanvas.width * vh / vw);
+      ocrCtx.drawImage(ocrVideo, 0, 0, ocrCanvas.width, ocrCanvas.height);
+      let words = [], text = '';
+      try {
+        const { data } = await ocrWorker.recognize(ocrCanvas, {}, { text: true, blocks: true });
+        text = data.text || '';
+        words = surgeAmountsFromOCR(data, ocrCanvas.width, ocrCanvas.height);
+      } catch (e) {}
+      if (NAV_RE.test(text)) { setOCRStatus(true, 'On a trip'); return; } // map isn't centred north-up on you
+
+      const patches = findSurgePatches();
+      const thumbId = 's' + Date.now();
+      const thumb = document.createElement('canvas');
+      thumb.width = 360; thumb.height = Math.round(360 * vh / vw);
+      thumb.getContext('2d').drawImage(ocrVideo, 0, 0, thumb.width, thumb.height);
+      putImg(thumbId, thumb.toDataURL('image/jpeg', 0.6));
+
+      const snaps = loadSnaps();
+      const t = Date.now();
+      if (!patches.length) {
+        snaps.push({ id: thumbId, t, level: 0, img: true, auto: true, amt: 'no surge on screen', lat: lastFix.lat, lng: lastFix.lng });
+      } else {
+        patches.forEach((p, i) => {
+          // Nearest "+$" label to this patch, if any is close on screen
+          let best = null, bestD = 0.18;
+          words.forEach(w => { const d = Math.hypot(w.x - p.x, (w.y - p.y) * vh / vw); if (d < bestD) { best = w; bestD = d; } });
+          const pos = screenToLatLng(p.x, p.y, vw, vh);
+          const level = best ? (best.amt >= 5 ? 3 : best.amt >= 2 ? Math.max(2, p.level) : p.level) : p.level;
+          snaps.push({ id: thumbId + '_' + i, imgId: thumbId, t, level, img: true, auto: true, geo: true,
+            amt: best ? `+$${best.amt.toFixed(2)}` : '', lat: pos.lat, lng: pos.lng, kmAway: +pos.km.toFixed(2) });
+        });
+      }
+      saveSnaps(snaps);
+      toast(patches.length ? `📸 ${patches.length} surge area${patches.length > 1 ? 's' : ''} placed on the map` : '📸 No surge on the Uber screen');
+      renderMap(); renderInsights();
     }
 
     function drawPreviewFrame() {
@@ -1135,11 +1559,25 @@
       const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight;
       if (!vw || !vh) return;
       previewCanvas.height = Math.round(previewCanvas.width * vh / vw);
-      previewCtx.drawImage(ocrVideo, 0, 0, previewCanvas.width, previewCanvas.height);
+      const W = previewCanvas.width, H = previewCanvas.height;
+      previewCtx.drawImage(ocrVideo, 0, 0, W, H);
       if (!(cropRect.x === 0 && cropRect.y === 0 && cropRect.w === 1 && cropRect.h === 1)) {
         previewCtx.strokeStyle = '#38bdf8'; previewCtx.lineWidth = 2;
-        previewCtx.strokeRect(cropRect.x * previewCanvas.width, cropRect.y * previewCanvas.height,
-          cropRect.w * previewCanvas.width, cropRect.h * previewCanvas.height);
+        previewCtx.strokeRect(cropRect.x * W, cropRect.y * H, cropRect.w * W, cropRect.h * H);
+      }
+      // Calibrated car position (crosshair)
+      const cx = uberCal.carX * W, cy = uberCal.carY * H;
+      previewCtx.strokeStyle = calibMode ? '#f97316' : '#22c55e'; previewCtx.lineWidth = 2;
+      previewCtx.beginPath(); previewCtx.arc(cx, cy, 7, 0, Math.PI * 2);
+      previewCtx.moveTo(cx - 12, cy); previewCtx.lineTo(cx + 12, cy); previewCtx.moveTo(cx, cy - 12); previewCtx.lineTo(cx, cy + 12);
+      previewCtx.stroke();
+      // Surge patches it can see right now
+      if (autoOpt('optAutoSurge')) {
+        findSurgePatches().forEach(p => {
+          previewCtx.strokeStyle = p.level === 3 ? '#ef4444' : '#f97316';
+          const r = Math.max(6, Math.sqrt(p.share) * W * 0.5);
+          previewCtx.strokeRect(p.x * W - r, p.y * H - r, r * 2, r * 2);
+        });
       }
     }
 
@@ -1149,7 +1587,19 @@
         return { x: Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1),
                  y: Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1) };
       };
-      previewCanvas.onpointerdown = e => { dragStart = getPos(e); e.preventDefault(); };
+      previewCanvas.onpointerdown = e => {
+        e.preventDefault();
+        if (calibMode) {                           // calibration tap: this is where my car is
+          const p = getPos(e);
+          uberCal.carX = p.x; uberCal.carY = p.y;
+          calibMode = false;
+          document.getElementById('calBtn').classList.remove('on');
+          saveUberCal();
+          toast('Car position saved');
+          return;
+        }
+        dragStart = getPos(e);
+      };
       previewCanvas.onpointermove = e => {
         if (!dragStart) return;
         const p = getPos(e);
@@ -1177,6 +1627,7 @@
         ocrCtx.drawImage(ocrVideo, sx, sy, sw, sh, 0, 0, ocrCanvas.width, ocrCanvas.height);
         const { data: { text } } = await ocrWorker.recognize(ocrCanvas);
         applyOCRText(text);
+        await autoSurgeSnapshot();
       } catch (e) {
         setOCRStatus(true, 'Retrying…');
       } finally { ocrBusy = false; }
@@ -1207,21 +1658,58 @@
         const banner = document.getElementById('decisionBanner');
         banner.classList.remove('flash-update'); void banner.offsetWidth; banner.classList.add('flash-update');
       } else {
-        setOCRStatus(true, minMatches.length || kmMatches.length || miMatches.length ? 'Watching' : 'Crop tighter');
+        setOCRStatus(true, minMatches.length || kmMatches.length || miMatches.length ? 'Watching' : (pendingOutcome ? 'Watching' : 'Crop tighter'));
       }
+      checkOutcome(norm, !!fareMatch && minMatches.length > 0);
     }
 
     // ================= ACCEPT / DECLINE ALERTS =================
     let soundEnabled = true, audioCtx = null, decisionHideTimer = null;
     try { soundEnabled = lsGet('soundOn') !== '0'; } catch (e) {}
 
+    // ---- Notifications ----
+    // Once a browser blocks notifications it never asks again, so the button
+    // explains how to unblock them in the browser's own settings.
+    let swReg = null; // single-file build: no separate service worker
+    function notifState() {
+      if (location.protocol === 'file:') return 'file';
+      if (!('Notification' in window)) return 'unsupported';
+      return Notification.permission; // 'default' | 'granted' | 'denied'
+    }
+    function syncNotifBtn() {
+      const btn = document.getElementById('notifPermBtn');
+      const st = notifState();
+      btn.textContent = { granted: '🔔 Notifications on', denied: '🔕 Blocked · fix', default: '🔔 Turn on alerts',
+        unsupported: '🔕 Not available', file: '🔕 Not available' }[st];
+      btn.classList.toggle('active', st === 'granted');
+    }
+    function showNotifHelp(st) {
+      const help = document.getElementById('notifHelp');
+      const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent);
+      let msg;
+      if (st === 'file') msg = 'Notifications only work when the pilot is opened from its web address, not as a downloaded file.';
+      else if (isIOS) msg = 'On iPhone, notifications only work from the Home Screen app: in Safari tap Share → Add to Home Screen, open the pilot from that icon, then tap this button. If it was blocked, go to iPhone Settings → Notifications → Offer Pilot → Allow.';
+      else if (st === 'unsupported') msg = 'This browser does not support web notifications. Use Chrome or Edge.';
+      else msg = 'Your browser blocked notifications for this site, and it will not ask again. To unblock: tap the icon to the left of the web address → Permissions (or Site settings) → Notifications → Allow. Then reload the page.';
+      help.textContent = msg;
+      help.hidden = false;
+    }
     function requestNotifPermission() {
-      if (!('Notification' in window)) { toast('Notifications are not supported in this browser'); return; }
+      const st = notifState();
+      if (st === 'granted') { sendNotice('🔔 Alerts are on', 'Offer Pilot will alert you to ACCEPT or DECLINE.'); toast('Test notification sent'); return; }
+      if (st !== 'default') { showNotifHelp(st); return; }
       Notification.requestPermission().then(perm => {
-        const btn = document.getElementById('notifPermBtn');
-        btn.textContent = perm === 'granted' ? '🔔 Notifications On' : '🔕 Blocked';
-        btn.classList.toggle('active', perm === 'granted');
+        syncNotifBtn();
+        if (perm === 'granted') { document.getElementById('notifHelp').hidden = true; sendNotice('🔔 Alerts are on', 'You will get ACCEPT / DECLINE alerts here.'); }
+        else showNotifHelp(notifState());
       });
+    }
+    // Android Chrome only shows notifications through a service worker
+    function sendNotice(title, body) {
+      if (notifState() !== 'granted') return;
+      const opts = { body, tag: 'ride-offer', renotify: true };
+      if (swReg && swReg.showNotification) { swReg.showNotification(title, opts).catch(() => {}); return; }
+      try { new Notification(title, opts); } catch (e) {}
     }
     function toggleSound() {
       soundEnabled = !soundEnabled;
@@ -1260,12 +1748,7 @@
       box.className = (isAccept ? 'accept' : 'decline') + ' show';
       clearTimeout(decisionHideTimer);
       decisionHideTimer = setTimeout(() => box.classList.remove('show'), 6000);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try {
-          new Notification(isAccept ? '⬆ ACCEPT this offer' : '⬇ DECLINE this offer',
-            { body: detail, tag: 'ride-offer', renotify: true });
-        } catch (e) {}
-      }
+      sendNotice(isAccept ? '⬆ ACCEPT this offer' : '⬇ DECLINE this offer', detail);
       playTone(isAccept ? [520, 780] : [220], isAccept ? 0.12 : 0.35);
     }
 
@@ -1319,6 +1802,7 @@
 
     function openSnap() {
       pendingPos = null; pendingImg = null;
+      document.getElementById('snapWhereMe').checked = true;
       document.getElementById('snapThumb').style.display = 'none';
       document.getElementById('snapFile').value = '';
       document.getElementById('snapAmt').value = '';
@@ -1366,15 +1850,19 @@
       const amt = document.getElementById('snapAmt').value.trim();
       const snap = { id, t: Date.now(), level, amt, img: !!pendingImg,
         lat: pendingPos ? pendingPos.lat : null, lng: pendingPos ? pendingPos.lng : null };
+      const pickOnMap = document.getElementById('snapWherePick').checked;
+      if (pickOnMap) { snap.lat = null; snap.lng = null; }
       const snaps = loadSnaps();
       snaps.push(snap);
       saveSnaps(snaps);
       if (pendingImg) putImg(id, pendingImg);
       closeSnap();
-      if (!pendingPos) {
+      if (pickOnMap || !pendingPos) {
         placeSnapId = id;
-        showTab('map');
-        toast('Tap the map where you are');
+        showTab('drive');
+        closeSurgeCard();
+        toast(pickOnMap ? 'Tap the map where the surge is' : 'No GPS — tap the map where you are');
+        renderMap();
       } else {
         toast(`📸 Saved — ${LEVELS[level]}`);
         renderMap();
@@ -1414,6 +1902,20 @@
 
     // ================= SURGE MAP =================
     let map = null, markerLayer = null, areaLayer = null, tilesBlocked = false;
+    let baseLayers = null, nightMap = false;
+    try { nightMap = lsGet('nightMap') === '1'; } catch (e) {}
+
+    // Street map by day, dark map for night driving (remembered on this phone)
+    function setNightMap(on) {
+      nightMap = on;
+      lsSet('nightMap', on ? '1' : '0');
+      if (!map || !baseLayers) return;
+      const add = on ? baseLayers.dark : baseLayers.streets, drop = on ? baseLayers.streets : baseLayers.dark;
+      if (map.hasLayer(drop)) map.removeLayer(drop);
+      if (!map.hasLayer(add)) add.addTo(map);
+      const b = document.getElementById('fabNight');
+      if (b) { b.textContent = on ? '☀️' : '🌙'; b.setAttribute('aria-label', on ? 'Day map' : 'Night map'); }
+    }
     const MELB = [-37.8136, 144.9631];
 
     // Melbourne rideshare areas (approximate centres, radius in metres)
@@ -1474,6 +1976,7 @@
         { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
     }
     function stopTracking() {
+      if (ocrActive && autoOpt('optAutoSurge')) return; // auto snapshots still need location
       if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
     }
 
@@ -1562,7 +2065,7 @@
 
     function ensureMap() {
       if (map || typeof L === 'undefined') return !!map;
-      map = L.map('surgeMap', { zoomControl: true }).setView(MELB, 12);
+      map = L.map('surgeMap', { zoomControl: false }).setView(MELB, 12);
       // Each base map tries several tile providers and falls back if one is blocked.
       const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
       const STREET_SOURCES = [
@@ -1594,7 +2097,7 @@
       const streets = fallbackBase(STREET_SOURCES);
       const dark = fallbackBase(NIGHT_SOURCES);
       streets.addTo(map); // default: standard street map
-      L.control.layers({ 'Street map': streets, 'Night': dark }, null, { position: 'topright' }).addTo(map);
+      baseLayers = { streets, dark };
 
       // Locate / follow-me button (bottom right, like map apps) + Melbourne overview
       const Ctl = L.Control.extend({
@@ -1602,12 +2105,14 @@
         onAdd: function () {
           const box = L.DomUtil.create('div', 'map-fabs');
           box.innerHTML =
+            '<button type="button" class="map-fab" id="fabNight" aria-label="Night map">🌙</button>' +
             '<button type="button" class="map-fab" id="fabCity" aria-label="Show all of Melbourne">🏙</button>' +
             '<button type="button" class="map-fab' + (followMe ? ' on' : '') + '" id="fabLocate" aria-label="Follow my location">' +
             '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3L12.5 20z" fill="currentColor"/></svg></button>';
           L.DomEvent.disableClickPropagation(box);
           L.DomEvent.disableScrollPropagation(box);
           box.querySelector('#fabCity').onclick = () => { setFollow(false); map.setView(MELB, 12); };
+          box.querySelector('#fabNight').onclick = () => setNightMap(!nightMap);
           box.querySelector('#fabLocate').onclick = () => {
             enableCompass();
             setFollow(true);
@@ -1618,11 +2123,14 @@
         }
       });
       map.addControl(new Ctl());
+      setNightMap(nightMap);
       map.on('dragstart', () => setFollow(false));
       if (lastFix) map.setView([lastFix.lat, lastFix.lng], 15);
 
       areaLayer = L.layerGroup().addTo(map);
+      routeLayer = L.layerGroup().addTo(map);
       markerLayer = L.layerGroup().addTo(map);
+      surgeLayer = L.layerGroup().addTo(map);
       map.on('click', e => {
         if (!placeSnapId) return;
         const snaps = loadSnaps();
@@ -1634,6 +2142,289 @@
       return true;
     }
 
+    // ================= LIVE vs PREDICTED SURGES =================
+    // LIVE      = a surge you actually saw (snapshot, level Surge or Big surge) in the last 20 min.
+    // PREDICTED = an area where your own history says surges usually happen now / next 2 h.
+    const LIVE_WINDOW_MIN = 20;
+    const LEVEL_AMT = [0, 1, 3, 6];          // $ assumed when no "+$" amount was recorded
+    const SURGE_HALF_LIFE_MIN = 7;           // research: surges often end within 5-10 minutes
+    const layers = { live: true, pred: true, hist: false };
+    let surgeLayer = null, routeLayer = null, openSurgeKey = null;
+
+    function amtNumber(a) {
+      if (!a) return null;
+      const s = String(a);
+      if (!/\$/.test(s) && !/^\s*\d+(\.\d+)?\s*$/.test(s)) return null;
+      const n = parseFloat(s.replace(/[^\d.]/g, ''));
+      return isNaN(n) ? null : n;
+    }
+
+    function toggleLayer(k) {
+      layers[k] = !layers[k];
+      document.getElementById({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist' }[k]).classList.toggle('on', layers[k]);
+      document.getElementById('histBar').hidden = !layers.hist;
+      renderMap();
+    }
+
+    // Weights each past snapshot by how closely its day and time match right now.
+    function forecastScores() {
+      const now = slotOf(Date.now());
+      const WEEKEND = d => d >= 4; // Fri, Sat, Sun
+      const stats = AREAS.map(a => ({ a, score: 0, n: 0, surges: 0, amts: [] }));
+      loadSnaps().forEach(s => {
+        if (s.lat == null) return;
+        const a = areaOf(s.lat, s.lng);
+        if (!a) return;
+        const k = slotOf(s.t);
+        const db = (k.block - now.block + BLOCKS) % BLOCKS; // 0 = this 2h block, 1 = next block
+        const wb = db === 0 ? 1 : db === 1 ? 0.7 : db === BLOCKS - 1 ? 0.3 : 0;
+        if (!wb) return;
+        const wd = k.day === now.day ? 1 : WEEKEND(k.day) === WEEKEND(now.day) ? 0.6 : 0.3;
+        const st = stats.find(x => x.a === a);
+        st.score += wb * wd * (s.level >= 2 ? s.level : s.level * 0.3);
+        st.n++;
+        if (s.level >= 2) { st.surges++; const n = amtNumber(s.amt); if (n) st.amts.push(n); }
+      });
+      const max = Math.max(0, ...stats.map(s => s.score));
+      stats.forEach(s => { s.p = max ? s.score / max : 0; });
+      return stats;
+    }
+
+    // "2.0 km NE" from you to a point
+    function bearingLabel(from, to) {
+      const km = distM(from.lat, from.lng, to.lat, to.lng) / 1000;
+      const y = Math.sin((to.lng - from.lng) * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180);
+      const x = Math.cos(from.lat * Math.PI / 180) * Math.sin(to.lat * Math.PI / 180) -
+        Math.sin(from.lat * Math.PI / 180) * Math.cos(to.lat * Math.PI / 180) * Math.cos((to.lng - from.lng) * Math.PI / 180);
+      const deg = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      return `${km.toFixed(1)} km ${['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8]}`;
+    }
+
+    function buildSurges() {
+      const out = [];
+      const now = Date.now();
+      const liveAreas = new Set();
+      if (layers.live) {
+        const groups = {};
+        loadSnaps().forEach(s => {
+          if (s.lat == null || s.level < 2) return;
+          const age = (now - s.t) / 60000;
+          if (age > LIVE_WINDOW_MIN || age < 0) return;
+          const a = areaOf(s.lat, s.lng);
+          const key = a ? 'live:' + a.name : 'live:' + s.id;
+          const g = groups[key];
+          if (!g || s.t > g.s.t) groups[key] = { s, a };
+        });
+        Object.entries(groups).forEach(([key, { s, a }]) => {
+          if (a) liveAreas.add(a.name);
+          out.push({ key, kind: 'live', name: a ? a.name : 'Surge area · ' + bearingLabel(myPos(), s), lat: s.lat, lng: s.lng,
+            level: s.level, amt: amtNumber(s.amt), ageMin: (now - s.t) / 60000, snapId: s.id, auto: !!s.auto, geo: !!s.geo });
+        });
+      }
+      if (layers.pred) {
+        forecastScores().forEach(st => {
+          if (st.p <= 0.33 || liveAreas.has(st.a.name)) return;
+          const avg = st.amts.length ? st.amts.reduce((x, y) => x + y, 0) / st.amts.length : null;
+          out.push({ key: 'pred:' + st.a.name, kind: 'pred', name: st.a.name, lat: st.a.lat, lng: st.a.lng,
+            level: st.p > 0.66 ? 3 : 2, amt: avg, p: st.p, n: st.n, surges: st.surges,
+            band: st.p > 0.66 ? 'High' : 'Medium' });
+        });
+      }
+      return out;
+    }
+
+    // ---- Routing: real road network, with live traffic when a TomTom key is set ----
+    const routeCache = new Map();
+
+    // Melbourne rush-hour allowance used when there is no live traffic feed
+    function trafficFactor(d = new Date()) {
+      const wd = d.getDay(), h = d.getHours() + d.getMinutes() / 60;
+      const weekday = wd >= 1 && wd <= 5;
+      if (weekday && ((h >= 7 && h < 9.5) || (h >= 16 && h < 18.5))) return 1.45;
+      if (h >= 22 || h < 6) return 1.0;
+      if (h >= 10 && h < 16) return 1.15;
+      return 1.2;
+    }
+
+    async function fetchJSON(url, ms = 8000) {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), ms);
+      try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
+      finally { clearTimeout(t); }
+    }
+
+    async function getRoute(from, to) {
+      const key = [from.lat, from.lng, to.lat, to.lng].map(v => v.toFixed(3)).join(',') + '|' + (chaseCfg.tomtom ? 'tt' : 'osrm');
+      const hit = routeCache.get(key);
+      if (hit && Date.now() - hit.at < 3 * 60000) return hit.r;
+      let r = null;
+      if (chaseCfg.tomtom) {
+        try {
+          const j = await fetchJSON(`https://api.tomtom.com/routing/1/calculateRoute/${from.lat},${from.lng}:${to.lat},${to.lng}/json` +
+            `?key=${encodeURIComponent(chaseCfg.tomtom)}&traffic=true&travelMode=car&routeRepresentation=polyline`);
+          const rt = j.routes[0];
+          r = { min: rt.summary.travelTimeInSeconds / 60, km: rt.summary.lengthInMeters / 1000,
+            coords: rt.legs[0].points.map(p => [p.latitude, p.longitude]), source: 'live traffic (TomTom)' };
+        } catch (e) { r = null; }
+      }
+      if (!r) {
+        try {
+          const j = await fetchJSON(`https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`);
+          const rt = j.routes[0];
+          const f = trafficFactor();
+          r = { min: rt.duration / 60 * f, km: rt.distance / 1000, coords: rt.geometry.coordinates.map(c => [c[1], c[0]]),
+            source: f > 1.3 ? 'road data + rush-hour estimate' : 'road data + traffic estimate' };
+        } catch (e) { r = null; }
+      }
+      if (!r) { // offline fallback: straight line × 1.35, ~28 km/h city average
+        const km = distM(from.lat, from.lng, to.lat, to.lng) / 1000 * 1.35;
+        r = { min: km / 28 * 60 * trafficFactor(), km, coords: [[from.lat, from.lng], [to.lat, to.lng]], source: 'rough estimate (offline)' };
+      }
+      routeCache.set(key, { at: Date.now(), r });
+      return r;
+    }
+
+    // ---- Is it worth chasing? ----
+    // Expected extra = chance the surge is still on when you arrive × surge amount (one trip)
+    // Cost to get there = fuel (km × your cost/km) + half your target $/hr for the drive time
+    //   (half, because you can still be sent offers on the way)
+    function worthIt(sg, route) {
+      const amt = sg.amt != null ? sg.amt : LEVEL_AMT[sg.level];
+      let chance;
+      if (sg.kind === 'live') chance = Math.pow(0.5, (sg.ageMin + route.min) / SURGE_HALF_LIFE_MIN);
+      else chance = Math.min(0.7, sg.p * Math.min(1, sg.n / 4)) * 0.8; // history-based, capped
+      const expected = chance * amt;
+      const fuel = route.km * config.costPerKm;
+      const time = route.min / 60 * config.minGrossHr * 0.5;
+      const net = expected - fuel - time;
+      let verdict, cls;
+      if (route.min < 2) { verdict = "You're already there"; cls = 'here'; }
+      else if (route.min > chaseCfg.maxMin) { verdict = 'Too far'; cls = 'no'; }
+      else if (net >= 1) { verdict = 'Worth it'; cls = 'yes'; }
+      else if (net >= -1) { verdict = 'Marginal'; cls = 'maybe'; }
+      else { verdict = 'Not worth it'; cls = 'no'; }
+      return { amt, amtKnown: sg.amt != null, chance, expected, fuel, time, net, verdict, cls };
+    }
+
+    function myPos() {
+      if (lastFix && Date.now() - lastFix.t < 5 * 60000) return { lat: lastFix.lat, lng: lastFix.lng, gps: true };
+      const c = map ? map.getCenter() : { lat: MELB[0], lng: MELB[1] };
+      return { lat: c.lat, lng: c.lng, gps: false };
+    }
+
+    const money = n => (n < 0 ? '−$' : '$') + Math.abs(n).toFixed(2);
+    const esc = s => String(s).replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
+
+    function tagHTML(sg) {
+      return sg.kind === 'live'
+        ? '<span class="tag tag-live">● LIVE</span>'
+        : '<span class="tag tag-pred">PREDICTED</span>';
+    }
+    function surgeSubline(sg) {
+      if (sg.kind === 'live') {
+        const age = Math.round(sg.ageMin);
+        return `Seen ${age < 1 ? 'just now' : age + ' min ago'}${sg.geo ? ' on the Uber map' : sg.auto ? ' (auto)' : ''} · ` +
+          (sg.amt != null ? `+$${sg.amt.toFixed(2)}` : `${LEVELS[sg.level]} (about +$${LEVEL_AMT[sg.level]})`);
+      }
+      return `${sg.band} chance now–next 2 h · from ${sg.n} past snapshot${sg.n === 1 ? '' : 's'}` +
+        (sg.amt != null ? ` · avg +$${sg.amt.toFixed(2)}` : '');
+    }
+
+    function navLinks(lat, lng) {
+      const ll = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+      const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
+      return `<a class="nav-btn waze" href="https://waze.com/ul?ll=${ll}&navigate=yes" target="_blank" rel="noopener">Waze</a>` +
+        `<a class="nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving" target="_blank" rel="noopener">Google Maps</a>` +
+        (ios ? `<a class="nav-btn" href="https://maps.apple.com/?daddr=${ll}&dirflg=d" target="_blank" rel="noopener">Apple Maps</a>` : '');
+    }
+
+    function closeSurgeCard() {
+      document.getElementById('surgeCard').hidden = true;
+      document.querySelector('.map-wrap').classList.remove('card-open');
+      openSurgeKey = null;
+      if (routeLayer) routeLayer.clearLayers();
+    }
+
+    async function openSurgeCard(key) {
+      const sg = buildSurges().find(x => x.key === key);
+      if (!sg) return closeSurgeCard();
+      openSurgeKey = key;
+      const card = document.getElementById('surgeCard');
+      card.hidden = false;
+      document.querySelector('.map-wrap').classList.add('card-open');
+      card.innerHTML = `<div class="sc-head">${tagHTML(sg)}<b class="sc-name">${esc(sg.name)}</b>
+        <button class="x-btn" onclick="closeSurgeCard()" aria-label="Close">✕</button></div>
+        <div class="sc-sub">${surgeSubline(sg)}</div><div class="sc-calc">Working out the drive…</div>`;
+      const from = myPos();
+      const route = await getRoute(from, sg);
+      if (openSurgeKey !== key) return; // user moved on
+      const w = worthIt(sg, route);
+      drawRoute(route, w.cls);
+      card.innerHTML = `<div class="sc-head">${tagHTML(sg)}<b class="sc-name">${esc(sg.name)}</b>
+          <button class="x-btn" onclick="closeSurgeCard()" aria-label="Close">✕</button></div>
+        <div class="sc-sub">${surgeSubline(sg)}</div>
+        <div class="sc-drive"><b>${Math.max(1, Math.round(route.min))} min</b> · ${route.km.toFixed(1)} km
+          <span>${route.source}${from.gps ? '' : ' · from map centre, no GPS yet'}</span></div>
+        <div class="sc-rows">
+          <div><span>${sg.kind === 'live' ? 'Chance it’s still on when you arrive' : 'Chance of a surge when you get there'}</span><b>${Math.round(w.chance * 100)}%</b></div>
+          <div><span>Expected extra (${w.amtKnown ? '' : 'about '}+$${w.amt.toFixed(2)} × ${Math.round(w.chance * 100)}%)</span><b class="pos">+${money(w.expected)}</b></div>
+          <div><span>Cost to get there (fuel ${money(w.fuel)} + time ${money(w.time)})</span><b class="neg">${money(-(w.fuel + w.time))}</b></div>
+          <div class="sc-net"><span>Net</span><b>${money(w.net)}</b></div>
+        </div>
+        <div class="sc-verdict ${w.cls}">${w.verdict}</div>
+        <div class="sc-nav">${navLinks(sg.lat, sg.lng)}</div>
+        <div class="sc-tip">${sg.kind === 'live'
+          ? 'Surges often end within 5–10 minutes, and riders tend to wait them out. Chase only if you’re close.'
+          : 'Predicted from your own snapshots. Better used to position early near where demand starts than to race across town.'}</div>`;
+    }
+
+    function drawRoute(route, cls) {
+      if (!routeLayer) return;
+      routeLayer.clearLayers();
+      const col = { yes: '#22c55e', maybe: '#f59e0b', no: '#ef4444', here: '#38bdf8' }[cls] || '#7c3aed';
+      L.polyline(route.coords, { color: '#0b0f19', weight: 9, opacity: 0.55 }).addTo(routeLayer);
+      L.polyline(route.coords, { color: col, weight: 5, opacity: 0.95 }).addTo(routeLayer);
+      setFollow(false);
+      map.fitBounds(L.latLngBounds(route.coords).pad(0.25), { paddingTopLeft: [0, 150], paddingBottomRight: [0, 220], maxZoom: 15 });
+    }
+
+    // List of surges near you, ranked by drive time, each with a verdict
+    async function openSurgeList() {
+      const card = document.getElementById('surgeCard');
+      openSurgeKey = '__list';
+      if (routeLayer) routeLayer.clearLayers();
+      const from = myPos();
+      const list = buildSurges()
+        .map(sg => ({ sg, d: distM(from.lat, from.lng, sg.lat, sg.lng) }))
+        .sort((a, b) => a.d - b.d).slice(0, 6);
+      card.hidden = false;
+      document.querySelector('.map-wrap').classList.add('card-open');
+      const head = `<div class="sc-head"><b class="sc-name">🔥 Surges near you</b>
+        <button class="x-btn" onclick="closeSurgeCard()" aria-label="Close">✕</button></div>`;
+      if (!list.length) {
+        card.innerHTML = head + `<div class="sc-sub">No live surges in the last ${LIVE_WINDOW_MIN} min and no predictions for this time yet. Snapshots build both.</div>`;
+        return;
+      }
+      card.innerHTML = head + '<div class="sc-list" id="scList">' + list.map(({ sg }) =>
+        `<button class="sc-item" onclick="openSurgeCard('${esc(sg.key)}')">${tagHTML(sg)}<span class="sc-iname">${esc(sg.name)}</span>
+          <span class="sc-ival" data-k="${esc(sg.key)}">…</span></button>`).join('') + '</div>';
+      for (const { sg } of list) {               // one route at a time, kind to the free router
+        if (openSurgeKey !== '__list') return;
+        const route = await getRoute(from, sg);
+        const w = worthIt(sg, route);
+        const el = card.querySelector(`.sc-ival[data-k="${CSS.escape(sg.key)}"]`);
+        if (el) el.innerHTML = `${Math.max(1, Math.round(route.min))} min <i class="pill ${w.cls}">${w.verdict}</i>`;
+      }
+    }
+
+    function surgeIcon(sg) {
+      const label = sg.kind === 'live'
+        ? (sg.amt != null ? `LIVE +$${sg.amt % 1 ? sg.amt.toFixed(2) : sg.amt.toFixed(0)}` : `LIVE ${LEVELS[sg.level]}`)
+        : `PREDICTED · ${sg.band}`;
+      return L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+        html: `<div class="surge-pin ${sg.kind}"><i></i>${label}</div>` });
+    }
+
     function filterNow() {
       const s = slotOf(Date.now());
       document.getElementById('fDay').value = String(s.day);
@@ -1643,106 +2434,94 @@
 
     function renderMap() {
       const note = document.getElementById('mapNote');
-      if (document.getElementById('view-map').style.display === 'none') return;
-      if (!ensureMap()) { note.textContent = 'Map needs an internet connection to load.'; return; }
+      if (document.getElementById('view-drive').style.display === 'none') return;
+      if (!ensureMap()) { note.textContent = 'Map needs an internet connection to load.'; note.hidden = false; return; }
       map.invalidateSize();
       markerLayer.clearLayers();
+      areaLayer.clearLayers();
+      surgeLayer.clearLayers();
 
-      const fd = document.getElementById('fDay').value;
-      const ft = document.getElementById('fTime').value;
-      const all = loadSnaps();
-      const shown = all.filter(s => {
-        if (s.lat == null) return false;
-        const k = slotOf(s.t);
-        return (fd === 'all' || k.day === +fd) && (ft === 'all' || k.block === +ft);
+      const surges = buildSurges();
+      const surgeAreas = new Map(surges.filter(s => s.kind === 'pred' || areaOf(s.lat, s.lng)).map(s => [s.kind === 'pred' ? s.name : areaOf(s.lat, s.lng).name, s]));
+
+      // Area zones: tinted where there's a live or predicted surge, faint outline elsewhere
+      AREAS.forEach(a => {
+        const sg = surgeAreas.get(a.name);
+        const live = sg && sg.kind === 'live';
+        const col = !sg ? '#94a3b8' : live ? LEVEL_COLORS[sg.level] : '#8b5cf6';
+        L.circle([a.lat, a.lng], {
+          radius: a.r, color: col, weight: sg ? 2 : 1, opacity: sg ? 0.9 : 0.35,
+          dashArray: sg && live ? null : '5 6', fillColor: col, fillOpacity: sg ? (live ? 0.22 : 0.14) : 0.02,
+          interactive: !!sg
+        }).on('click', () => sg && openSurgeCard(sg.key)).addTo(areaLayer);
       });
 
-      // Draw quieter first so surges sit on top
-      shown.sort((a, b) => a.level - b.level).forEach(s => {
-        const dt = new Date(s.t);
-        const m = L.circleMarker([s.lat, s.lng], {
-          radius: 7 + s.level * 4, color: LEVEL_COLORS[s.level], weight: 2,
-          fillColor: LEVEL_COLORS[s.level], fillOpacity: s.level >= 2 ? 0.55 : 0.35
-        });
-        const ar = areaOf(s.lat, s.lng);
-        const head = `<b>${LEVELS[s.level]}</b>${s.amt ? ' · ' + String(s.amt).replace(/[<>&"]/g, '') : ''}<br>` +
-          (ar ? `📍 ${ar.name}<br>` : '') +
-          `${DAYS[(dt.getDay() + 6) % 7]} ${dt.toLocaleDateString([], { day: 'numeric', month: 'short' })} ` +
-          `${dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
-        const del = `<br><a href="#" onclick="deleteSnap('${s.id}');return false;" style="color:#ef4444">Delete</a>`;
-        m.bindPopup(head + (s.img ? '<div class="pimg">Loading screenshot…</div>' : '') + del);
-        if (s.img) m.on('popupopen', async ev => {
-          const src = await getImg(s.id);
-          const el = ev.popup.getElement() && ev.popup.getElement().querySelector('.pimg');
-          if (el) el.innerHTML = src ? `<img src="${src}" alt="Uber screenshot">` : '(screenshot not found)';
-        });
-        m.addTo(markerLayer);
+      // Surge pins
+      surges.forEach(sg => {
+        L.marker([sg.lat, sg.lng], { icon: surgeIcon(sg), zIndexOffset: sg.kind === 'live' ? 600 : 400 })
+          .on('click', () => openSurgeCard(sg.key)).addTo(surgeLayer);
       });
 
-      if (placeSnapId) {
-        note.className = 'map-note place';
-        note.textContent = '👆 Tap the map where you took the snapshot';
-      } else if (tilesBlocked) {
-        note.className = 'map-note place';
-        note.textContent = '⚠️ Street map can’t load here. Open the page in Safari or Chrome with internet on.';
-      } else {
-        note.className = 'map-note';
-        const surges = shown.filter(s => s.level >= 2).length;
-        const unplaced = all.filter(s => s.lat == null).length;
-        note.textContent = all.length
-          ? `${shown.length} snapshot${shown.length === 1 ? '' : 's'} shown · ${surges} surge${unplaced ? ` · ${unplaced} without location` : ''}`
-          : 'No snapshots yet — tap 📸 Surge Snapshot when you see a surge.';
+      // History: individual snapshots for the chosen day/time
+      if (layers.hist) {
+        const fd = document.getElementById('fDay').value, ft = document.getElementById('fTime').value;
+        loadSnaps().filter(s => {
+          if (s.lat == null) return false;
+          const k = slotOf(s.t);
+          return (fd === 'all' || k.day === +fd) && (ft === 'all' || k.block === +ft);
+        }).sort((a, b) => a.level - b.level).forEach(s => {
+          const dt = new Date(s.t);
+          const m = L.circleMarker([s.lat, s.lng], {
+            radius: 5 + s.level * 3, color: LEVEL_COLORS[s.level], weight: 2,
+            fillColor: LEVEL_COLORS[s.level], fillOpacity: 0.45
+          });
+          const ar = areaOf(s.lat, s.lng);
+          m.bindPopup(`<b>${LEVELS[s.level]}</b>${s.amt ? ' · ' + esc(s.amt) : ''}<br>` + (ar ? `📍 ${ar.name}<br>` : '') +
+            `${DAYS[(dt.getDay() + 6) % 7]} ${dt.toLocaleDateString([], { day: 'numeric', month: 'short' })} ` +
+            `${dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` +
+            (s.img ? '<div class="pimg">Loading screenshot…</div>' : '') +
+            `<br><a href="#" onclick="deleteSnap('${s.id}');return false;" style="color:#ef4444">Delete</a>`);
+          if (s.img) m.on('popupopen', async ev => {
+            const src = await getImg(s.imgId || s.id);
+            const el = ev.popup.getElement() && ev.popup.getElement().querySelector('.pimg');
+            if (el) el.innerHTML = src ? `<img src="${src}" alt="Uber screenshot">` : '(screenshot not found)';
+          });
+          m.addTo(markerLayer);
+        });
       }
 
-      // Area zones, coloured by snapshots inside them (for the current filter)
-      areaLayer.clearLayers();
-      const stats = AREAS.map(a => ({ a, n: 0, surges: 0, sum: 0 }));
-      shown.forEach(s => {
-        const a = areaOf(s.lat, s.lng);
-        if (!a) return;
-        const st = stats.find(x => x.a === a);
-        st.n++; st.sum += s.level; if (s.level >= 2) st.surges++;
-      });
-      stats.forEach(st => {
-        const avg = st.n ? st.sum / st.n : -1;
-        const lvl = avg < 0 ? -1 : Math.round(avg);
-        const col = lvl < 0 ? '#0284c7' : LEVEL_COLORS[lvl];
-        const c = L.circle([st.a.lat, st.a.lng], {
-          radius: st.a.r, color: col, weight: lvl < 0 ? 1.5 : 2.5, dashArray: lvl < 0 ? '5 5' : null,
-          fillColor: col, fillOpacity: lvl < 0 ? 0.04 : 0.12 + Math.max(lvl, 0) * 0.08
-        });
-        // Permanent labels only where there's data, so the map stays readable
-        if (st.n) c.bindTooltip(st.a.name + (st.surges ? ` 🔥${st.surges}` : ''),
-          { permanent: true, direction: 'center', className: 'area-label' });
-        c.bindPopup(`<b>${st.a.name}</b><br>` + (st.n
-          ? `${st.n} snapshot${st.n === 1 ? '' : 's'} · ${st.surges} surge<br>Average: ${LEVELS[lvl]}`
-          : 'No snapshots here for this filter yet'));
-        c.addTo(areaLayer);
-      });
+      // Status line
+      const nLive = surges.filter(s => s.kind === 'live').length, nPred = surges.length - nLive;
+      document.getElementById('chipNear').textContent = surges.length ? `🔥 ${surges.length}` : '🔥 0';
+      document.getElementById('chipNear').setAttribute('aria-label', `Surges near you: ${surges.length}`);
+      let msg = '', place = false;
+      if (placeSnapId) { msg = '👆 Tap the map where the surge is'; place = true; }
+      else if (tilesBlocked) { msg = '⚠️ Street map can’t load here. Open the page in Safari or Chrome with internet on.'; place = true; }
+      else if (!loadSnaps().length) msg = 'Tap 📸 Surge Snapshot when you see a surge. Live and predicted surges build from these.';
+      note.textContent = msg;
+      note.className = 'map-note' + (place ? ' place' : '');
+      note.hidden = !msg;
 
-      // Hot areas list
-      const ranked = stats.filter(s => s.n).sort((x, y) => (y.surges - x.surges) || (y.sum / y.n - x.sum / x.n));
-      document.getElementById('hotAreas').innerHTML = ranked.length
-        ? ranked.slice(0, 6).map((s, i) => `
-            <div class="rank-item" onclick="map.setView([${s.a.lat},${s.a.lng}],14)">
-              <div><div>${i + 1}. ${s.a.name}</div>
-              <div class="r-sub">${s.n} snapshot${s.n === 1 ? '' : 's'} · avg ${LEVELS[Math.round(s.sum / s.n)]}</div></div>
-              <div class="r-val" style="color:${LEVEL_COLORS[Math.round(s.sum / s.n)]}">${s.surges ? '🔥' + s.surges : '●'}</div>
-            </div>`).join('')
-        : '<div class="empty">No snapshots in Melbourne areas for this day/time yet.</div>';
+      // Keep an open card's numbers current
+      if (openSurgeKey && openSurgeKey !== '__list' && !surges.find(s => s.key === openSurgeKey)) closeSurgeCard();
     }
 
     function showTab(tab) {
-      ['offer', 'insights', 'map'].forEach(t => {
+      ['drive', 'insights'].forEach(t => {
         document.getElementById('view-' + t).style.display = tab === t ? '' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', tab === t);
       });
       if (tab === 'insights') renderInsights();
-      if (tab === 'map') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
+      if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else stopTracking(); // save battery when the map isn't showing
     }
 
-    window.onload = () => { initTimeFilter(); initAutoRead(); syncSoundBtn(); initStream(); renderInsights(); };
+    window.onload = () => {
+      initTimeFilter(); initAutoRead(); loadAutoOpts(); syncSoundBtn(); syncNotifBtn(); initStream();
+      showTab('drive');
+      // Keep live-surge ages and predictions current while driving
+      setInterval(() => { if (document.getElementById('view-drive').style.display !== 'none') renderMap(); }, 60000);
+    };
   </script>
 </body>
 </html>
