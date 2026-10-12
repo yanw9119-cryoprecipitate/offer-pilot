@@ -238,6 +238,56 @@
     .area-label::before { display: none; }
     #hotAreas .rank-item { cursor: pointer; }
 
+    /* Banner arrow */
+    .banner-arrow { display: inline-block; margin-right: 6px; animation: arrowBounce 1s ease-in-out infinite; }
+    @keyframes arrowBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    .flash-update { animation: flashPulse 0.6s ease; }
+    @keyframes flashPulse { 0% { box-shadow: 0 0 0 0 rgba(56,189,248,0.8); } 100% { box-shadow: 0 0 0 12px rgba(56,189,248,0); } }
+
+    /* Auto-Read (screen-share OCR) */
+    .autoread-section { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; margin-bottom: 12px; }
+    .autoread-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .autoread-title { font-size: 0.85rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .autoread-status { font-size: 0.7rem; padding: 3px 8px; border-radius: 20px; font-weight: 700; }
+    .autoread-status.off { background: rgba(148,163,184,0.15); color: var(--muted); }
+    .autoread-status.on { background: rgba(34,197,94,0.15); color: var(--green); }
+    .autoread-btn { width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; }
+    .autoread-btn.start { background: #0284c7; color: white; }
+    .autoread-btn.stop { background: rgba(239,68,68,0.2); color: var(--red); border: 1px solid var(--red); }
+    .autoread-raw {
+      font-size: 0.7rem; color: var(--muted); background: #0f172a; border-radius: 6px; padding: 6px 8px;
+      max-height: 54px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; font-family: monospace;
+      border: 1px solid var(--card-border);
+    }
+    .autoread-hint { font-size: 0.68rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+    #ocrVideo { display: none; }
+    .ocr-preview-wrap { position: relative; max-height: 0; overflow: hidden; opacity: 0; transition: max-height .3s ease, opacity .3s ease, margin-bottom .3s ease; }
+    .ocr-preview-wrap.active { max-height: 260px; opacity: 1; margin-bottom: 8px; }
+    #ocrPreviewCanvas { width: 100%; border-radius: 8px; border: 1px solid var(--card-border); display: block; touch-action: none; cursor: crosshair; }
+    .ocr-crop-hint { position: absolute; top: 4px; left: 4px; background: rgba(0,0,0,0.6); color: white; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+    .ocr-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height .3s ease, opacity .3s ease, margin-bottom .3s ease; }
+    .ocr-btn-row.active { max-height: 60px; opacity: 1; margin-bottom: 8px; }
+    .ocr-btn-row button, .alert-controls-row button {
+      padding: 8px; border-radius: 8px; border: 1px solid var(--card-border);
+      background: #1e293b; color: var(--text); font-size: 0.75rem; font-weight: 600;
+    }
+    .alert-controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .alert-controls-row button.active { background: rgba(56,189,248,0.2); border-color: var(--accent); color: var(--accent); }
+
+    /* Big ACCEPT / DECLINE popup */
+    #decisionToast {
+      position: fixed; top: -220px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; z-index: 60;
+      border-radius: 16px; padding: 20px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      transition: top .35s cubic-bezier(0.34, 1.56, 0.64, 1); color: #fff;
+    }
+    #decisionToast.show { top: calc(16px + env(safe-area-inset-top, 0px)); }
+    #decisionToast.accept { background: #16a34a; }
+    #decisionToast.decline { background: #dc2626; }
+    #decisionToast .toast-arrow { font-size: 2.5rem; line-height: 1; animation: arrowBounce .8s ease-in-out infinite; }
+    #decisionToast .toast-status { font-size: 1.4rem; font-weight: 800; margin: 4px 0; }
+    #decisionToast .toast-detail { font-size: 0.85rem; opacity: 0.9; }
+    @media (prefers-reduced-motion: reduce) { .banner-arrow, #decisionToast .toast-arrow { animation: none; } }
+
     /* Settings Modal */
     #settingsModal {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -298,6 +348,33 @@
         <video id="pipVideo" autoplay muted playsinline></video>
         <button class="pip-btn" id="pipToggleBtn" onclick="togglePiP()">📺 Open Floating iOS Overlay</button>
       </div>
+
+      <!-- Screen-share Auto-Read (desktop Chrome/Edge, Android Chrome) -->
+      <div class="autoread-section" id="autoreadSection">
+        <div class="autoread-header">
+          <span class="autoread-title">🔎 Auto-Read Offer</span>
+          <span class="autoread-status off" id="ocrStatusBadge">OFF</span>
+        </div>
+        <div id="ocrSupported">
+          <button class="autoread-btn start" id="ocrToggleBtn" onclick="toggleOCR()">Share Screen &amp; Start Auto-Read</button>
+          <div class="ocr-preview-wrap" id="ocrPreviewWrap">
+            <canvas id="ocrPreviewCanvas" width="400" height="225"></canvas>
+            <span class="ocr-crop-hint">Drag a box around the offer card</span>
+          </div>
+          <div class="ocr-btn-row" id="ocrControlsRow">
+            <button onclick="runOCRPass()">🔍 Read now</button>
+            <button onclick="resetOCRCrop()">↺ Full screen</button>
+          </div>
+          <div class="autoread-raw" id="ocrRawText">No reads yet.</div>
+          <div class="alert-controls-row">
+            <button id="notifPermBtn" onclick="requestNotifPermission()">🔔 Notifications</button>
+            <button id="soundToggleBtn" class="active" onclick="toggleSound()">🔊 Sound: On</button>
+          </div>
+          <div class="autoread-hint">Share the screen showing the Uber Driver app. Each offer it reads pops up ACCEPT or DECLINE and is logged automatically.</div>
+        </div>
+        <div class="autoread-hint" id="ocrUnsupported" hidden>Auto-Read needs screen sharing, which iPhone browsers don't allow. It works in Chrome on Android or on a computer. On iPhone, use the keypad.</div>
+      </div>
+      <video id="ocrVideo" autoplay muted playsinline></video>
 
       <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)" style="cursor:pointer;">ENTER OFFER DETAILS</div>
 
@@ -473,6 +550,13 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Big ACCEPT / DECLINE popup for Auto-Read offers -->
+  <div id="decisionToast" onclick="this.classList.remove('show')">
+    <div class="toast-arrow" id="toastArrow">⬆</div>
+    <div class="toast-status" id="toastStatus">ACCEPT</div>
+    <div class="toast-detail" id="toastDetail"></div>
+  </div>
+
   <!-- Configurable Preferences Modal -->
   <div id="settingsModal">
     <div class="modal-content">
@@ -494,6 +578,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
   <script>
     // ---------- Safe storage helpers ----------
     function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -556,10 +641,14 @@
 
     // CLR auto-logs the offer on screen (took = the pilot's ACCEPT/DECLINE verdict).
     // The toast offers a one-tap flip if you did the opposite in the Uber app.
+    // When Auto-Read has already logged the offer on screen, this holds its timestamp,
+    // so CLR and ✓/✗ update that entry instead of logging it twice.
+    let curEntryT = null;
+
     function resetAll() {
       const fare = parseFloat(data.fare) || 0, mins = parseFloat(data.mins) || 0, kms = parseFloat(data.kms) || 0;
-      if (fare > 0 && mins > 0) {
-        const entry = { t: Date.now(), fare, mins, kms };
+      if (fare > 0 && mins > 0 && !curEntryT) {
+        const entry = { t: Date.now(), fare, mins, kms, src: 'clr' };
         entry.took = isGoodOffer(entry);
         const log = loadLog();
         log.push(entry);
@@ -575,18 +664,39 @@
 
     function clearInputs() {
       data = { fare: '', mins: '', kms: '' };
+      curEntryT = null;
       setActiveField('fare');
       updateDisplay();
     }
 
-    function updateDisplay() {
+    function updateDisplay(notify = false) {
       document.getElementById('fareVal').value = data.fare;
       document.getElementById('minsVal').value = data.mins;
       document.getElementById('kmsVal').value = data.kms;
-      recalculate();
+      recalculate(notify);
     }
 
-    function recalculate() {
+    // Auto-Read logs each detected offer once; follow-up reads of the same card
+    // (e.g. distance arriving a moment after the fare) update that entry.
+    function autoLogCurrent() {
+      const fare = parseFloat(data.fare) || 0, mins = parseFloat(data.mins) || 0, kms = parseFloat(data.kms) || 0;
+      if (!(fare > 0 && mins > 0)) return;
+      const log = loadLog();
+      const existing = curEntryT && Date.now() - curEntryT < 20000 ? log.find(x => x.t === curEntryT) : null;
+      if (existing) {
+        Object.assign(existing, { fare, mins, kms });
+        existing.took = isGoodOffer(existing);
+      } else {
+        const entry = { t: Date.now(), fare, mins, kms, src: 'auto' };
+        entry.took = isGoodOffer(entry);
+        log.push(entry);
+        curEntryT = entry.t;
+      }
+      saveLog(log);
+      if (document.getElementById('view-insights').style.display !== 'none') renderInsights();
+    }
+
+    function recalculate(notify = false) {
       const fare = parseFloat(data.fare) || 0;
       const mins = parseFloat(data.mins) || 0;
       const kms = parseFloat(data.kms) || 0;
@@ -622,7 +732,9 @@
         }
       }
 
-      banner.textContent = statusText;
+      if (statusClass === 'waiting') banner.textContent = statusText;
+      else banner.innerHTML = `<span class="banner-arrow">${statusClass === 'accept' ? '⬆' : '⬇'}</span>` +
+        statusText.replace(/^[✓✗]\s*/, '');
       banner.className = `decision-banner ${statusClass}`;
       document.getElementById('grossHr').textContent = grossHrStr;
       document.getElementById('rateKm').textContent = rateKmStr;
@@ -631,6 +743,12 @@
 
       // Redraw onto the PiP Canvas
       drawToCanvas(statusText, statusClass, grossHrStr, rateKmStr, netHrStr);
+
+      // Hands-free alert + auto-log: only for Auto-Read updates, never on keypad taps
+      if (notify && statusClass !== 'waiting') {
+        fireDecisionAlert(statusClass, grossHrStr, rateKmStr, netHrStr);
+        autoLogCurrent();
+      }
     }
 
     // Render PiP Overlay Stream
@@ -742,7 +860,9 @@
       const kms = parseFloat(data.kms) || 0;
       if (!(fare > 0 && mins > 0)) { toast('Enter fare and time first'); return; }
       const log = loadLog();
-      log.push({ t: Date.now(), fare, mins, kms, took });
+      const existing = curEntryT ? log.find(x => x.t === curEntryT) : null;
+      if (existing) existing.took = took;           // Auto-Read already logged it: just set the outcome
+      else log.push({ t: Date.now(), fare, mins, kms, took, src: 'manual' });
       saveLog(log);
       toast(took ? '✓ Logged — took it' : '✗ Logged — passed');
       clearInputs();
@@ -874,7 +994,7 @@
             <div class="log-item">
               <div>${DAYS[(dt.getDay() + 6) % 7]} ${time} · $${e.fare.toFixed(2)} · ${e.mins}m${e.kms ? ' · ' + e.kms + 'km' : ''}<br>
               <span style="color:${isGoodOffer(e) ? 'var(--green)' : 'var(--red)'}">$${gph.toFixed(0)}/hr</span>
-              <span style="color:var(--muted)">· ${e.took ? '✓ took' : '✗ passed'}</span></div>
+              <span style="color:var(--muted)">· ${e.took ? '✓ took' : '✗ passed'}${e.src === 'auto' ? ' · 🔎 auto-read' : ''}</span></div>
               <button class="del" onclick="deleteEntry(${i})">✕</button>
             </div>`);
         }
@@ -939,6 +1059,214 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
+    }
+
+    // ================= AUTO-READ (screen-share OCR) =================
+    let ocrActive = false, ocrStream = null, ocrWorker = null, ocrLoopHandle = null, ocrBusy = false, previewLoopHandle = null;
+    let cropRect = { x: 0, y: 0, w: 1, h: 1 }, dragStart = null;
+    let lastApplied = { fare: null, mins: null, kms: null };
+    const ocrVideo = document.getElementById('ocrVideo');
+    const ocrCanvas = document.createElement('canvas');
+    const ocrCtx = ocrCanvas.getContext('2d');
+    const previewCanvas = document.getElementById('ocrPreviewCanvas');
+    const previewCtx = previewCanvas.getContext('2d');
+
+    function ocrSupported() { return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia); }
+    function initAutoRead() {
+      const ok = ocrSupported();
+      document.getElementById('ocrSupported').hidden = !ok;
+      document.getElementById('ocrUnsupported').hidden = ok;
+      if (!ok) setOCRStatus(false, 'N/A');
+    }
+
+    async function toggleOCR() { if (ocrActive) stopOCR(); else await startOCR(); }
+
+    async function startOCR() {
+      if (!ocrSupported()) { toast('Screen sharing is not available in this browser'); return; }
+      if (typeof Tesseract === 'undefined') { toast('Reader failed to load — check internet and reload'); return; }
+      try {
+        ocrStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
+      } catch (e) { return; } // picker cancelled
+      ocrVideo.srcObject = ocrStream;
+      await ocrVideo.play();
+      ocrStream.getVideoTracks()[0].addEventListener('ended', stopOCR);
+
+      setOCRStatus(true, 'Loading…');
+      try {
+        ocrWorker = await Tesseract.createWorker('eng');
+        await ocrWorker.setParameters({ tessedit_pageseg_mode: '11' }); // sparse text: fare, time, km are separate blocks
+      } catch (e) { toast('Reader failed to start'); stopOCR(); return; }
+
+      ocrActive = true;
+      cropRect = { x: 0, y: 0, w: 1, h: 1 };
+      setOCRStatus(true, 'Watching');
+      const btn = document.getElementById('ocrToggleBtn');
+      btn.textContent = 'Stop Auto-Read';
+      btn.classList.replace('start', 'stop');
+      document.getElementById('ocrPreviewWrap').classList.add('active');
+      document.getElementById('ocrControlsRow').classList.add('active');
+      setupCropDragHandlers();
+      previewLoopHandle = setInterval(drawPreviewFrame, 200);
+      ocrLoopHandle = setInterval(runOCRPass, 2000);
+    }
+
+    function stopOCR() {
+      ocrActive = false;
+      clearInterval(ocrLoopHandle); clearInterval(previewLoopHandle);
+      ocrLoopHandle = previewLoopHandle = null;
+      if (ocrStream) { ocrStream.getTracks().forEach(t => t.stop()); ocrStream = null; }
+      if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; }
+      setOCRStatus(false, 'OFF');
+      const btn = document.getElementById('ocrToggleBtn');
+      btn.textContent = 'Share Screen & Start Auto-Read';
+      btn.classList.replace('stop', 'start');
+      document.getElementById('ocrPreviewWrap').classList.remove('active');
+      document.getElementById('ocrControlsRow').classList.remove('active');
+    }
+
+    function setOCRStatus(on, label) {
+      const b = document.getElementById('ocrStatusBadge');
+      b.textContent = label;
+      b.className = `autoread-status ${on ? 'on' : 'off'}`;
+    }
+
+    function drawPreviewFrame() {
+      if (!ocrActive || ocrVideo.readyState < 2) return;
+      const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight;
+      if (!vw || !vh) return;
+      previewCanvas.height = Math.round(previewCanvas.width * vh / vw);
+      previewCtx.drawImage(ocrVideo, 0, 0, previewCanvas.width, previewCanvas.height);
+      if (!(cropRect.x === 0 && cropRect.y === 0 && cropRect.w === 1 && cropRect.h === 1)) {
+        previewCtx.strokeStyle = '#38bdf8'; previewCtx.lineWidth = 2;
+        previewCtx.strokeRect(cropRect.x * previewCanvas.width, cropRect.y * previewCanvas.height,
+          cropRect.w * previewCanvas.width, cropRect.h * previewCanvas.height);
+      }
+    }
+
+    function setupCropDragHandlers() {
+      const getPos = e => {
+        const r = previewCanvas.getBoundingClientRect();
+        return { x: Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1),
+                 y: Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1) };
+      };
+      previewCanvas.onpointerdown = e => { dragStart = getPos(e); e.preventDefault(); };
+      previewCanvas.onpointermove = e => {
+        if (!dragStart) return;
+        const p = getPos(e);
+        cropRect = { x: Math.min(dragStart.x, p.x), y: Math.min(dragStart.y, p.y),
+                     w: Math.abs(p.x - dragStart.x), h: Math.abs(p.y - dragStart.y) };
+        e.preventDefault();
+      };
+      const end = () => { if (dragStart && cropRect.w < 0.03) cropRect = { x: 0, y: 0, w: 1, h: 1 }; dragStart = null; };
+      previewCanvas.onpointerup = end;
+      previewCanvas.onpointerleave = end;
+    }
+    function resetOCRCrop() { cropRect = { x: 0, y: 0, w: 1, h: 1 }; }
+
+    async function runOCRPass() {
+      if (ocrBusy || !ocrActive || !ocrWorker || ocrVideo.readyState < 2) return;
+      ocrBusy = true;
+      setOCRStatus(true, 'Reading…');
+      try {
+        const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight;
+        const sx = cropRect.x * vw, sy = cropRect.y * vh, sw = cropRect.w * vw, sh = cropRect.h * vh;
+        const targetW = Math.min(1000, Math.max(600, sw * 2)); // upscale small offer text
+        const scale = targetW / sw;
+        ocrCanvas.width = targetW;
+        ocrCanvas.height = Math.round(sh * scale);
+        ocrCtx.drawImage(ocrVideo, sx, sy, sw, sh, 0, 0, ocrCanvas.width, ocrCanvas.height);
+        const { data: { text } } = await ocrWorker.recognize(ocrCanvas);
+        applyOCRText(text);
+      } catch (e) {
+        setOCRStatus(true, 'Retrying…');
+      } finally { ocrBusy = false; }
+    }
+
+    function applyOCRText(rawText) {
+      document.getElementById('ocrRawText').textContent = rawText.trim().slice(0, 300) || '(no text detected)';
+      const norm = rawText.replace(/(\d),(\d)/g, '$1.$2');
+      const fareMatch = norm.match(/\$\s*(\d{1,3}(?:\.\d{1,2})?)/);
+      // Uber shows pickup and trip legs separately, so add up every "N min" and "N km"
+      const minMatches = [...norm.matchAll(/(\d{1,3}(?:\.\d+)?)\s*min/gi)];
+      const kmMatches = [...norm.matchAll(/(\d{1,3}(?:\.\d+)?)\s*km/gi)];
+      const miMatches = [...norm.matchAll(/(\d{1,3}(?:\.\d+)?)\s*mi\b/gi)];
+      const totalMins = minMatches.reduce((s, m) => s + parseFloat(m[1]), 0);
+      const totalKms = kmMatches.reduce((s, m) => s + parseFloat(m[1]), 0) + miMatches.reduce((s, m) => s + parseFloat(m[1]) * 1.60934, 0);
+
+      const newFare = fareMatch ? fareMatch[1] : null;
+      const newMins = totalMins > 0 ? String(Math.round(totalMins * 10) / 10) : null;
+      const newKms = totalKms > 0 ? String(Math.round(totalKms * 10) / 10) : null;
+      let changed = false;
+      if (newFare && newFare !== lastApplied.fare) { data.fare = newFare; lastApplied.fare = newFare; changed = true; }
+      if (newMins && newMins !== lastApplied.mins) { data.mins = newMins; lastApplied.mins = newMins; changed = true; }
+      if (newKms && newKms !== lastApplied.kms) { data.kms = newKms; lastApplied.kms = newKms; changed = true; }
+
+      if (changed) {
+        updateDisplay(true);
+        setOCRStatus(true, 'Offer ✓');
+        const banner = document.getElementById('decisionBanner');
+        banner.classList.remove('flash-update'); void banner.offsetWidth; banner.classList.add('flash-update');
+      } else {
+        setOCRStatus(true, minMatches.length || kmMatches.length || miMatches.length ? 'Watching' : 'Crop tighter');
+      }
+    }
+
+    // ================= ACCEPT / DECLINE ALERTS =================
+    let soundEnabled = true, audioCtx = null, decisionHideTimer = null;
+    try { soundEnabled = lsGet('soundOn') !== '0'; } catch (e) {}
+
+    function requestNotifPermission() {
+      if (!('Notification' in window)) { toast('Notifications are not supported in this browser'); return; }
+      Notification.requestPermission().then(perm => {
+        const btn = document.getElementById('notifPermBtn');
+        btn.textContent = perm === 'granted' ? '🔔 Notifications On' : '🔕 Blocked';
+        btn.classList.toggle('active', perm === 'granted');
+      });
+    }
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      lsSet('soundOn', soundEnabled ? '1' : '0');
+      syncSoundBtn();
+      if (soundEnabled) playTone([660], 0.08);
+    }
+    function syncSoundBtn() {
+      const btn = document.getElementById('soundToggleBtn');
+      btn.textContent = soundEnabled ? '🔊 Sound: On' : '🔇 Sound: Off';
+      btn.classList.toggle('active', soundEnabled);
+    }
+    function playTone(freqs, duration = 0.15) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let t = audioCtx.currentTime;
+        freqs.forEach(freq => {
+          const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+          osc.frequency.value = freq; osc.type = 'sine';
+          gain.gain.setValueAtTime(0.15, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(t); osc.stop(t + duration);
+          t += duration;
+        });
+      } catch (e) {}
+    }
+    function fireDecisionAlert(statusClass, grossHrStr, rateKmStr, netHrStr) {
+      const isAccept = statusClass === 'accept';
+      const detail = `${grossHrStr} gross · ${rateKmStr} · ${netHrStr} net`;
+      document.getElementById('toastArrow').textContent = isAccept ? '⬆' : '⬇';
+      document.getElementById('toastStatus').textContent = isAccept ? 'ACCEPT' : 'DECLINE';
+      document.getElementById('toastDetail').textContent = detail;
+      const box = document.getElementById('decisionToast');
+      box.className = (isAccept ? 'accept' : 'decline') + ' show';
+      clearTimeout(decisionHideTimer);
+      decisionHideTimer = setTimeout(() => box.classList.remove('show'), 6000);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(isAccept ? '⬆ ACCEPT this offer' : '⬇ DECLINE this offer',
+            { body: detail, tag: 'ride-offer', renotify: true });
+        } catch (e) {}
+      }
+      playTone(isAccept ? [520, 780] : [220], isAccept ? 0.12 : 0.35);
     }
 
     // ================= SURGE SNAPSHOTS =================
@@ -1414,7 +1742,7 @@
       else stopTracking(); // save battery when the map isn't showing
     }
 
-    window.onload = () => { initTimeFilter(); initStream(); renderInsights(); };
+    window.onload = () => { initTimeFilter(); initAutoRead(); syncSoundBtn(); initStream(); renderInsights(); };
   </script>
 </body>
 </html>
