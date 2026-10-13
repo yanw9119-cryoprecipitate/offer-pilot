@@ -754,7 +754,8 @@
     .fuel-pop .fp-bits { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; font-size: .76rem; }
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .fuel-pop .nav-row { gap: 8px; }
-    .zone-tag.tap { cursor: pointer; pointer-events: auto; }
+    .zone-tag.tap { cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+    .zone-tag.picked { box-shadow: 0 0 0 3px #f97316, 0 4px 12px rgba(0,0,0,.3); z-index: 2; }
     .zone-tag.tap:active { transform: scale(.97); }
     .zone-tag {
       transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
@@ -6132,7 +6133,7 @@
     let busySel = null;
     function closeBusy() {
       document.getElementById('busyPanel').hidden = true;
-      busySel = null;
+      busySel = null; markPicked();
       if (routeLayer) routeLayer.clearLayers();
     }
     async function openSurgeList() {
@@ -6145,12 +6146,28 @@
       showMapHelp('busy', true);
     }
     // Tap a zone's label on the map: the side list opens on that zone with the drive, time and navigation
+    // Taps on zone labels are read straight from the screen (pointer down + up within a few pixels), so a
+    // tap still works while the map is moving or the labels are being redrawn after the last selection.
+    let zoneTapStart = null;
+    document.addEventListener('pointerdown', e => {
+      const t = e.target.closest && e.target.closest('.zone-tag[data-z]');
+      zoneTapStart = t ? { x: e.clientX, y: e.clientY, at: Date.now(), z: t.dataset.z } : null;
+    }, true);
+    document.addEventListener('pointerup', e => {
+      const st = zoneTapStart; zoneTapStart = null;
+      if (!st || Math.hypot(e.clientX - st.x, e.clientY - st.y) > 14 || Date.now() - st.at > 900) return;
+      const under = document.elementFromPoint(e.clientX, e.clientY), t = under && under.closest('.zone-tag[data-z]');
+      openZonePanel(t ? t.dataset.z : st.z);
+    }, true);
+    document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.zone-tag[data-z]')) { e.stopPropagation(); e.preventDefault(); } }, true);
+    function markPicked() { document.querySelectorAll('.zone-tag[data-z]').forEach(t => t.classList.toggle('picked', busySel === 'zone:' + t.dataset.z)); }
     function openZonePanel(z) {
+      if (busySel === 'zone:' + z && !document.getElementById('busyPanel').hidden) return;   // already showing it
       const panel = document.getElementById('busyPanel');
       closeSurgeCard();
       panel.hidden = false;
       busySel = 'zone:' + z;
-      renderBusy();
+      renderBusy(); markPicked();
       const el = panel.querySelector('.bp-row.sel'); if (el) el.scrollIntoView({ block: 'nearest' });
     }
     function renderBusy() {
@@ -6208,7 +6225,7 @@
       setFollow(false);
       map.fitBounds(L.latLngBounds(points).pad(0.04), { paddingTopLeft: [panel.offsetWidth + 10, 50], paddingBottomRight: [8, 10], maxZoom: 14 });
     }
-    function selectBusyZone(z) { busySel = 'zone:' + z; renderBusy(); }
+    function selectBusyZone(z) { busySel = 'zone:' + z; renderBusy(); markPicked(); }
     function selectBusyTrain(id) { busySel = 'train:' + id; renderBusy(); }
     function selectBusyEvent(name, start) { busySel = 'event:' + name + start; renderBusy(); }
     async function fillBusyDetail() {
@@ -6442,9 +6459,9 @@
             drive = `🚗 ${q.real && !/rough/.test(q.r.source) ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min`;
           }
           const c = L.polygon(ring).getBounds().getCenter();
-          L.marker(c, { interactive: true, bubblingMouseEvents: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
-            html: `<div class="zone-tag tap${busy ? '' : ' quiet'}" style="border-color:${col}">${esc(z)}<span>${v === null ? 'no trend yet' : demandName(v) + ' now'} · ${drive}</span></div>` }) })
-            .on('click', () => openZonePanel(z)).addTo(markerLayer);
+          L.marker(c, { interactive: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+            html: `<div class="zone-tag tap${busy ? '' : ' quiet'}${busySel === 'zone:' + z ? ' picked' : ''}" data-z="${esc(z)}" style="border-color:${col}">${esc(z)}<span>${v === null ? 'no trend yet' : demandName(v) + ' now'} · ${drive}</span></div>` }) })
+            .addTo(markerLayer);
         });
         if (zoneMissing.length && from.gps) fetchMissingRoutes(zoneMissing);
       }
@@ -6514,7 +6531,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.36.4';
+    const APP_VERSION = '1.36.5';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
