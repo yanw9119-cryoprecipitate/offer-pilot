@@ -488,6 +488,16 @@
     .map-help.show { animation: mhIn .18s ease-out; }
     @keyframes mhIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
     :root[data-theme="contrast"] .map-help { background: var(--accent); color: #000; }
+    .bar-help { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(80px + env(safe-area-inset-bottom, 0px)); z-index: 950;
+      width: min(420px, calc(100% - 24px)); background: var(--text); color: var(--bg); border-radius: 16px; padding: 10px 12px; box-shadow: var(--shadow-strong);
+      font-size: .76rem; line-height: 1.35; cursor: pointer; }
+    .bar-help[hidden] { display: none; }
+    .bar-help.show { animation: bhIn .18s ease-out; }
+    @keyframes bhIn { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .bh-row { display: flex; gap: 8px; padding: 3px 0; }
+    .bh-row b { flex: none; width: 82px; font-size: .78rem; }
+    :root[data-theme="contrast"] .bar-help { background: var(--accent); color: #000; }
+    .side-stack .side-btn { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1369,9 +1379,10 @@
     </div>
   </div>
 
+  <div class="bar-help" id="barHelp" hidden onclick="hideBarHelp()" role="status" aria-live="polite"></div>
   <!-- Side buttons: keypad, floating overlay, Auto-Read -->
   <div class="side-stack">
-    <div class="side-btn side-logo" role="img" aria-label="Offer Pilot">
+    <div class="side-btn side-logo" role="button" tabindex="0" aria-label="Offer Pilot: guide to the buttons">
       <!-- Logo: a steering gauge with its needle in the green (a good offer), in the theme colour -->
       <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5.1 17.2A8.2 8.2 0 1 1 18.9 17.2" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" opacity=".55"/>
@@ -1667,6 +1678,7 @@
     const video = document.getElementById('pipVideo');
 
     function toggleKeypad(force) {
+      const fromButton = typeof force !== 'boolean';     // the bottom-bar Keypad button
       const pad = document.getElementById('keypad');
       const btn = document.getElementById('keypadToggle');
       // The side button works from any tab: jump to the Offer tab to open the pad
@@ -1675,6 +1687,7 @@
       pad.style.display = open ? '' : 'none';
       btn.classList.toggle('open', open);
       btn.innerHTML = open ? '<svg class="sb-ic"><use href="#i-x"/></svg><span>Close</span>' : '<svg class="sb-ic"><use href="#i-pad"/></svg><span>Keypad</span>';
+      if (open && fromButton) showBarHelp(['pad']);
       if (open) pad.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
@@ -1911,6 +1924,7 @@
       const b = document.getElementById('pipSideBtn');
       b.classList.toggle('on', on);
       b.innerHTML = '<svg class="sb-ic"><use href="#i-pip"/></svg><span>' + (on ? 'Close' : 'Overlay') + '</span>';
+      if (on) showBarHelp(['pip']);
     }
     video.addEventListener('enterpictureinpicture', () => syncPiPBtn(true));
     video.addEventListener('leavepictureinpicture', () => syncPiPBtn(false));
@@ -4714,11 +4728,12 @@
             '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3L12.5 20z" fill="currentColor"/></svg></button>';
           L.DomEvent.disableClickPropagation(box);
           L.DomEvent.disableScrollPropagation(box);
-          box.querySelector('#fabCity').onclick = () => { setFollow(false); map.setView(MELB, 12); };
-          box.querySelector('#fabNight').onclick = () => setNightMap(!nightMap);
+          box.querySelector('#fabCity').onclick = () => { setFollow(false); map.setView(MELB, 12); showMapHelp('city', true); };
+          box.querySelector('#fabNight').onclick = () => { setNightMap(!nightMap); showMapHelp('night', nightMap); };
           box.querySelector('#fabLocate').onclick = () => {
             enableCompass();
             setFollow(true);
+            showMapHelp('locate', true);
             if (lastFix) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 16));
             else { startTracking(); toast('Finding your location…'); }
           };
@@ -4808,13 +4823,54 @@
       pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
       spots: ['⭐ Spots', 'Suburbs coloured by the $/hr of offers you got there (2 or more offers): green good, yellow fair, red poor.'],
       hist: ['🕘 History', 'Every past snapshot. Choose a day and time in the bar above, or tap Now.'],
-      busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.']
+      busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.'],
+      night: ['🌙 Night map', 'Dark streets for night driving, easier on the eyes.'],
+      city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
+      locate: ['➤ Follow me', 'The map stays centred on you and turns your arrow with the compass. Dragging the map stops following.']
     };
+    // ---- Bottom bar: what each button does ----
+    // Tap Pilot for a guide to every button; press and hold any button to see what it does without using it.
+    const BAR_HELP = {
+      logo:  ['Pilot', 'This guide. Press and hold any button to see what it does.'],
+      gear:  ['⚙️ Settings', 'Your car and costs, offer targets, surge alerts, theme, backup, test run and your data.'],
+      snap:  ['📸 Snap', 'Save a surge you see in Uber: its level, amount and where it is. Builds Live and Predicted surges.'],
+      pad:   ['🔢 Keypad', 'Type an offer’s fare, time and km yourself. Opens the Drive tab; tap again to close.'],
+      pip:   ['📺 Overlay', 'A small floating ACCEPT / DECLINE window that stays on top of the Uber app.'],
+      auto:  ['🔎 Auto', 'Auto-Read: reads offers from your shared screen and logs took or passed (Android or computer; not iPhone).'],
+      site:  ['🌐 Site', 'Opens the newest version of the pilot in your browser.']
+    };
+    let barHelpT = null;
+    function showBarHelp(keys, ms) {
+      const el = document.getElementById('barHelp');
+      if (!el) return;
+      el.innerHTML = keys.map(k => `<div class="bh-row"><b>${BAR_HELP[k][0]}</b><span>${BAR_HELP[k][1]}</span></div>`).join('');
+      el.hidden = false;
+      el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      clearTimeout(barHelpT);
+      barHelpT = setTimeout(hideBarHelp, ms || 4000);
+    }
+    function hideBarHelp() { clearTimeout(barHelpT); const el = document.getElementById('barHelp'); if (el) el.hidden = true; }
+    window.addEventListener('scroll', () => { const el = document.getElementById('barHelp'); if (el && !el.hidden) hideBarHelp(); }, { passive: true });
+    // Press and hold: show the description and skip the button's action
+    function wireBarHelp() {
+      const map = { snapSideBtn: 'snap', keypadToggle: 'pad', pipSideBtn: 'pip', autoSideBtn: 'auto', siteSideBtn: 'site' };
+      document.querySelectorAll('.side-stack > *').forEach(el => {
+        const key = el.classList.contains('side-logo') ? 'logo' : el.classList.contains('side-gear') ? 'gear' : map[el.id];
+        if (!key) return;
+        let t = null, held = false;
+        el.addEventListener('touchstart', () => { held = false; t = setTimeout(() => { held = true; showBarHelp([key]); if (navigator.vibrate) navigator.vibrate(15); }, 450); }, { passive: true });
+        el.addEventListener('touchend', () => clearTimeout(t));
+        el.addEventListener('touchmove', () => clearTimeout(t), { passive: true });
+        el.addEventListener('contextmenu', e => e.preventDefault());
+        el.addEventListener('click', e => { if (held) { e.preventDefault(); e.stopImmediatePropagation(); held = false; } }, true);
+      });
+      document.querySelector('.side-logo').addEventListener('click', () => showBarHelp(['gear', 'snap', 'pad', 'pip', 'auto', 'site', 'logo'], 10000));
+    }
     let mapHelpT = null;
     function showMapHelp(key, on) {
       const el = document.getElementById('mapHelp'), h = MAP_HELP[key];
       if (!el || !h) return;
-      const stateless = key === 'zonesAll' || key === 'zonesBusy' || key === 'busy';
+      const stateless = ['zonesAll', 'zonesBusy', 'busy', 'city', 'locate'].includes(key);
       el.innerHTML = `<b>${h[0]}${stateless ? '' : on ? ' <span class="mh-on">ON</span>' : ' <span class="mh-off">OFF</span>'}</b>` +
         `<div>${on || stateless ? h[1] : 'Hidden from the map. Tap again to show it.'}</div>`;
       el.hidden = false;
@@ -5455,7 +5511,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.6';
+    const APP_VERSION = '1.25.7';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -5826,7 +5882,7 @@
       document.getElementById('evZone').innerHTML = Object.keys(UBER_ZONE_SHAPES).map(z => `<option>${esc(z)}</option>`).join('');
       loadWeather(); setInterval(loadWeather, 3600000);
       renderShiftBar(); setInterval(renderShiftBar, 30000);
-      syncTestUI(); applyTheme(savedTheme()); syncLayerChips();
+      syncTestUI(); applyTheme(savedTheme()); syncLayerChips(); wireBarHelp();
       renderBackupInfo(); weeklyReminders();
       showTab('offer');
       // Keep live-surge ages and predictions current while driving
