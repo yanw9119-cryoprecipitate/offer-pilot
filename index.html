@@ -2453,7 +2453,8 @@
       else {
         const t = todayLevels(here), v = demandAdj(here, now), vd = VERDICT(v);
         hp.hidden = false; hp.className = 'pill ' + vd.c; hp.textContent = vd.t;
-        hs.textContent = `${demandName(v)} now · ${fmtHour(now.getHours())}`;
+        const age = Math.round((Date.now() - lastFix.t) / 60000);
+        hs.textContent = `${demandName(v)} now · ${fmtHour(now.getHours())} · location ${age < 1 ? 'just now' : age + ' min ago'}`;
         box.innerHTML = chartHTML(t.levels, t.nowIdx, null);
       }
       // Recommended: now, next hour and in 2 hours. One chart per area: hours with the same area share it.
@@ -4259,6 +4260,20 @@
       watchId = navigator.geolocation.watchPosition(onFix, onFixError,
         { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
     }
+    // Uber Trends and Plan a Shift: a quick, low-power position check (no continuous GPS) so
+    // "Where you are" and the distances follow you. Runs when the tab opens and every minute.
+    let zoneFixBusy = false;
+    function refreshZoneFix() {
+      if (!navigator.geolocation || watchId !== null || zoneFixBusy) return;
+      zoneFixBusy = true;
+      navigator.geolocation.getCurrentPosition(p => {
+        zoneFixBusy = false;
+        const before = myZone();
+        onFix(p);
+        const v = id => document.getElementById(id).style.display !== 'none';
+        if (v('view-insights') || v('view-trends')) { if (myZone() !== before) renderInsights(); else { renderTrendNow(); renderWhereNow(); } }
+      }, () => { zoneFixBusy = false; }, { enableHighAccuracy: false, maximumAge: 0, timeout: 15000 });
+    }
     function stopTracking() {
       if (ocrActive && autoOpt('optAutoSurge')) return; // auto snapshots still need location
       if (watchId !== null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
@@ -5335,13 +5350,13 @@
       if (tab === 'insights' || tab === 'trends') renderInsights();
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else if (tab === 'offer') startTracking();          // offers remember where you were
-      else stopTracking(); // save battery when neither the map nor the offer screen is showing
+      else { stopTracking(); refreshZoneFix(); } // no continuous GPS here, just a quick position check
       window.scrollTo(0, 0);
     }
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.0';
+    const APP_VERSION = '1.25.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -5718,7 +5733,7 @@
       // Keep live-surge ages and predictions current while driving
       setInterval(() => {
         if (document.getElementById('view-drive').style.display !== 'none') renderMap();
-        else { renderWhereNow(); renderTrendNow(); backgroundChaseCheck(); }                         // Where to drive: keep now/next hours current
+        else { refreshZoneFix(); renderWhereNow(); renderTrendNow(); backgroundChaseCheck(); }                         // Where to drive: keep now/next hours current
       }, 60000);
     };
   </script>
