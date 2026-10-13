@@ -1212,6 +1212,37 @@
     .tf-sample { width: 58px; flex: none; text-align: center; font-weight: 800; font-size: .95rem; padding: 6px 0; border-radius: 9px; background: var(--card-2); border: 1.5px solid var(--line-strong); font-variant-numeric: tabular-nums; }
     .th-opt.on .th-chk { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     .th-chk svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    /* ================= Wider screens: buttons grow a little with the screen (phone sizes stay as they are) ================= */
+    @media (min-width: 700px) {
+      .tabs { max-width: 760px; }
+      .tab { font-size: .9rem; padding: 12px 6px; }
+      .side-stack { width: min(560px, calc(100% - 32px)); padding: 6px; border-radius: 26px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+      .side-stack .side-btn, .side-stack .side-link { min-height: 62px; border-radius: 20px; }
+      .side-stack .side-btn span { font-size: .58rem; }
+      .side-stack .sb-ic { width: 27px; height: 27px; }
+      .side-stack .side-logo .logo { width: 32px; height: 32px; }
+      body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+      .drive { height: calc(100dvh - 168px - env(safe-area-inset-bottom, 0px)); }
+      .map-chips { gap: 6px; }
+      .map-chips .chip { width: 40px; height: 40px; font-size: 1.1rem; }
+      .map-chips .chip.chip-go, .map-chips #chipZones { min-width: 40px; padding: 0 10px; font-size: .95rem; }
+      .zn { font-size: .95rem; }
+      .map-fab { width: 52px; height: 52px; font-size: 1.3rem; }
+      .map-compass svg { width: 46px; height: 46px; }
+      .loc-pill { font-size: .8rem; padding: 6px 11px; top: 58px; }
+      .toast { bottom: calc(98px + env(safe-area-inset-bottom, 0px)); font-size: 1rem; }
+      .ver-badge { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+    }
+    @media (min-width: 1200px) {
+      .tab { font-size: 1rem; padding: 13px 8px; }
+      .side-stack { width: 620px; }
+      .side-stack .side-btn, .side-stack .side-link { min-height: 66px; }
+      .side-stack .side-btn span { font-size: .62rem; }
+      .side-stack .sb-ic { width: 29px; height: 29px; }
+      .map-chips .chip { width: 44px; height: 44px; font-size: 1.2rem; }
+      .map-chips .chip.chip-go, .map-chips #chipZones { min-width: 44px; font-size: 1rem; }
+      .map-fab { width: 56px; height: 56px; }
+    }
   </style>
 </head>
 <body>
@@ -6466,7 +6497,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.36.2';
+    const APP_VERSION = '1.36.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
