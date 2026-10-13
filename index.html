@@ -755,6 +755,10 @@
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .fuel-pop .nav-row { gap: 8px; }
     .zone-tag.tap { cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+    .zone-tag.airport { border-color: #0284c7; background: color-mix(in srgb, #e0f2fe 85%, var(--glass-strong)); color: #075985; }
+    .zone-tag.airport span { color: #0369a1; }
+    .ap-pk { margin-top: 6px; font-size: .74rem; line-height: 1.3; }
+    .ap-pk small { color: var(--muted); font-weight: 600; }
     .zone-tag.squeezed { padding: 2px 6px; font-size: 10px; }
     .zone-tag.squeezed span { display: none; }
     .zone-tag.crowded { visibility: hidden; pointer-events: none; }
@@ -780,7 +784,7 @@
     .surge-pin.pred.maybe { background: #facc15; color: #1c1917; border-color: #1c1917; }
     .surge-pin.live i { animation: livePulse 1.2s ease-in-out infinite; }
     /* 🔥 fire on a detected (live) surge */
-    .surge-pin-wrap { position: relative; }
+    /* (marker icons are already absolutely positioned by Leaflet, which anchors the flame) */
     .surge-fire { position: absolute; left: -17px; top: -66px; width: 34px; height: 36px; pointer-events: none; z-index: 1; }
     .surge-fire b { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); font-size: 1.6rem; line-height: 1; transform-origin: 50% 100%;
       animation: fireFlicker .9s ease-in-out infinite alternate; filter: drop-shadow(0 0 4px rgba(249,115,22,.9)); }
@@ -5700,7 +5704,7 @@
 
     // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
     const MAP_HELP = {
-      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones: tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
@@ -6149,6 +6153,57 @@
       showMapHelp('busy', true);
     }
     // Tap a zone's label on the map: the side list opens on that zone with the drive, time and navigation
+    // ================= ✈️ PASSENGER AIRPORTS as their own small zones (on top of the Melbourne City zone) =================
+    // Outline and pick-up points start from built-in approximations and are refined from OpenStreetMap
+    // (airport boundary and terminal buildings), kept on the phone for 30 days.
+    const AIRPORTS = {
+      MEL: { code: 'MEL', name: 'Melbourne Airport', short: 'Tullamarine',
+        ring: [[-37.6505, 144.8135], [-37.6505, 144.8555], [-37.6905, 144.8620], [-37.7125, 144.8555], [-37.7125, 144.8240], [-37.6830, 144.8135]],
+        pickups: [
+          { key: 'T1', name: 'T1 Qantas · Uber zone right outside the terminal', lat: -37.6733, lng: 144.8478 },
+          { key: 'T2', name: 'T2 International · Uber Zone B (PIN pick-ups)', lat: -37.6707, lng: 144.8431 },
+          { key: 'T4', name: 'T4 Jetstar / Rex · rideshare zone', lat: -37.6655, lng: 144.8384 }
+        ] },
+      MEB: { code: 'MEB', name: 'Essendon Fields Airport', short: 'Essendon',
+        ring: [[-37.7175, 144.8925], [-37.7175, 144.9105], [-37.7365, 144.9125], [-37.7395, 144.8975], [-37.7290, 144.8905]],
+        pickups: [{ key: 'TERM', name: 'Passenger terminal · rank outside the main terminal', lat: -37.7322, lng: 144.9048 }] }
+    };
+    try {
+      const c = JSON.parse(lsGet('airportShapes'));
+      if (c && Date.now() - c.at < 30 * 86400000) Object.entries(c.ap).forEach(([k, v]) => { if (AIRPORTS[k]) Object.assign(AIRPORTS[k], v); });
+    } catch (e) {}
+    let airportShapesLoading = false;
+    async function loadAirportShapes() {
+      if (airportShapesLoading || lsGet('airportShapes')) return;
+      airportShapesLoading = true;
+      const q = '[out:json][timeout:25];(way["aeroway"="aerodrome"]["iata"~"^(MEL|MEB)$"];' +
+        'way["aeroway"="terminal"](-37.70,144.82,-37.65,144.87);way["aeroway"="terminal"](-37.745,144.885,-37.715,144.92););out geom tags;';
+      try {
+        const j = await fetchJSON('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 25000), save = {};
+        (j.elements || []).forEach(e => {
+          const t = e.tags || {}, pts = (e.geometry || []).map(g => [g.lat, g.lon]);
+          if (t.aeroway === 'aerodrome' && AIRPORTS[t.iata] && pts.length > 3) { AIRPORTS[t.iata].ring = pts; (save[t.iata] = save[t.iata] || {}).ring = pts; }
+          if (t.aeroway === 'terminal' && pts.length) {
+            const c = pts.reduce((a, p) => [a[0] + p[0] / pts.length, a[1] + p[1] / pts.length], [0, 0]), nm = `${t.name || ''} ${t.ref || ''}`;
+            const code = c[0] > -37.71 ? 'MEL' : 'MEB', ap = AIRPORTS[code];
+            const key = code === 'MEB' ? 'TERM' : /(^|\D)1(\D|$)|qantas/i.test(nm) ? 'T1' : /(^|\D)2(\D|$)|international/i.test(nm) ? 'T2' : /(^|\D)4(\D|$)/.test(nm) ? 'T4' : null;
+            const pk = key && ap.pickups.find(x => x.key === key);
+            if (pk) { pk.lat = c[0]; pk.lng = c[1]; (save[code] = save[code] || {}).pickups = ap.pickups; }
+          }
+        });
+        lsSet('airportShapes', JSON.stringify({ at: Date.now(), ap: save }));
+        if (map) renderMap();
+      } catch (e) { /* keep the built-in outline */ }
+      finally { airportShapesLoading = false; }
+    }
+    function openAirportPanel(code) {
+      const panel = document.getElementById('busyPanel');
+      if (busySel === 'airport:' + code && !panel.hidden) return;
+      closeSurgeCard(); panel.hidden = false;
+      busySel = 'airport:' + code;
+      renderBusy(); markPicked();
+    }
+
     // Taps on zone labels are read straight from the screen (pointer down + up within a few pixels), so a
     // tap still works while the map is moving or the labels are being redrawn after the last selection.
     let zoneTapStart = null;
@@ -6160,17 +6215,23 @@
       const st = zoneTapStart; zoneTapStart = null;
       if (!st || Math.hypot(e.clientX - st.x, e.clientY - st.y) > 14 || Date.now() - st.at > 900) return;
       const under = document.elementFromPoint(e.clientX, e.clientY), t = under && under.closest('.zone-tag[data-z]');
-      openZonePanel(t ? t.dataset.z : st.z);
+      const z = t ? t.dataset.z : st.z;
+      zoneTapAt = Date.now();
+      if (z.startsWith('airport:')) openAirportPanel(z.slice(8)); else openZonePanel(z);
     }, true);
-    document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.zone-tag[data-z]')) { e.stopPropagation(); e.preventDefault(); } }, true);
-    function markPicked() { document.querySelectorAll('.zone-tag[data-z]').forEach(t => t.classList.toggle('picked', busySel === 'zone:' + t.dataset.z)); requestAnimationFrame(spreadZoneLabels); }
+    // the browser's own click follows the tap: swallow it so it can't land on the side box that just opened
+    let zoneTapAt = 0;
+    document.addEventListener('click', e => {
+      if ((e.target.closest && e.target.closest('.zone-tag[data-z]')) || Date.now() - zoneTapAt < 600) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+    function markPicked() { document.querySelectorAll('.zone-tag[data-z]').forEach(t => t.classList.toggle('picked', busySel === 'zone:' + t.dataset.z || busySel === t.dataset.z)); requestAnimationFrame(spreadZoneLabels); }
     // Keep zone labels apart: busy and picked labels keep their spot, others step up/down/sideways until clear
     // (the side box counts as taken space, so labels move out from under it)
     function spreadZoneLabels() {
       const tags = [...document.querySelectorAll('#surgeMap .zone-tag[data-z]')];
       if (!tags.length) return;
       tags.forEach(t => { t.style.setProperty('--dx', '0px'); t.style.setProperty('--dy', '0px'); t.classList.remove('squeezed', 'crowded'); });
-      const rank = t => (t.classList.contains('picked') ? 0 : 2) + (t.classList.contains('quiet') ? 1 : 0);
+      const rank = t => (t.classList.contains('picked') ? 0 : t.classList.contains('airport') ? 1 : 2) + (t.classList.contains('quiet') ? 1 : 0);
       tags.sort((a, b) => rank(a) - rank(b));
       const placed = [], gap = 4, mapR = document.getElementById('surgeMap').getBoundingClientRect();
       const panel = document.getElementById('busyPanel');
@@ -6179,7 +6240,9 @@
       const hits = q => placed.some(p => q.l < p.r + gap && q.r > p.l - gap && q.t < p.b + gap && q.b > p.t - gap);
       const findSpot = t => {
         const r0 = t.getBoundingClientRect(), w = r0.width, h = r0.height, cands = [[0, 0]];
-        for (let k = 1; k <= 5; k++) {
+        const cx = (r0.left + r0.right) / 2, cy = (r0.top + r0.bottom) / 2;
+        if (cx < mapR.left || cx > mapR.right || cy < mapR.top || cy > mapR.bottom) return { dx: 0, dy: 0, q: { l: -1e4, r: -1e4, t: -1e4, b: -1e4 } };   // zone centre off screen: leave it
+        for (let k = 1; k <= 3; k++) {
           const sx = k * (w / 2 + gap), sy = k * (h + gap);
           cands.push([0, sy], [0, -sy], [sx, 0], [-sx, 0], [sx, sy], [-sx, sy], [sx, -sy], [-sx, -sy]);
         }
@@ -6223,6 +6286,10 @@
       let html = `<div class="bp-head"><b>🔥 Busy near you</b><button type="button" class="x-btn" onclick="closeBusy()" aria-label="Close">✕</button></div>`;
       if (surges.length) html += `<div class="bp-sec">Surges</div>` + surges.map(({ sg }) =>
         row('s:' + sg.key, sg.kind === 'live' ? '#dc2626' : '#7c3aed', esc(sg.name), mins(sg, 's:' + sg.key), `closeBusy();openSurgeCard('${esc(sg.key)}')`)).join('');
+      if (busySel && busySel.startsWith('airport:') && AIRPORTS[busySel.slice(8)]) {
+        const ap = AIRPORTS[busySel.slice(8)];
+        html += `<div class="bp-sec">Airport</div>` + row(busySel, '#0284c7', `✈️ ${esc(ap.name)}`, mins(ap.pickups[0], busySel), `openAirportPanel('${ap.code}')`);
+      }
       // A zone tapped on the map that isn't busy right now still gets its own row at the top
       if (busySel && busySel.startsWith('zone:') && !zones.some(x => 'zone:' + x.z === busySel) && UBER_ZONE_SHAPES[busySel.slice(5)]) {
         const z = busySel.slice(5), ring = UBER_ZONE_SHAPES[z], v = demandAdj(z, now), here = myZone() === z;
@@ -6284,6 +6351,28 @@
         if (!here) to = nearestOnRing(from.lat, from.lng, ring);
         fitBusy(ring.concat([[from.lat, from.lng]]));
         if (here) { box.innerHTML = html + `<div class="bp-drive">You’re in this zone</div>`; return; }
+      } else if (key.startsWith('airport:')) {
+        const ap = AIRPORTS[key.slice(8)];
+        if (!ap) return;
+        color = '#0284c7';
+        // nearest pick-up point gets the route; every pick-up has its own navigation buttons
+        const pks = ap.pickups.slice().sort((p, q) => distM(from.lat, from.lng, p.lat, p.lng) - distM(from.lat, from.lng, q.lat, q.lng));
+        to = { lat: pks[0].lat, lng: pks[0].lng };
+        const v = ap.code === 'MEL' ? airportScore('in', now) : null;
+        L.polygon(ap.ring, { color, weight: 3, fillColor: color, fillOpacity: 0.12, interactive: false }).addTo(routeLayer);
+        ap.pickups.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 8, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }).addTo(routeLayer)
+          .bindTooltip(esc(p.key === 'TERM' ? 'Pick-up' : p.key), { permanent: true, direction: 'top', offset: [0, -8], className: 'ev-tip' }));
+        html = `<div class="bp-why">${ap.code} · ${esc(ap.short)} · on top of the Melbourne City zone${v != null ? ` · pick-ups ${demandName(v).toLowerCase()} now` : ''}</div>` +
+          pks.map((p, i) => `<div class="ap-pk"><b>🚖 ${esc(p.name)}</b>${i === 0 ? ' <small>(route shown)</small>' : ''}<div class="bp-nav">${navLinks(p.lat, p.lng)}</div></div>`).join('');
+        fitBusy([[from.lat, from.lng]].concat(ap.ring));
+        box.innerHTML = html + `<div class="bp-drive">Working out the drive…</div>`;
+        const r = await getRoute(from, to);
+        if (busySel !== key) return;
+        L.polyline(r.coords, { color: '#0b0f19', weight: 8, opacity: 0.4 }).addTo(routeLayer);
+        L.polyline(r.coords, { color, weight: 5, opacity: 0.95 }).addTo(routeLayer);
+        const b2 = document.getElementById('bpDetail');
+        if (b2) b2.innerHTML = `<div class="bp-drive"><b>${Math.max(1, Math.round(r.min))} min</b> · ${r.km.toFixed(1)} km to ${esc(pks[0].key === 'TERM' ? 'the pick-up' : pks[0].key)}</div>` + html;
+        return;
       } else if (key.startsWith('train:')) {
         const a = train.alerts.find(x => 'train:' + x.id === key);
         if (!a || !(a.stations || []).length) return;
@@ -6510,6 +6599,20 @@
             .addTo(markerLayer);
         });
         if (zoneMissing.length && from.gps) fetchMissingRoutes(zoneMissing);
+        // Airports: their own small zones drawn on top, with pick-up directions when tapped
+        loadAirportShapes();
+        const nowH = new Date();
+        Object.values(AIRPORTS).forEach(ap => {
+          const tap = () => { if (!placeSnapId) openAirportPanel(ap.code); };
+          L.polygon(ap.ring, { renderer: suburbRenderer, color: '#0284c7', weight: 2.5, dashArray: '2 5', opacity: 0.95, fillColor: '#0ea5e9', fillOpacity: 0.12, interactive: true })
+            .on('click', tap).addTo(markerLayer);
+          const v = ap.code === 'MEL' ? airportScore('in', nowH) : null;
+          const pk = ap.pickups[0], q = routeNow(from, pk);
+          const sub = `${v != null ? 'Pick-ups ' + demandName(v).toLowerCase() + ' · ' : ''}🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min`;
+          const c = L.polygon(ap.ring).getBounds().getCenter();
+          L.marker(c, { interactive: false, zIndexOffset: 500, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+            html: `<div class="zone-tag tap airport${busySel === 'airport:' + ap.code ? ' picked' : ''}" data-z="airport:${ap.code}">✈️ ${esc(ap.name)} · ${ap.code}<span>${sub}</span></div>` }) }).addTo(markerLayer);
+        });
         requestAnimationFrame(spreadZoneLabels);
       }
 
@@ -6578,7 +6681,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.37.1';
+    const APP_VERSION = '1.38.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
