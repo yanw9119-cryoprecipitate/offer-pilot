@@ -791,9 +791,10 @@
     .flh-list { margin-top: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
     @media (min-width: 560px) { .flh-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .flh[open] { grid-column: 1 / -1; }
-    .flh[style*="--tc"] { border-color: color-mix(in srgb, var(--tc) 55%, transparent); background: color-mix(in srgb, var(--tc) 13%, var(--card-2)); }
-    .flh[style*="--tc"] summary > b:first-child { color: var(--tc); }
-    .flh-g { display: none; } .flh[open] .flh-g { display: inline-flex; gap: 3px; } .flh-g .ap-tier { font-size: .58rem; }
+    .flh-c { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; font-variant-numeric: tabular-nums; padding: 2px 7px; border-radius: 8px; white-space: nowrap;
+      border: 1.5px solid var(--gc); background: color-mix(in srgb, var(--gc) 16%, var(--card-2)); color: var(--text); }
+    .fl-dk { font-style: normal; font-weight: 800; color: #fff; background: #f59e0b; border-radius: 999px; padding: 0 5px; }
+    .flh-c b { color: var(--gc); font-weight: 900; } .flh-c i { font-style: normal; font-weight: 900; font-size: .64rem; color: #fff; background: #f59e0b; border-radius: 999px; padding: 0 5px; line-height: 1.45; }
     .flh.past { opacity: .6; } .flh.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; } .flh.start { border-color: #0284c7; }
     .flh summary > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
     .flh { border: 1px solid var(--card-border); border-radius: 10px; background: var(--card-2); overflow: hidden; }
@@ -6944,7 +6945,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.52.0';
+    const APP_VERSION = '1.52.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7460,7 +7461,11 @@
       // Hour by hour from your start: 🛬 arrivals and 🛫 departures scheduled that hour; tap an hour for every flight and its status
       // Every hour the last check collected (about 12), in a grid of 2–3 columns; an opened hour spans the full width
       const rows = [], hStart = Math.floor(c.from / 3600000) * 3600000, hNow = Math.floor(Date.now() / 3600000) * 3600000;
-      for (let t = hStart; t < c.to && rows.length < 13; t += 3600000) {
+      const inHr = t => f => !flCancelled(f) && flEt(f) >= t && flEt(f) < t + 3600000;
+      const hrs = []; for (let t = hStart; t < c.to && hrs.length < 13; t += 3600000) hrs.push(t);
+      const pkA = Math.max(1, ...hrs.map(t => c.arr.filter(inHr(t)).length)), pkD = Math.max(1, ...hrs.map(t => c.dep.filter(inHr(t)).length));
+      const grade = (n, pk) => AP_TIERS[n >= Math.max(0.7 * pk, 12) ? 'high' : n < Math.max(0.35 * pk, 4) ? 'low' : 'med'];   // same cut-offs as the airport zone
+      for (const t of hrs) {
         const inH = f => flEt(f) >= t && flEt(f) < t + 3600000;
         const arr = c.arr.filter(inH), dep = c.dep.filter(inH);
         const all = arr.map(f => ({ f, dir: 'arr' })).concat(dep.map(f => ({ f, dir: 'dep' }))).sort((x, y) => flEt(x.f) - flEt(y.f));
@@ -7468,19 +7473,18 @@
         const nLate = st.filter(x => x.k === 'late').length, nCanc = st.filter(x => x.k === 'canc').length;
         const key = String(t), open = flOpenHours.has(key);
         const cls = (t < hNow ? ' past' : '') + (t === hNow ? ' now' : '') + (t === h0.getTime() && h0.getTime() !== hNow ? ' start' : '');
-        const gi = apTierAt('MEL', 'in', t), go = apTierAt('MEL', 'out', t);     // tile colour follows pick-ups, like the airport zone
-        const tint = gi ? ` style="--tc:${gi.c}"` : '';
-        const gTitle = [gi && `Airport to city ${gi.t}`, go && `City to airport ${go.t}`].filter(Boolean).join(' · ');
-        rows.push(`<details class="flh${cls}${gi ? ' tier-' + gi.k : ''}"${tint} title="${gTitle}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
-          `<span class="flh-n">🛬 ${arr.filter(f => !flCancelled(f)).length}</span><span class="flh-n">🛫 ${dep.filter(f => !flCancelled(f)).length}</span>` +
-          (gi ? `<span class="flh-g">${tierPill(gi)}${go ? tierPill(go) : ''}</span>` : '') +
-          `<span class="flh-x">${nLate ? `<b class="flc late" title="${nLate} delayed" aria-label="${nLate} delayed">${nLate}</b>` : ''}${nCanc ? `<b class="flc canc" title="${nCanc} cancelled" aria-label="${nCanc} cancelled">${nCanc}</b>` : ''}</span></summary>` +
+        const nA = arr.filter(f => !flCancelled(f)).length, nD = dep.filter(f => !flCancelled(f)).length, gA = grade(nA, pkA), gD = grade(nD, pkD);
+        const lA = all.filter((x, i) => x.dir === 'arr' && st[i].k === 'late').length, lD = all.filter((x, i) => x.dir === 'dep' && st[i].k === 'late').length;
+        rows.push(`<details class="flh${cls}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
+          `<span class="flh-c" style="--gc:${gA.c}" title="Airport to city: ${nA} arrivals (${gA.t})${lA ? `, ${lA} delayed` : ''}"><b>${nA}</b> 🛬→🏙️${lA ? ` <i>${lA}</i>` : ''}</span>` +
+          `<span class="flh-c" style="--gc:${gD.c}" title="City to airport: ${nD} departures (${gD.t})${lD ? `, ${lD} delayed` : ''}"><b>${nD}</b> 🏙️→🛫${lD ? ` <i>${lD}</i>` : ''}</span>` +
+          `</summary>` +
           (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
             return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${x.dir === 'arr' ? '🛬' : '🛫'}</span>` +
               `<span class="flr-f">${esc(f.n)}${f.ap ? ` · ${x.dir === 'arr' ? 'from' : 'to'} ${esc(f.ap)}` : ''}${f.term ? ` <em>T${esc(f.term)}</em>` : ''}</span><i class="fls ${s2.k}">${s2.t}</i></div>`; }).join('')
             : '<div class="flr none">No passenger flights this hour</div>') + `</details>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · 🛬 arrivals 🛫 departures · <b class="flc late">delayed</b> <b class="flc canc">cancelled</b> · boxes coloured by airport pick-ups: <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · boxes: number, 🛬→🏙️ arrivals or 🏙️→🛫 departures, <i class="fl-dk">delayed</i> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
