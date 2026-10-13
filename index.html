@@ -5635,7 +5635,7 @@
     const MAP_HELP = {
       zones: ['🗺 Zones', 'The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
-      surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it and the 🔥 button glows. Tap the pin for the drive and whether it’s worth it.'],
+      surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
@@ -6390,7 +6390,7 @@
       // 🔥 count, plus a small badge (like an app's notification badge) with the kind of event that's on nearby
       const evTypes = [...new Set(nearEvents().map(evType))].slice(0, 3);
       const cn = document.getElementById('chipNear');
-      cn.classList.toggle('burning', nLive > 0);   // a surge was detected: the flame flickers
+      cn.classList.toggle('burning', nBusy > 0);   // surges or busy zones: the flame flickers
       cn.innerHTML = `<span class="chip-flame"><span class="cf-glow"></span>🔥<em></em><em></em><em></em></span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
       cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (evTypes.length ? ' including events' : ''));
       syncLayerChips();
@@ -6420,7 +6420,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.35.1';
+    const APP_VERSION = '1.35.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
