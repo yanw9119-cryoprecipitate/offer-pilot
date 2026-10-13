@@ -706,6 +706,13 @@
     .wx-heat em:nth-of-type(1) { left: 6px; } .wx-heat em:nth-of-type(2) { left: 19px; animation-delay: .3s; } .wx-heat em:nth-of-type(3) { left: 32px; animation-delay: .6s; }
     @keyframes wxGlow { 0%, 100% { transform: scale(.85); opacity: .7; } 50% { transform: scale(1.15); opacity: 1; } }
     @keyframes wxShimmer { 0%, 100% { transform: translateY(0) scaleX(1); opacity: .3; } 50% { transform: translateY(-6px) scaleX(.8); opacity: 1; } }
+    .wx-cloud { position: relative; width: 52px; height: 46px; }
+    .wx-cloud b { position: absolute; left: 8px; top: 6px; font-size: 1.35rem; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.3)); animation: wxDrift 6s ease-in-out infinite; }
+    .wx-cloud b.c2 { left: 20px; top: 16px; font-size: 1rem; opacity: .85; animation-duration: 8s; animation-direction: reverse; }
+    .wx-cloud.fog b { animation: wxFog 4s ease-in-out infinite; }
+    .wx-cloud span { position: absolute; right: -6px; top: -4px; font-size: .62rem; font-weight: 800; background: #fff; color: #111; border-radius: 999px; padding: 0 4px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    @keyframes wxDrift { 0%, 100% { transform: translateX(-5px); } 50% { transform: translateX(6px); } }
+    @keyframes wxFog { 0%, 100% { opacity: .55; transform: translateX(-3px); } 50% { opacity: 1; transform: translateX(3px); } }
     .wx-soon b { animation: wxBob 2s ease-in-out infinite; }
     .wx-soon span { position: absolute; left: 40px; top: 6px; white-space: nowrap; font-size: .56rem; font-weight: 800; background: rgba(255,255,255,.92); color: #1d4ed8; border-radius: 999px; padding: 0 4px; }
     @keyframes wxBob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 4px); } }
@@ -2766,7 +2773,8 @@
         const t = todayLevels(here), v = demandAdj(here, now), vd = VERDICT(v);
         hp.hidden = false; hp.className = 'pill ' + vd.c; hp.textContent = vd.t;
         const age = Math.round((Date.now() - lastFix.t) / 60000);
-        hs.textContent = `${demandName(v)} now · ${fmtHour(now.getHours())} · location ${age < 1 ? 'just now' : age + ' min ago'}`;
+        let sub = null; try { sub = areaOf(lastFix.lat, lastFix.lng); } catch (e) {}
+        hs.textContent = `${sub ? '📍 ' + sub.name + ' · ' : ''}${demandName(v)} now · ${fmtHour(now.getHours())} · location ${age < 1 ? 'just now' : age + ' min ago'}`;
         box.innerHTML = chartHTML(t.levels, t.nowIdx, null);
       }
       // Recommended: now, next hour and in 2 hours. One chart per area: hours with the same area share it.
@@ -5594,7 +5602,7 @@
       spots: ['⭐ Spots', 'Suburbs coloured by the $/hr of offers you got there (2 or more offers): green good, yellow fair, red poor.'],
       hist: ['🕘 History', 'Every past snapshot. Choose a day and time in the bar above, or tap Now.'],
       busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.'],
-      wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 when it’s raining there now, 🌦 when rain is due within 2 hours, and ☀️ when it’s 30° or hotter.'],
+      wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 raining now, 🌦 rain due within 2 hours, ☁️ cloudy, 🌫 fog, and ☀️ when it’s 30° or hotter.'],
       city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
       headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Red needle shows north. Tap again for north up.'],
       north: ['🧭 North up', 'North is back at the top. Tap the compass to turn the map with your direction.'],
@@ -6369,7 +6377,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.34.1';
+    const APP_VERSION = '1.34.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6571,6 +6579,10 @@
       }
       if (w.heat) return `<div class="wx-heat${w.hot ? ' hot' : ''}"><b>${w.day ? '☀️' : '🌡'}</b><em></em><em></em><em></em><span>${Math.round(w.temp)}°</span></div>`;
       if (w.soon) return `<div class="wx-soon"><b>🌦</b><span>rain soon</span></div>`;
+      // Cloud cover: drifting cloud for cloudy / overcast, fog bank for fog
+      if (w.code === 45 || w.code === 48) return `<div class="wx-cloud fog"><b>🌫</b><span>${Math.round(w.temp)}°</span></div>`;
+      if (w.code === 3) return `<div class="wx-cloud"><b>☁️</b><b class="c2">☁️</b><span>${Math.round(w.temp)}°</span></div>`;
+      if (w.code === 2) return `<div class="wx-cloud part"><b>${w.day ? '⛅' : '☁️'}</b><span>${Math.round(w.temp)}°</span></div>`;
       return '';
     }
     function drawWx() {
