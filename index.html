@@ -655,19 +655,6 @@
     .map-chips #chipNear { position: relative; overflow: visible; display: flex; align-items: center; gap: 3px; }
     .ev-badge { position: absolute; top: -7px; right: -7px; display: flex; gap: 1px; padding: 1px 3px; border-radius: 999px; background: #fff;
       font-size: .62rem; line-height: 1.2; box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 1.5px solid #ef4444; pointer-events: none; z-index: 2; }
-    /* 💥 all 8 zones busy: on the 🔥 button a bomb shakes then explodes, over and over while it lasts */
-    #chipNear .cb-bomb { display: inline-block; position: relative; animation: cbBomb var(--bt, 2.2s) linear infinite; }
-    #chipNear .cb-boom { position: absolute; left: 50%; top: 50%; width: 1.2em; margin: -.6em 0 0 -.6em; text-align: center; line-height: 1.2em; opacity: 0; animation: cbBoom var(--bt, 2.2s) ease-out infinite; }
-    #chipNear .chip-flame i { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 1px; background: #f97316; opacity: 0; animation: cbDebris var(--bt, 2.2s) ease-out infinite; }
-    #chipNear .chip-flame i:nth-of-type(2n) { background: #fde047; } #chipNear .chip-flame i:nth-of-type(3n) { background: #dc2626; }
-    @keyframes sparkle { from { transform: scale(.7); opacity: .7; } to { transform: scale(1.3); opacity: 1; } }
-    .map-chips #chipNear.t-boom.hot { animation: chipHot calc(var(--bt, 2.2s) / 4) ease-in-out infinite; }
-    @keyframes chipHot { 0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0), var(--shadow); } 50% { box-shadow: 0 0 14px 5px rgba(220,38,38,.7), var(--shadow); } }
-    @keyframes cbBomb { 0% { opacity: 1; transform: none; } 6%, 18%, 30%, 42%, 54% { transform: translate(-1.5px,.5px) rotate(-10deg); } 12%, 24%, 36%, 48% { transform: translate(1.5px,-.5px) rotate(8deg); }
-      58% { opacity: 1; transform: scale(1.15); } 60%, 92% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: none; } }
-    @keyframes cbBoom { 0%, 58% { opacity: 0; transform: scale(.3); } 64% { opacity: 1; transform: scale(var(--bs, 1.5)); } 80% { opacity: 1; transform: scale(calc(var(--bs, 1.5) * .8)); } 94%, 100% { opacity: 0; transform: scale(.6); } }
-    @keyframes cbDebris { 0%, 59% { opacity: 0; transform: rotate(var(--a)) translateY(0); } 61% { opacity: 1; } 85%, 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(-1 * var(--bd, 15px))) rotate(180deg); } }
-    @media (prefers-reduced-motion: reduce) { #chipNear .cb-bomb, #chipNear .chip-flame i { animation: none; } #chipNear .cb-boom { display: none; } }
     .map-chips .chip.all { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
     .chip {
       flex: none; background: var(--glass); border: 1px solid var(--card-border); color: var(--muted);
@@ -859,16 +846,65 @@
     @keyframes chipBurn { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,.0), var(--shadow); } 50% { box-shadow: 0 0 10px 3px rgba(249,115,22,.55), var(--shadow); } }
     @media (prefers-reduced-motion: reduce) { .surge-fire b, .surge-fire em, .surge-fire .sf-glow, #chipNear.burning, #chipNear.burning .chip-flame { animation: none; } }
 
-    /* 🔥 button tiers: 3–5 busy zones two flames, 6–7 a shaking bomb with a lit fuse, all 8 a pulsing blast */
-    #chipNear.t-fire2 .chip-flame { letter-spacing: -4px; }
-    #chipNear.t-fire2 .chip-flame .cf-glow { width: 38px; margin-left: -19px; }
-    .map-chips #chipNear.t-bomb .chip-flame { animation: chipBombShake .32s linear infinite; transform-origin: 50% 60%; }
-    #chipNear .cf-spark { position: absolute; right: -1px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle, #fff7a8, #f59e0b 55%, rgba(245,158,11,0) 70%); animation: sparkle .12s linear infinite alternate; }
-    .map-chips #chipNear.t-bomb { animation: chipBurn .7s ease-in-out infinite; }
-    .map-chips #chipNear.t-boom .chip-flame { animation: none; }
-    .map-chips #chipNear.t-boom { animation: chipBurn .5s ease-in-out infinite; }
-    @keyframes chipBombShake { 0%,100% { transform: translate(0,0) rotate(0); } 20% { transform: translate(-1.5px,.5px) rotate(-9deg); } 40% { transform: translate(1.5px,-.5px) rotate(7deg); } 60% { transform: translate(-1px,0) rotate(-5deg); } 80% { transform: translate(1px,.5px) rotate(4deg); } }
-    @media (prefers-reduced-motion: reduce) { #chipNear.t-bomb, #chipNear.t-boom, #chipNear .chip-flame, #chipNear .cf-spark { animation: none !important; } }
+
+    /* 🔥 button: fire tiers 9 → 1 from how many zones are high and medium (score = 2 × high + medium, tier = 17 − score) */
+    @keyframes sparkle { from { transform: scale(.7); opacity: .7; } to { transform: scale(1.3); opacity: 1; } }
+    .map-chips #chipNear.fx .chip-flame { animation: none; }
+    #chipNear .chip-flame .fx-wrap { position: relative; display: inline-block; min-width: 18px; text-align: center; }
+    .fx-coal { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px;
+      background: radial-gradient(circle, #fde047, #f97316 45%, #b91c1c 72%, rgba(185,28,28,0) 74%); box-shadow: 0 0 6px 2px rgba(249,115,22,.55); animation: fxCoal 1.6s ease-in-out infinite alternate; }
+    .ft8 .fx-coal { width: 14px; height: 14px; box-shadow: 0 0 8px 3px rgba(249,115,22,.65); }
+    @keyframes fxCoal { from { opacity: .75; transform: scale(.9); } to { opacity: 1; transform: scale(1.08); } }
+    .fx-eb { position: absolute; left: 50%; bottom: 4px; width: 3px; height: 3px; margin-left: calc(var(--x) - 1.5px); border-radius: 50%; background: #fb923c; box-shadow: 0 0 3px #f97316;
+      opacity: 0; animation: fxEmber 1.8s ease-out var(--dl) infinite; }
+    .fx-eb:nth-child(3n) { background: #fde047; }
+    @keyframes fxEmber { 0% { opacity: 0; transform: translate(0, 0) scale(1); } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), -22px) scale(.3); } }
+    .fx-fl { display: inline-block; transform-origin: 50% 100%; animation: fxFlick .8s ease-in-out infinite alternate; filter: drop-shadow(0 0 3px rgba(249,115,22,.7)); }
+    .fx-fl.s7 { font-size: .72em; } .fx-fl.s6 { font-size: .95em; } .fx-fl.s5 { font-size: 1.05em; --sx: 1.3; }
+    .fx-fl.s4 { font-size: 1em; letter-spacing: -6px; padding-right: 6px; }
+    .fx-fl.s3, .fx-fl.s2 { font-size: 1.15em; letter-spacing: -7px; padding-right: 7px; animation-duration: .32s; filter: drop-shadow(0 0 5px rgba(239,68,68,.85)); }
+    @keyframes fxFlick { 0% { transform: scale(var(--sx, 1), 1) rotate(-3deg); } 100% { transform: scale(calc(var(--sx, 1) * 1.08), 1.12) rotate(3deg); } }
+    .fx-sp { position: absolute; left: 50%; bottom: 9px; width: 2px; height: 5px; margin-left: -1px; border-radius: 2px; background: #fde047; box-shadow: 0 0 3px #f59e0b;
+      opacity: 0; transform-origin: 50% 100%; animation: fxSpark 1.1s ease-out var(--dl) infinite; }
+    @keyframes fxSpark { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0); } 10% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-20px); } }
+    .fx-sm { position: absolute; left: 50%; bottom: 14px; width: 10px; height: 10px; margin-left: calc(var(--x) - 5px); border-radius: 50%; background: rgba(68,64,60,.7); filter: blur(1.2px);
+      opacity: 0; animation: fxSmoke 2.4s ease-out var(--dl) infinite; }
+    @keyframes fxSmoke { 0% { opacity: 0; transform: translateY(0) scale(.5); } 20% { opacity: .8; } 100% { opacity: 0; transform: translate(4px, -26px) scale(1.9); } }
+    .map-chips #chipNear.ft3 { animation: chipBurn .7s ease-in-out infinite; }
+    .map-chips #chipNear.ft2 { animation: chipBurn .5s ease-in-out infinite, fxRumble .14s linear infinite; }
+    @keyframes fxRumble { 0%, 100% { translate: 0 0; } 25% { translate: -1px .6px; } 50% { translate: 1px -.6px; } 75% { translate: -.6px -.4px; } }
+    /* Tier 1: the fuse burns down, the bomb flashes red, then 💥 with a white flash, bouncing debris, smoke and embers (4 s loop) */
+    .fx-bomb { display: inline-block; position: relative; animation: fxBomb 4s linear infinite; }
+    .fx-b { display: inline-block; animation: fxRed 4s linear infinite; }
+    .fx-fuse { position: absolute; left: 68%; top: 6%; height: 2px; width: 9px; border-radius: 1px; background: #92400e; transform: rotate(-42deg); transform-origin: 0 50%; animation: fxFuse 4s linear infinite; }
+    .fx-spark { position: absolute; left: 68%; top: 6%; width: 7px; height: 7px; margin: -3.5px; border-radius: 50%; background: radial-gradient(circle, #fff, #fde047 40%, #f59e0b 60%, rgba(245,158,11,0) 72%);
+      animation: fxSpk 4s linear infinite, fxSpkFl .09s linear infinite alternate; }
+    .fx-boom { position: absolute; left: 50%; top: 50%; width: 1.2em; margin: -.6em 0 0 -.6em; text-align: center; line-height: 1.2em; opacity: 0; animation: fxBoom 4s ease-out infinite; }
+    .fx-wf { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: radial-gradient(circle, #fff 30%, rgba(255,255,255,.7) 55%, rgba(255,255,255,0) 72%);
+      opacity: 0; pointer-events: none; animation: fxWhite 4s ease-out infinite; }
+    .fx-db { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 1px; background: #57534e; opacity: 0; animation: fxDeb 4s cubic-bezier(.3,.6,.5,1) infinite; }
+    .fx-db:nth-child(2n) { background: #f97316; } .fx-db:nth-child(3n) { background: #fde047; width: 3px; height: 3px; }
+    .fx-sm.after { animation: fxSmokeAfter 4s ease-out infinite; animation-delay: 0s; }
+    .fx-eb.after { animation: fxEmberAfter 4s ease-out infinite; }
+    @keyframes fxBomb { 0% { opacity: 0; transform: translateY(-6px); } 4% { opacity: 1; transform: none; } 52% { transform: scale(1.06); } 54% { opacity: 1; transform: scale(1.28); } 55%, 100% { opacity: 0; transform: scale(.3); } }
+    @keyframes fxRed { 0%, 36% { filter: none; } 38%, 42%, 46%, 49%, 52% { filter: drop-shadow(0 0 5px #ef4444) sepia(1) saturate(7) hue-rotate(-35deg); } 40%, 44%, 47.5%, 50.5% { filter: none; } 54%, 100% { filter: none; } }
+    @keyframes fxFuse { 0% { width: 9px; opacity: 1; } 50% { width: 0; opacity: 1; } 51%, 100% { width: 0; opacity: 0; } }
+    @keyframes fxSpk { 0% { transform: translate(6.7px, -6px); opacity: 1; } 50% { transform: translate(0, 0); opacity: 1; } 51%, 100% { opacity: 0; } }
+    @keyframes fxSpkFl { from { filter: brightness(.75); } to { filter: brightness(1.5); } }
+    @keyframes fxBoom { 0%, 54% { opacity: 0; transform: scale(.3); } 57% { opacity: 1; transform: scale(2); } 70% { opacity: 1; transform: scale(1.5); } 80%, 100% { opacity: 0; transform: scale(1.1); } }
+    @keyframes fxWhite { 0%, 54% { opacity: 0; transform: scale(.3); } 56% { opacity: 1; transform: scale(1); } 66%, 100% { opacity: 0; transform: scale(1.4); } }
+    @keyframes fxDeb { 0%, 55% { opacity: 0; transform: translate(0, 0) rotate(0); } 56% { opacity: 1; }
+      66% { transform: translate(var(--dx), var(--up)) rotate(200deg); } 76% { transform: translate(calc(var(--dx) * 1.45), 12px) rotate(360deg); }
+      81% { transform: translate(calc(var(--dx) * 1.6), 8px) rotate(400deg); } 86% { opacity: 1; transform: translate(calc(var(--dx) * 1.72), 12px) rotate(430deg); }
+      89% { transform: translate(calc(var(--dx) * 1.76), 10.5px); } 92% { transform: translate(calc(var(--dx) * 1.8), 12px); } 97%, 100% { opacity: 0; transform: translate(calc(var(--dx) * 1.8), 12px); } }
+    @keyframes fxSmokeAfter { 0%, 57% { opacity: 0; transform: translate(var(--x), 6px) scale(.5); } 62% { opacity: .85; } 100% { opacity: 0; transform: translate(calc(var(--x) * 1.6), -24px) scale(2.2); } }
+    @keyframes fxEmberAfter { 0%, 58% { opacity: 0; transform: translate(0, 4px); } 63% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), -20px) scale(.3); } }
+    /* screen effect when the tier-1 bomb goes off (at most once every 5 minutes) */
+    .scr-flash { position: absolute; inset: 0; z-index: 950; pointer-events: none; background: #fff; animation: scrFlash .5s ease-out forwards; }
+    @keyframes scrFlash { from { opacity: .9; } to { opacity: 0; } }
+    .map-wrap.scr-shake { animation: scrShake .5s linear; }
+    @keyframes scrShake { 0%, 100% { translate: 0 0; } 15% { translate: -7px 3px; } 30% { translate: 6px -4px; } 45% { translate: -5px -2px; } 60% { translate: 4px 3px; } 75% { translate: -2px 1px; } }
+    @media (prefers-reduced-motion: reduce) { #chipNear.fx *, .map-chips #chipNear.ft2, .map-chips #chipNear.ft3, .map-wrap.scr-shake { animation: none !important; } #chipNear .fx-boom, #chipNear .fx-wf, #chipNear .fx-db, #chipNear .fx-sm, #chipNear .fx-eb, #chipNear .fx-sp { display: none; } .fx-bomb, .fx-b { opacity: 1 !important; } }
 
     @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 
@@ -5771,7 +5807,7 @@
       zonesTapAt = now;
       toggleLayer('zones');
     }
-    // 💥 All 8 Uber zones are medium or busier: a pop-up says so (once per hour); the 🔥 button keeps exploding meanwhile
+    // 💥 All 8 Uber zones are medium or busier: a pop-up names the fire tier (once per hour, or sooner if it gets stronger)
     function checkAllZonesBusy() {
       const now = new Date(); now.setMinutes(0, 0, 0);
       const all = Object.keys(UBER_ZONE_SHAPES).map(z => demandAdj(z, now)), vals = all.filter(v => v !== null);
@@ -5783,16 +5819,44 @@
       lsSet('bombAt', key + '|' + bt.n);
       playBomb(bt);
     }
-    // Blast tier when all 8 zones are medium or busier: tier 1 = 8 high … tier 9 = 8 medium (high includes very high)
-    function blastTier() {
+    // Fire tier for the 🔥 button: score = 2 × high zones + 1 × medium zones (high includes very high).
+    // Tier = 17 − score, kept between 1 and 9: all 8 high = tier 1, all 8 medium = tier 9; fewer busy zones stay at 9.
+    function fireTier() {
       const now = new Date(); now.setMinutes(0, 0, 0);
       const all = Object.keys(UBER_ZONE_SHAPES).map(z => demandAdj(z, now));
-      if (all.some(v => v === null || v < OK)) return null;
-      const high = all.filter(v => v >= GOOD).length;
-      return { n: all.length - high + 1, high, med: all.length - high };
+      const high = all.filter(v => v !== null && v >= GOOD).length, med = all.filter(v => v !== null && v >= OK && v < GOOD).length;
+      if (!high && !med) return null;
+      return { n: Math.max(1, Math.min(9, 17 - (2 * high + med))), high, med, all: high + med === all.length };
+    }
+    const blastTier = () => { const t = fireTier(); return t && t.all ? t : null; };
+    // The pieces of each tier's animation (positions are fixed, not random, so redraws look the same)
+    function fireFxHTML(n) {
+      const embers = (c, after) => Array.from({ length: c }, (_, k) => `<i class="fx-eb${after ? ' after' : ''}" style="--x:${(k * 7) % 15 - 7}px;--dx:${(k * 5) % 11 - 5}px;--dl:${((k * 0.37) % 1.8).toFixed(2)}s${after ? `;animation-delay:${(k * 0.08).toFixed(2)}s` : ''}"></i>`).join('');
+      const sparks = c => Array.from({ length: c }, (_, k) => `<i class="fx-sp" style="--a:${Math.round(-70 + k * 140 / Math.max(1, c - 1))}deg;--dl:${(k * 0.23).toFixed(2)}s"></i>`).join('');
+      const smoke = (c, after) => Array.from({ length: c }, (_, k) => `<i class="fx-sm${after ? ' after' : ''}" style="--x:${k * 6 - 6}px;--dl:${(k * 0.7).toFixed(1)}s${after ? `;animation-delay:${(k * 0.15).toFixed(2)}s` : ''}"></i>`).join('');
+      if (n >= 8) return `<i class="fx-coal"></i>` + embers(n === 9 ? 3 : 6);
+      if (n === 7) return `<span class="fx-fl s7">🔥</span>` + embers(6);
+      if (n >= 4) return `<span class="fx-fl s${n}">${n === 4 ? '🔥🔥' : '🔥'}</span>` + embers(5) + sparks(n === 6 ? 3 : n === 5 ? 4 : 6);
+      if (n >= 2) return smoke(3) + `<span class="fx-fl s${n}">🔥🔥</span>` + embers(7) + sparks(5);
+      const deb = [[-9, -14], [-6, -18], [-3, -12], [3, -16], [6, -13], [9, -17], [-12, -9], [12, -10]]
+        .map(([dx, up]) => `<i class="fx-db" style="--dx:${dx}px;--up:${up}px"></i>`).join('');
+      return `<span class="fx-bomb"><span class="fx-b">💣</span><i class="fx-fuse"></i><i class="fx-spark"></i></span><i class="fx-wf"></i><span class="fx-boom">💥</span>` +
+        deb + smoke(3, true) + embers(6, true);
+    }
+    // Tier 1 explosion: white flash and a shake of the map, at most once every 5 minutes (it is a driving app)
+    let scrFxAt = 0;
+    function bombScreenFx() {
+      const w = document.querySelector('#view-drive .map-wrap');
+      if (!w || document.getElementById('view-drive').style.display === 'none' || document.hidden || !document.querySelector('#chipNear .fx-bomb')) return;
+      if (Date.now() - scrFxAt < 5 * 60000) return;
+      try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch (e) {}
+      scrFxAt = Date.now();
+      const f = document.createElement('div'); f.className = 'scr-flash'; w.appendChild(f); setTimeout(() => f.remove(), 600);
+      w.classList.remove('scr-shake'); void w.offsetWidth; w.classList.add('scr-shake'); setTimeout(() => w.classList.remove('scr-shake'), 600);
+      try { navigator.vibrate && navigator.vibrate([80, 30, 160]); } catch (e) {}
     }
     function playBomb(bt) {
-      toast(`💥 Every zone is active! Tier ${bt.n} of 9 · ${bt.high} high, ${bt.med} medium · pick any zone`, 'Show', () => { if (document.getElementById('busyPanel').hidden) openSurgeList(); });
+      toast(`${bt.n === 1 ? '💥' : '🔥'} Every zone is active! Tier ${bt.n} of 9 · ${bt.high} high, ${bt.med} medium · pick any zone`, 'Show', () => { if (document.getElementById('busyPanel').hidden) openSurgeList(); });
       try { navigator.vibrate && navigator.vibrate([60, 40, 60, 40, 200]); } catch (e) {}
     }
     function zoneSummary() {
@@ -5835,7 +5899,7 @@
 
     // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
     const MAP_HELP = {
-      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones (graded from live flights, separately for ✈️→🏙 pick-ups and 🏙→✈️ rides to the airport: teal High, orange Medium, slate Low, ↑ rising or ↓ easing; the label shows only while flights are landing or leaving in the next hour): tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones (graded from live flights, separately for ✈️→🏙 pick-ups and 🏙→✈️ rides to the airport: teal High, orange Medium, slate Low, ↑ rising or ↓ easing; the label shows only while flights are landing or leaving in the next hour and at least one grade is above Low, or when you tap it): tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
@@ -6275,8 +6339,10 @@
     // Tapping a zone or event shows it on the map (outline or pin, plus the drive); tapping a surge opens its card.
     let busySel = null;
     function closeBusy() {
+      const wasAp = busySel && busySel.startsWith('airport:');
       document.getElementById('busyPanel').hidden = true;
       busySel = null; markPicked();
+      if (wasAp && map) renderMap();
       if (routeLayer) routeLayer.clearLayers();
     }
     async function openSurgeList() {
@@ -6338,6 +6404,7 @@
       closeSurgeCard(); panel.hidden = false;
       busySel = 'airport:' + code;
       renderBusy(); markPicked();
+      if (!document.querySelector(`.zone-tag[data-z="airport:${code}"]`)) renderMap();   // a quiet airport's label shows while it's picked
     }
 
     // Taps on zone labels are read straight from the screen (pointer down + up within a few pixels), so a
@@ -6749,7 +6816,9 @@
             `🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min`;
           // Label only while flights are moving: passengers coming out or departures within the next hour.
           // Without live flights, Melbourne keeps its estimated label; Essendon (few flights) stays unlabelled.
-          if (!apActive(ap.code)) return;
+          // Like the Uber zones, a quiet airport (both grades Low) keeps its outline but no label, unless tapped or all labels are on
+          const picked = busySel === 'airport:' + ap.code, allLow = tier && tier.k === 'low' && (!tOut || tOut.k === 'low');
+          if (!picked && !layers.zonesAll && (!apActive(ap.code) || allLow)) return;
           const c = L.polygon(ap.ring).getBounds().getCenter();
           L.marker(c, { interactive: false, zIndexOffset: 500, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
             html: `<div class="zone-tag tap airport${busySel === 'airport:' + ap.code ? ' picked' : ''}" data-z="airport:${ap.code}" style="border-color:${tc}">✈️ ${esc(ap.name)} · ${ap.code}<span>${sub}</span></div>` }) }).addTo(markerLayer);
@@ -6793,24 +6862,21 @@
       const evTypes = [...new Set(nearEvents().map(evType).concat(trainActive().some(a => (a.stations || []).length) ? ['🚆'] : []))].slice(0, 3);
       const cn = document.getElementById('chipNear');
       cn.classList.toggle('burning', nBusy > 0);   // surges or busy zones: the flame flickers
-      // How many Uber zones are medium or busier sets the icon: 3–5 two flames, 6–7 a shaking bomb, all of them explodes
-      const nZ = busyZones(new Date(new Date().setMinutes(0, 0, 0))).length, nAll = Object.keys(UBER_ZONE_SHAPES).length;
-      const tier = nZ >= nAll ? 'boom' : nZ >= 6 ? 'bomb' : nZ >= 3 ? 'fire2' : 'fire';
-      ['fire2', 'bomb', 'boom'].forEach(t => cn.classList.toggle('t-' + t, tier === t));
+      // Fire tier 9 → 1 from how many zones are high and medium (see fireTier); only redrawn when it changes,
+      // so the animations run smoothly instead of restarting on every map refresh
+      const ft = fireTier(), fn = ft ? ft.n : nBusy > 0 ? 7 : 0;       // live surges alone: a small flame
       checkAllZonesBusy();
-      // All zones busy: blast tier 1 (all 8 high) to 9 (all medium) sets how big, fast and wide the explosion is
-      const bt = tier === 'boom' ? blastTier() : null;
-      if (bt) {
-        const f = (bt.n - 1) / 8;                  // 0 = strongest, 1 = weakest
-        cn.style.setProperty('--bt', (1.3 + 1.5 * f).toFixed(2) + 's');
-        cn.style.setProperty('--bs', (2.1 - 0.9 * f).toFixed(2));
-        cn.style.setProperty('--bd', Math.round(22 - 11 * f) + 'px');
-      } else ['--bt', '--bs', '--bd'].forEach(v => cn.style.removeProperty(v));
-      cn.classList.toggle('hot', !!bt && bt.n <= 3);
-      const nDeb = bt ? 12 - Math.round(6 * (bt.n - 1) / 8) : 0;
-      const ico = { fire: '🔥', fire2: '🔥🔥', bomb: '<span class="cf-spark"></span>💣', boom: '<span class="cb-bomb"><span class="cf-spark"></span>💣</span><span class="cb-boom">💥</span>' + Array.from({ length: nDeb }, (_, k) => `<i style="--a:${Math.round(k * 360 / nDeb)}deg"></i>`).join('') }[tier];
-      cn.innerHTML = `<span class="chip-flame"><span class="cf-glow"></span>${ico}<em></em><em></em><em></em></span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
-      cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (bt ? `, every zone busy, blast tier ${bt.n} of 9` : '') + (evTypes.length ? ' including events' : ''));
+      const fxKey = fn + '|' + nBusy + '|' + evTypes.join('');
+      if (cn.dataset.fx !== fxKey) {
+        cn.dataset.fx = fxKey;
+        for (let k = 1; k <= 9; k++) cn.classList.toggle('ft' + k, fn === k);
+        cn.classList.toggle('fx', fn > 0);
+        cn.innerHTML = `<span class="chip-flame">${fn ? '<span class="cf-glow"></span>' : ''}<span class="fx-wrap">${fn ? fireFxHTML(fn) : '🔥'}</span></span> ${nBusy}` +
+          (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
+        const bomb = cn.querySelector('.fx-bomb');
+        if (bomb) ['animationstart', 'animationiteration'].forEach(ev => bomb.addEventListener(ev, e => { if (e.animationName === 'fxBomb') setTimeout(bombScreenFx, 2200); }));
+      }
+      cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (ft ? `, fire tier ${ft.n} of 9 (${ft.high} high, ${ft.med} medium zones)` : '') + (evTypes.length ? ' including events' : ''));
       syncLayerChips();
       document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
       let msg = '', place = false;
@@ -6839,7 +6905,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.48.0';
+    const APP_VERSION = '1.49.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
