@@ -495,7 +495,12 @@
     .bar-help.show { animation: bhIn .18s ease-out; }
     @keyframes bhIn { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
     .bh-row { display: flex; gap: 8px; padding: 3px 0; }
-    .bh-row b { flex: none; width: 82px; font-size: .78rem; }
+    .bh-title { font-weight: 900; font-size: .92rem; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: baseline; }
+    .bh-title small { font-weight: 600; font-size: .64rem; opacity: .65; }
+    .bh-foot { margin-top: 6px; font-size: .66rem; opacity: .65; }
+    .bar-help { max-height: calc(100dvh - 180px); overflow-y: auto; }
+    .side-stack .side-logo.on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+    .bh-row b { flex: none; width: 96px; font-size: .76rem; }
     :root[data-theme="contrast"] .bar-help { background: var(--accent); color: #000; }
     .side-stack .side-btn { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
@@ -4831,7 +4836,7 @@
     // ---- Bottom bar: what each button does ----
     // Tap Pilot for a guide to every button; press and hold any button to see what it does without using it.
     const BAR_HELP = {
-      logo:  ['Pilot', 'This guide. Press and hold any button to see what it does.'],
+      logo:  ['Pilot', 'Help for the page you’re on. Tap again, or anywhere, to close.'],
       gear:  ['⚙️ Settings', 'Your car and costs, offer targets, surge alerts, theme, backup, test run and your data.'],
       snap:  ['📸 Snap', 'Save a surge you see in Uber: its level, amount and where it is. Builds Live and Predicted surges.'],
       pad:   ['🔢 Keypad', 'Type an offer’s fare, time and km yourself. Opens the Drive tab; tap again to close.'],
@@ -4844,12 +4849,18 @@
       const el = document.getElementById('barHelp');
       if (!el) return;
       el.innerHTML = keys.map(k => `<div class="bh-row"><b>${BAR_HELP[k][0]}</b><span>${BAR_HELP[k][1]}</span></div>`).join('');
+      delete el.dataset.page;
       el.hidden = false;
       el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
       clearTimeout(barHelpT);
       barHelpT = setTimeout(hideBarHelp, ms || 4000);
     }
-    function hideBarHelp() { clearTimeout(barHelpT); const el = document.getElementById('barHelp'); if (el) el.hidden = true; }
+    function hideBarHelp() {
+      clearTimeout(barHelpT);
+      const el = document.getElementById('barHelp');
+      if (el) { el.hidden = true; delete el.dataset.page; }
+      const lg = document.querySelector('.side-logo'); if (lg) lg.classList.remove('on');
+    }
     window.addEventListener('scroll', () => { const el = document.getElementById('barHelp'); if (el && !el.hidden) hideBarHelp(); }, { passive: true });
     // Press and hold: show the description and skip the button's action
     function wireBarHelp() {
@@ -4864,7 +4875,61 @@
         el.addEventListener('contextmenu', e => e.preventDefault());
         el.addEventListener('click', e => { if (held) { e.preventDefault(); e.stopImmediatePropagation(); held = false; } }, true);
       });
-      document.querySelector('.side-logo').addEventListener('click', () => showBarHelp(['gear', 'snap', 'pad', 'pip', 'auto', 'site', 'logo'], 10000));
+      document.querySelector('.side-logo').addEventListener('click', e => { e.stopPropagation(); togglePageHelp(); });
+      // Tap anywhere else to close the page guide
+      document.addEventListener('click', e => {
+        const el = document.getElementById('barHelp');
+        if (el && !el.hidden && el.dataset.page && !e.target.closest('.side-logo')) {
+          hideBarHelp();
+          if (!e.target.closest('#barHelp')) { e.preventDefault(); e.stopPropagation(); }   // this tap only closes the guide
+        }
+      }, true);
+    }
+
+    // ---- Pilot button: a guide for the page you're on ----
+    const PAGE_HELP = {
+      offer: ['🚗 Drive', [
+        ['Verdict', 'ACCEPT or DECLINE using your targets: gross $/hr and $/km (Settings → Offer targets).'],
+        ['Fare · Time · Km', 'From the Uber offer card. Time and km are pickup + trip together. Tap a box to see what goes in it.'],
+        ['Gross · Per km · Net', 'Net is after fuel and servicing for those km, from your car in Settings.'],
+        ['Took it / Passed', 'Logs the offer. It builds your best times and pickup spots, and counts towards your shift goal.'],
+        ['Start shift', 'Tracks time, trips, km and take-home against your daily goal.'],
+        ['Good to know', 'On the Map tab a green or red pill shows the same verdict, so you can keep the map open.']]],
+      drive: ['🗺 Map', [
+        ['🔥 number', 'Busy near you: surges, busy zones and events with drive times. Tap one to see it on the map.'],
+        ['🗺 Zones', 'Uber zones now: 🟩 busy, 🟨 fair, 🟦 quiet, with demand and drive time. Double-tap to label every zone.'],
+        ['🔴 Live · 🔮 Predicted', 'Surges you snapped in the last 20 min, and where your snapshots say they usually happen now.'],
+        ['⭐ Spots · 🕘 History', 'Suburbs by your offers’ $/hr, and every past snapshot by day and time.'],
+        ['🌙 · 🏙 · ➤', 'Night map, zoom out to all of Melbourne, and follow me (arrow turns with the compass).'],
+        ['Good to know', 'Drag the map to look around; tap ➤ to follow again. Tap a surge pin for the drive and whether it’s worth it.']]],
+      trends: ['📈 Uber Trends', [
+        ['📍 Where you are', 'Today’s demand in your zone, hour by hour from 4am to 3am, with the current hour outlined.'],
+        ['⭐ Recommended', 'The best area now, in 1 hour and in 2 hours. Orange bars are the recommended hours, grey is now.'],
+        ['📈 Uber demand', 'Uber’s weekly pattern for any zone and day. Import screenshots of Earnings trends to update it.'],
+        ['Import', 'Zone names and the day tab are read from the screenshot. Discover screenshots add events and airport peaks.'],
+        ['🔁 Week-on-week', 'What changed from last week after you import new screenshots.'],
+        ['Good to know', 'Rain, events and live readings raise the bars for today. Refresh the screenshots weekly.']]],
+      insights: ['🗓 Plan a Shift', [
+        ['📍 Where to drive', 'The best area now, in 1 hour and in 2 hours; one box per area.'],
+        ['📅 Calendar', 'Green dates are mostly recommended days for the area you choose; “9h” = recommended hours. ✈️ airport days, 🏟 events.'],
+        ['🕘 Choose your hours', 'Pick a day and start (and end). It suggests an end time and ranks the zones. 📅 adds it to your calendar.'],
+        ['✈️ Airport runs', 'City → airport and airport → city for that day, and whether you’ll likely get a ride back.'],
+        ['⭐ Spots · 🏟 Events', 'Your best pickup suburbs, and events that raise demand (add your own).'],
+        ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
+    };
+    function currentTab() { return ['offer', 'drive', 'trends', 'insights'].find(t => document.getElementById('view-' + t).style.display !== 'none') || 'offer'; }
+    function togglePageHelp() {
+      const el = document.getElementById('barHelp'), tab = currentTab();
+      if (!el.hidden && el.dataset.page === tab) { hideBarHelp(); return; }
+      const [title, rows] = PAGE_HELP[tab];
+      el.innerHTML = `<div class="bh-title">${title} <small>tap anywhere to close</small></div>` +
+        rows.map(([a, b]) => `<div class="bh-row"><b>${a}</b><span>${b}</span></div>`).join('') +
+        `<div class="bh-foot">Press and hold a bottom button to see what it does.</div>`;
+      el.dataset.page = tab;
+      el.hidden = false;
+      el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      clearTimeout(barHelpT);                        // stays until you tap Pilot again or tap elsewhere
+      document.querySelector('.side-logo').classList.add('on');
     }
     let mapHelpT = null;
     function showMapHelp(key, on) {
@@ -5511,7 +5576,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.7';
+    const APP_VERSION = '1.25.8';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
