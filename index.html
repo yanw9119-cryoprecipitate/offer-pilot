@@ -415,6 +415,17 @@
     .tn-tag { font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--card-2); color: var(--muted); border: var(--bw) solid var(--card-border); }
     .tn-tag.best { color: var(--accent); }
     .tn-sub { font-size: .74rem; color: var(--muted); margin: 3px 0 6px; }
+    .demand-chart i.hl { position: relative; }
+    .demand-chart i.soon { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .demand-chart i.hl::after { content: ""; position: absolute; left: -1px; right: -1px; bottom: -6px; height: 3px; border-radius: 2px; background: var(--accent); }
+    .demand-chart i.now.hl::after { background: #f97316; }
+    #tnBestChart { padding-bottom: 8px; overflow: visible; }
+    .tn-hours { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+    .tn-hr { background: var(--card-2); border: var(--bw) solid var(--card-border); border-radius: 12px; padding: 6px 8px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .tn-hr span { font-size: .62rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tn-hr b { font-size: .85rem; }
+    .tn-hr.cur { border-color: #f97316; }
+    .tn-hr.yes b { color: var(--green); } .tn-hr.maybe b { color: var(--amber); } .tn-hr.no b { color: var(--red); }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1000,6 +1011,7 @@
         <div class="tn-sub" id="tnBestSub"></div>
         <div class="demand-chart" id="tnBestChart"></div>
         <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
+        <div class="tn-hours" id="tnBestHours"></div>
       </div>
       <div class="demand-card">
         <div class="demand-head">
@@ -2312,9 +2324,11 @@
       return { levels: hrs.map(t => { const v = demandAdj(zone, t); return v === null ? -1 : Math.round(v * 4); }),
         nowIdx: Math.floor((now - start) / 3600000) };
     }
-    function chartHTML(levels, nowIdx) {
+    // hl: also highlight the next two hours (Recommended chart)
+    function chartHTML(levels, nowIdx, hl) {
+      const cls = i => (i === nowIdx ? ' now' : '') + (hl && (i === nowIdx + 1 || i === nowIdx + 2) ? ' soon' : '') + (hl && i >= nowIdx && i <= nowIdx + 2 ? ' hl' : '');
       return levels.every(l => l < 0) ? '<div class="empty">No Uber trend for this zone yet.</div>'
-        : levels.map((l, i) => l < 0 ? `<i class="nodata${i === nowIdx ? ' now' : ''}"></i>` : `<i class="lv${l}${i === nowIdx ? ' now' : ''}" style="height:${Math.max(4, l * 25)}%"></i>`).join('');
+        : levels.map((l, i) => l < 0 ? `<i class="nodata${cls(i)}"></i>` : `<i class="lv${l}${cls(i)}" style="height:${Math.max(4, l * 25)}%"></i>`).join('');
     }
     function renderTrendNow() {
       const box = document.getElementById('tnHereChart');
@@ -2328,7 +2342,14 @@
         const t = todayLevels(zone), v = demandAdj(zone, now), vd = VERDICT(v);
         pill.hidden = false; pill.className = 'pill ' + vd.c; pill.textContent = vd.t;
         document.getElementById(`tn${key}Sub`).textContent = sub || `${demandName(v)} now · today ${DAYS[dayIdx(new Date(Date.now() - (new Date().getHours() < 4 ? 86400000 : 0)))]}`;
-        document.getElementById(`tn${key}Chart`).innerHTML = chartHTML(t.levels, t.nowIdx);
+        document.getElementById(`tn${key}Chart`).innerHTML = chartHTML(t.levels, t.nowIdx, key === 'Best');
+        if (key === 'Best') {
+          // Now, next hour and in 2 hours for the recommended area
+          document.getElementById('tnBestHours').innerHTML = [0, 1, 2].map(k => {
+            const dt = new Date(now.getTime() + k * 3600000), hv = demandAdj(zone, dt), hvd = VERDICT(hv);
+            return `<div class="tn-hr ${hvd.c}${k ? '' : ' cur'}"><span>${k === 0 ? 'Now' : k === 1 ? 'Next hour' : 'In 2 hours'} · ${fmtHour(dt.getHours())}</span><b>${demandName(hv)}</b></div>`;
+          }).join('');
+        }
       };
       fill('Here', here, here ? '' : (lastFix ? 'You’re outside Uber’s trend zones.' : 'Waiting for your location…'));
       let rec = best ? best.z : null, note = '';
@@ -2337,6 +2358,7 @@
         note = `You’re in the best area now (${demandName(best.v).toLowerCase()}).`;
         if (other) { rec = other.z; note += ` Below is the next best, ${demandName(other.v).toLowerCase()} now.`; }
       }
+      document.getElementById('tnBestHours').innerHTML = '';
       fill('Best', rec, '');
       if (rec) {
         const km = zoneKm(rec), why = best && best.z === rec && best.why && best.why.length ? ' · ' + best.why.join(' · ') : '';
@@ -4898,7 +4920,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.22.0';
+    const APP_VERSION = '1.22.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
