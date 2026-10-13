@@ -790,7 +790,6 @@
     .ap-out-h small { font-weight: 600; color: var(--muted); font-size: .7rem; }
     .flh-list { margin-top: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
     @media (min-width: 560px) { .flh-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } .flh-c { font-size: .72rem; padding: 2px 6px; gap: 4px; } }
-    .flh[open] { grid-column: 1 / -1; }
     .flh-cs { display: flex; flex-wrap: nowrap; gap: 3px; flex-basis: 100%; min-width: 0; }
     .flh-c { display: inline-flex; align-items: center; gap: 2px; font-size: .64rem; letter-spacing: -.2px; font-variant-numeric: tabular-nums; padding: 2px 4px; min-width: 0; border-radius: 8px; white-space: nowrap;
       border: 1.5px solid var(--gc); background: color-mix(in srgb, var(--gc) 16%, var(--card-2)); color: var(--text); }
@@ -798,18 +797,21 @@
     .flh-c i { font-style: normal; font-weight: 900; font-size: .6rem; color: #fff; background: var(--gc); border-radius: 999px; min-width: 1.6em; padding: 0 3px; line-height: 1.6em; text-align: center; box-sizing: border-box; }
     .flh-c b { font-weight: 900; color: #db2777; }
     .flh.past { opacity: .6; } .flh.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; } .flh.start { border-color: #0284c7; }
-    .flh summary > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
+    .flh-s > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
     .flh { border: 1px solid var(--card-border); border-radius: 10px; background: var(--card-2); overflow: hidden; }
-    .flh summary { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; padding: 7px 8px; cursor: pointer; font-size: .8rem; position: relative; padding-right: 6px; }
-    .flh summary::after { position: absolute; right: 7px; top: 8px; }
-    .flh summary::-webkit-details-marker { display: none; }
-    .flh summary::after { content: '▾'; margin-left: auto; color: var(--muted); transition: transform .2s; }
-    .flh[open] summary::after { transform: rotate(180deg); }
-    .flh summary > b { flex-basis: 100%; }
+    .flh-s, .flp-h { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; padding: 7px 6px; font-size: .8rem; }
+    .flh { cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform .12s; } .flh:active { transform: scale(.97); }
+    .flh.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; opacity: 1; }
+    .fl-pop { position: fixed; left: 50%; transform: translateX(-50%); width: min(94vw, 460px); z-index: 1200; overflow-y: auto; overscroll-behavior: contain;
+      background: var(--card-2); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: 0 14px 40px rgba(0,0,0,.35); animation: flPopIn .16s ease-out; }
+    @keyframes flPopIn { from { opacity: 0; transform: translateX(-50%) scale(.96); } to { opacity: 1; transform: translateX(-50%) scale(1); } }
+    .flp-h { position: sticky; top: 0; z-index: 1; background: var(--card-2); border-bottom: 1px solid var(--line); padding: 9px 10px; }
+    .flp-h > b { font-size: .95rem; margin-right: 4px; } .flp-h > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
+    .flp-h .flh-cs { flex-basis: auto; } .flp-h .flh-c { font-size: .74rem; padding: 2px 6px; gap: 4px; }
+    .flh-s > b { flex-basis: 100%; }
     .flh-n { font-weight: 800; font-variant-numeric: tabular-nums; }
     .flh-x:empty { display: none; } .flh-x { margin-left: auto; gap: 8px; }
     .flc { font-weight: 800; font-variant-numeric: tabular-nums; } .flc.late { color: #db2777; } .flc.canc { color: #ef4444; }
-    .flh[open] summary > b { flex-basis: auto; margin-right: 6px; }
     .flh-x { display: flex; gap: 4px; flex-wrap: wrap; }
     .fls { font-style: normal; font-weight: 800; font-size: .62rem; padding: 1px 6px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
     .fls.ok { background: rgba(34,197,94,.18); color: var(--green); } .fls.late { background: rgba(219,39,119,.15); color: #db2777; }
@@ -6947,7 +6949,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.52.5';
+    const APP_VERSION = '1.53.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7473,25 +7475,60 @@
         const all = arr.map(f => ({ f, dir: 'arr' })).concat(dep.map(f => ({ f, dir: 'dep' }))).sort((x, y) => flEt(x.f) - flEt(y.f));
         const st = all.map(x => flState(x.f, x.dir));
         const nLate = st.filter(x => x.k === 'late').length, nCanc = st.filter(x => x.k === 'canc').length;
-        const key = String(t), open = flOpenHours.has(key);
+        const key = String(t);
         const cls = (t < hNow ? ' past' : '') + (t === hNow ? ' now' : '') + (t === h0.getTime() && h0.getTime() !== hNow ? ' start' : '');
         const nA = arr.filter(f => !flCancelled(f)).length, nD = dep.filter(f => !flCancelled(f)).length, gA = grade(nA, pkA), gD = grade(nD, pkD);
         const lA = all.filter((x, i) => x.dir === 'arr' && st[i].k === 'late').length, lD = all.filter((x, i) => x.dir === 'dep' && st[i].k === 'late').length;
-        rows.push(`<details class="flh${cls}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
+        const head = `<b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
           `<span class="flh-cs"><span class="flh-c" style="--gc:${gA.c}" title="Airport to city: ${nA} arrivals (${gA.t})${lA ? `, ${lA} delayed` : ''}"><i>${nA}</i> 🛬→🏙️${lA ? ` <b>${lA}</b>` : ''}</span>` +
-          `<span class="flh-c" style="--gc:${gD.c}" title="City to airport: ${nD} departures (${gD.t})${lD ? `, ${lD} delayed` : ''}"><i>${nD}</i> 🏙️→🛫${lD ? ` <b>${lD}</b>` : ''}</span></span>` +
-          `</summary>` +
-          (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
+          `<span class="flh-c" style="--gc:${gD.c}" title="City to airport: ${nD} departures (${gD.t})${lD ? `, ${lD} delayed` : ''}"><i>${nD}</i> 🏙️→🛫${lD ? ` <b>${lD}</b>` : ''}</span></span>`;
+        // The flights for the hour open in a pop-up (tap outside it, or scroll, to close), so nothing on the page moves
+        flHourPop[key] = `<div class="flp-h">${head}</div>` + (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
             return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${x.dir === 'arr' ? '🛬' : '🛫'}</span>` +
               `<span class="flr-f">${esc(f.n)}${f.ap ? ` · ${x.dir === 'arr' ? 'from' : 'to'} ${esc(f.ap)}` : ''}${f.term ? ` <em>T${esc(f.term)}</em>` : ''}</span><i class="fls ${s2.k}">${s2.t}</i></div>`; }).join('')
-            : '<div class="flr none">No passenger flights this hour</div>') + `</details>`);
+            : '<div class="flr none">No passenger flights this hour</div>');
+        rows.push(`<div class="flh${cls}${flPopKey === key ? ' sel' : ''}" role="button" tabindex="0" data-k="${key}" onclick="flOpenHour('${key}', this)"><div class="flh-s">${head}</div></div>`);
       }
       return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · boxes: ⓝ flights, 🛬→🏙️ arrivals or 🏙️→🛫 departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
-    const flOpenHours = new Set();
-    function flToggleHour(k, open) { if (open) flOpenHours.add(k); else flOpenHours.delete(k); }
+    const flHourPop = {};
+    let flPopKey = null;
+    function flCloseHour() {
+      const p = document.getElementById('flPop'); if (p) p.remove();
+      document.querySelectorAll('.flh.sel').forEach(x => x.classList.remove('sel'));
+      flPopKey = null;
+    }
+    function flOpenHour(key, tile) {
+      if (flPopKey === key) { flCloseHour(); return; }
+      flCloseHour();
+      if (!flHourPop[key]) return;
+      flPopKey = key; tile.classList.add('sel');
+      const p = document.createElement('div');
+      p.id = 'flPop'; p.className = 'fl-pop'; p.innerHTML = flHourPop[key];
+      document.body.appendChild(p);
+      // Place it under the tapped hour if there is room, otherwise above it; it never covers the hour you tapped
+      const r = tile.getBoundingClientRect(), vh = window.innerHeight, gap = 8, top0 = 70, bottom0 = 92;
+      const below = vh - bottom0 - r.bottom - gap, above = r.top - top0 - gap;
+      const useBelow = below >= 220 || below >= above;
+      const maxH = Math.max(160, Math.min(useBelow ? below : above, vh * 0.62));
+      p.style.maxHeight = maxH + 'px';
+      const h = Math.min(p.scrollHeight, maxH);
+      p.style.top = (useBelow ? r.bottom + gap : r.top - gap - h) + 'px';
+    }
+    // Tap anywhere outside the pop-up, or scroll the page, to close it
+    document.addEventListener('pointerdown', e => {
+      if (!flPopKey) return;
+      if (e.target.closest && (e.target.closest('#flPop') || e.target.closest(`.flh[data-k="${flPopKey}"]`))) return;
+      flCloseHour();
+    }, true);
+    window.addEventListener('scroll', e => {
+      if (!flPopKey) return;
+      const p = document.getElementById('flPop');
+      if (p && e.target instanceof Node && p.contains(e.target)) return;    // scrolling inside the list keeps it open
+      flCloseHour();
+    }, true);
     function flState(f, dir) {
       if (flCancelled(f)) return { k: 'canc', t: 'Cancelled' };
       if (/divert/i.test(f.st)) return { k: 'canc', t: 'Diverted' };
