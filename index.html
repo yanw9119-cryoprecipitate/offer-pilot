@@ -739,6 +739,7 @@
     .fuel-pin { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: #fff; border: 2px solid #ea580c; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
     .fuel-pin { border-color: #64748b; }
     .fuel-pin.open { border-color: #16a34a; }
+    .fuel-pin.likely { border: 2px dashed #16a34a; }
     .fuel-pin.shut { border-color: #94a3b8; opacity: .55; filter: grayscale(1); }
     .fuel-pin-wrap span { font-size: .62rem; font-weight: 800; color: #111; background: rgba(255,255,255,.9); border-radius: 6px; padding: 1px 5px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
     .fuel-pop .leaflet-popup-content { margin: 10px 12px; font-size: .8rem; line-height: 1.35; }
@@ -5600,7 +5601,7 @@
     const MAP_HELP = {
       zones: ['🗺 Zones', 'The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
-      fuel: ['⛽ Fuel stations', 'Green ring: open now. Faded: closed now. Grey ring: opening hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
+      fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
       pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
@@ -6382,7 +6383,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.34.4';
+    const APP_VERSION = '1.34.5';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6660,11 +6661,15 @@
       const b = map.getBounds();
       if (fuelInside(fuelBox, b)) return;
       const box = fuelBoxOf(b, 0.4), bb = `${box.s.toFixed(4)},${box.w.toFixed(4)},${box.n.toFixed(4)},${box.e.toFixed(4)}`;
-      const q = `[out:json][timeout:20];(node["amenity"="fuel"](${bb});way["amenity"="fuel"](${bb}););out center tags;`;
+      // Fuel stations plus convenience shops: at many servos the hours are on the shop (Coles Express, 7-Eleven, Reddy Express…)
+      const q = `[out:json][timeout:20];(node["amenity"="fuel"](${bb});way["amenity"="fuel"](${bb});node["shop"="convenience"](${bb});way["shop"="convenience"](${bb}););out center tags;`;
       fuelLoading = true;
       try {
         const j = await fetchJSON('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 20000);
-        fuelList = (j.elements || []).map(e => {
+        const els = j.elements || [];
+        const shops = els.filter(e => (e.tags || {}).shop === 'convenience' && (e.tags || {}).amenity !== 'fuel')
+          .map(e => ({ lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon, t: e.tags || {} })).filter(x => x.lat != null);
+        fuelList = els.filter(e => (e.tags || {}).amenity === 'fuel').map(e => {
           const t = e.tags || {}, fuels = [];
           if (t['fuel:octane_91'] === 'yes' || t['fuel:e10'] === 'yes') fuels.push(t['fuel:e10'] === 'yes' ? 'E10' : '91');
           if (t['fuel:octane_95'] === 'yes') fuels.push('95');
@@ -6675,12 +6680,25 @@
           return { id: e.type + e.id, lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon,
             brand: t.brand || t.operator || '', name: t.name || t.brand || 'Service station', addr,
             h24: t.opening_hours === '24/7', hours: t.opening_hours || '', fuels, shop: t.shop === 'convenience' || !!t['shop'] };
-        }).filter(f => f.lat != null);
+        }).filter(f => f.lat != null).map(f => {
+          // No hours on the station: borrow them from the servo's shop (within ~60 m)
+          let near = null, nd = 60;
+          shops.forEach(x => { const d = distM(f.lat, f.lng, x.lat, x.lng); if (d < nd) { nd = d; near = x; } });
+          if (near) {
+            const sb = near.t.brand || near.t.name || '';
+            f.shopName = sb;
+            if (!f.hours && near.t.opening_hours) { f.hours = near.t.opening_hours; f.hoursFrom = sb || 'the shop'; f.h24 = f.hours === '24/7'; }
+          }
+          // Still nothing: brands that are open around the clock at almost every servo
+          if (!f.hours && FUEL_24_BRANDS.test(`${f.brand} ${f.name} ${f.shopName || ''}`)) f.usually24 = true;
+          return f;
+        });
         fuelBox = box;
         drawFuel();
       } catch (e) { if (layers.fuel) toast('⛽ Couldn’t load fuel stations right now'); }
       finally { fuelLoading = false; }
     }
+    const FUEL_24_BRANDS = /7-?eleven|reddy express|coles express/i;
     // Open now? Reads common OpenStreetMap hours ("24/7", "Mo-Fr 06:00-22:00; Sa,Su 07:00-21:00").
     // Returns true / false, or null when the hours are missing or too complex to read.
     function openNow(hours, at = new Date()) {
@@ -6715,7 +6733,7 @@
     }
     function fuelIcon(f, zoom) {
       const label = zoom >= 14 ? `<span>${esc(f.brand || f.name).slice(0, 18)}</span>` : '';
-      const o = openNow(f.hours), cls = o === true ? ' open' : o === false ? ' shut' : '';   // unknown hours: plain pin
+      const o = openNow(f.hours), cls = o === true ? ' open' : o === false ? ' shut' : f.usually24 ? ' likely' : '';   // unknown hours: plain pin
       return L.divIcon({ className: 'fuel-pin-wrap', iconSize: null, iconAnchor: [13, 13],
         html: `<div class="fuel-pin${cls}">⛽</div>${label}` });
     }
@@ -6736,7 +6754,10 @@
       setFollow(false);                       // let the map pan so the card fits
       const from = myPos(), km = from ? distM(from.lat, from.lng, f.lat, f.lng) / 1000 * 1.3 : null;   // road ≈ 1.3 × straight line
       const on = openNow(f.hours);
-      const bits = [f.h24 ? '🕐 Open 24/7' : f.hours ? `🕐 ${on === true ? '<b class="fp-open">Open now</b> · ' : on === false ? '<b class="fp-shut">Closed now</b> · ' : ''}${esc(f.hours)}` : '🕐 Hours not listed', f.fuels.length ? '⛽ ' + f.fuels.join(' · ') : '',
+      const hrsSrc = f.hoursFrom ? ` <small>(${esc(f.hoursFrom)} hours)</small>` : '';
+      const bits = [f.h24 ? `🕐 <b class="fp-open">Open 24/7</b>${hrsSrc}` : f.hours ? `🕐 ${on === true ? '<b class="fp-open">Open now</b> · ' : on === false ? '<b class="fp-shut">Closed now</b> · ' : ''}${esc(f.hours)}${hrsSrc}`
+        : f.usually24 ? `🕐 Usually open 24/7 <small>(${esc(f.shopName || f.brand || f.name)}; hours not listed)</small>` : '🕐 Hours not listed',
+        f.shopName && !f.hoursFrom ? `🏪 ${esc(f.shopName)}` : '', f.fuels.length ? '⛽ ' + f.fuels.join(' · ') : '',
         km !== null ? `🚗 ~${km.toFixed(1)} km · ${Math.max(1, Math.round(estMin(km)))} min` : ''].filter(Boolean);
       L.popup({ className: 'fuel-pop', offset: [0, -8], minWidth: 200, maxWidth: 270, autoPanPadding: [16, 60] }).setLatLng([f.lat, f.lng]).setContent(
         `<b>${esc(f.name)}</b>${f.brand && f.brand !== f.name ? `<div class="fp-sub">${esc(f.brand)}</div>` : ''}` +
