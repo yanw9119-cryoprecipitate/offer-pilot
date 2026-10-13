@@ -554,7 +554,8 @@
     .ac-set label { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
     .ac-set input { width: 90px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; text-align: right; }
     .ac-set .rs-btn { margin-top: 8px; }
-    .ex-photo { grid-column: 1 / -1; justify-self: start; margin-bottom: 4px; }
+    .ex-photo { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+    .ex-photo .ok { font-weight: 800; color: var(--green); font-size: .82rem; margin-right: 4px; }
     /* Account forms: the date box spans the row and stays inside it on iPhone */
     #acctSheet .setting-item:has(input[type="date"]) { grid-column: 1 / -1; }
     #acctSheet input { min-width: 0; max-width: 100%; box-sizing: border-box; }
@@ -4575,7 +4576,7 @@
           <div><small>Per hour</small><b>${n.actual > 0.2 ? acMoney(n.payout / n.actual) : '—'}</b></div></div>
         <div class="ac-sec">🧾 Costs</div>
         ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}${line(`Other (${n.exN})`, acMoney(n.exPaid))}
-        <div class="ac-acts"><button type="button" class="rs-btn" onclick="scanReceipt()">📷 Scan fuel receipt</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other cost</button>
+        <div class="ac-acts"><button type="button" class="rs-btn" onclick="scanReceipt(true)">📷 Fuel receipt</button><button type="button" class="rs-btn" onclick="scanReceipt(false)">🖼 From photos</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other cost</button>
           <button type="button" class="rs-btn" onclick="openStatement()">＋ Uber weekly statement</button></div>
         <div class="ac-sec">🏛 GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
@@ -4643,20 +4644,20 @@
       const find = re => { for (const l of lines) { if (!re.test(l)) continue; const m = l.match(/-?\$?\s*(\d{1,6}\.\d{2})/g); if (m) return Math.abs(parseFloat(m[m.length - 1].replace(/[^\d.]/g, ''))); } return null; };
       return { gross: find(/fares?\b|gross|trip earnings|total fare/i), fee: find(/service fee|uber fee|commission/i), tips: find(/\btips?\b/i), payout: find(/payout|total earnings|net|transferred/i) };
     }
-    async function stAddPhoto() {
-      const r = await pickReceiptPhoto(); if (!r) return;
+    async function stAddPhoto(camera) {
+      const r = await pickReceiptPhoto(camera); if (!r) return;
       stPhoto = r;
       let p = {}; try { const img = await getImg(r.imgId); const i = new Image(); await new Promise(res => { i.onload = res; i.src = img; }); p = parseStatement(await importOCR(cropCanvas(i, 0, 0, i.width, i.height), 4)); } catch (e) {}
       if (p.gross) document.getElementById('stGross').value = p.gross;
       if (p.fee) document.getElementById('stFee').value = p.fee;
       if (p.tips) document.getElementById('stTips').value = p.tips;
-      document.getElementById('stPhotoBtn').textContent = '✓ Statement added (tap to retake)';
+      document.getElementById('stPhotoBtn').innerHTML = '<span class="ok">✓ Statement added</span><button type="button" class="rs-btn" onclick="stAddPhoto(true)">📷 Retake</button><button type="button" class="rs-btn" onclick="stAddPhoto(false)">🖼 Choose</button>';
       toast(p.gross ? `📄 Read fares $${p.gross}${p.fee ? ', fee $' + p.fee : ''}. Check and save.` : '📄 Saved. Type the amounts in from the statement.');
     }
     function openStatement() {
       stPhoto = null;
       const wk = weekOf(Date.now() - 7 * 86400000);
-      acctSheet('💵 Uber weekly statement', `<button type="button" class="rs-btn ex-photo" id="stPhotoBtn" onclick="stAddPhoto()">📷 Upload statement screenshot</button>` +
+      acctSheet('💵 Uber weekly statement', `<div class="ex-photo" id="stPhotoBtn"><button type="button" class="rs-btn" onclick="stAddPhoto(true)">📷 Take photo</button><button type="button" class="rs-btn" onclick="stAddPhoto(false)">🖼 Choose screenshot</button></div>` +
         fld('stWeek', 'Week starting (Monday)', `type="date" value="${wk}"`) + fld('stGross', 'Gross fares incl. GST ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('stFee', 'Uber service fee ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTips', 'Tips ($)', 'type="number" inputmode="decimal" step="0.01"'), () => {
         const w = document.getElementById('stWeek').value, g = num('stGross');
@@ -4669,9 +4670,10 @@
     }
     let exPhoto = null;                                   // { imgId } for the cost being added
     // Photo of a receipt for any cost: saved with it, and the total (and GST) are read to fill the form
-    async function pickReceiptPhoto(onRead) {
+    // camera = true: opens the camera; false: choose a photo or screenshot from the library
+    async function pickReceiptPhoto(camera) {
       return new Promise(resolve => {
-        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; if (camera) inp.capture = 'environment';
         inp.onchange = async () => {
           const file = inp.files && inp.files[0]; if (!file) return resolve(null);
           toast('📷 Reading the receipt…');
@@ -4687,19 +4689,19 @@
         inp.click();
       });
     }
-    async function exAddPhoto() {
-      const r = await pickReceiptPhoto(); if (!r) return;
+    async function exAddPhoto(camera) {
+      const r = await pickReceiptPhoto(camera); if (!r) return;
       exPhoto = r;
       if (r.total && !(num('exAmt') > 0)) document.getElementById('exAmt').value = r.total;
       if (r.gst) document.getElementById('exGst').checked = true;
       if (r.station && !document.getElementById('exWhat').value) document.getElementById('exWhat').value = r.station;
       if (r.date) { const m = r.date.split('/'); if (m.length === 3) { const y = m[2].length === 2 ? '20' + m[2] : m[2]; document.getElementById('exDate').value = `${y}-${m[1].padStart(2, '0')}-${m[0].padStart(2, '0')}`; } }
-      const b = document.getElementById('exPhotoBtn'); if (b) b.textContent = '✓ Receipt photo added (tap to retake)';
+      const b = document.getElementById('exPhotoBtn'); if (b) b.innerHTML = '<span class="ok">✓ Photo added</span><button type="button" class="rs-btn" onclick="exAddPhoto(true)">📷 Retake</button><button type="button" class="rs-btn" onclick="exAddPhoto(false)">🖼 Choose</button>';
       toast(r.total ? `🧾 Read $${r.total}${r.gst ? ' (GST $' + r.gst + ')' : ''}. Check and save.` : '🧾 Photo saved. Type the amount in.');
     }
     function openExpense() {
       exPhoto = null;
-      acctSheet('🧾 Other cost', `<button type="button" class="rs-btn ex-photo" id="exPhotoBtn" onclick="exAddPhoto()">📷 Add receipt photo</button>` +
+      acctSheet('🧾 Other cost', `<div class="ex-photo" id="exPhotoBtn"><button type="button" class="rs-btn" onclick="exAddPhoto(true)">📷 Take photo</button><button type="button" class="rs-btn" onclick="exAddPhoto(false)">🖼 Choose photo</button></div>` +
         fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount paid ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
         const amt = num('exAmt'); if (!(amt > 0)) { toast('Enter the amount'); return false; }
@@ -4710,8 +4712,8 @@
       });
     }
     // ⛽ Fuel receipt: photo → read on the phone (Tesseract) → the fill-up form opens with litres, total, GST and date filled in
-    function scanReceipt() {
-      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+    function scanReceipt(camera = true) {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; if (camera) inp.capture = 'environment';
       inp.onchange = async () => {
         const file = inp.files && inp.files[0]; if (!file) return;
         toast('📷 Reading the receipt…');
@@ -7438,7 +7440,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.63.0';
+    const APP_VERSION = '1.63.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
