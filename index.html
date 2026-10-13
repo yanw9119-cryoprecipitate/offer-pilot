@@ -185,7 +185,7 @@
     .detail { font-size: 0.8rem; color: var(--text); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid var(--card-border); border-radius: 8px; padding: 8px; margin-top: 8px; min-height: 18px; }
 
     .rank { background: var(--card); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; }
-    .rank-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px; border-bottom: 1px solid var(--card-border); font-size: 0.88rem; }
+    .rank-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--card-border); font-size: 0.88rem; }
     .rank-item:last-child { border-bottom: none; }
     .rank-item .r-sub { font-size: 0.7rem; color: var(--muted); }
     .rank-item .r-val { font-weight: 800; }
@@ -939,7 +939,7 @@
     }
     .sc-iname { flex: 1; font-weight: 700; font-size: .85rem; min-width: 0; }
     .sc-ival { font-size: .75rem; color: var(--muted); white-space: nowrap; }
-    .pill { font-style: normal; font-weight: 800; padding: 2px 6px; border-radius: 999px; margin-left: 4px; font-size: .66rem; }
+    .pill { font-style: normal; font-weight: 800; padding: 2px 6px; border-radius: 999px; margin-left: 4px; font-size: .66rem; white-space: nowrap; flex-shrink: 0; }
     .pill.yes { background: rgba(34,197,94,.2); color: var(--green); }
     .pill.maybe { background: rgba(245,158,11,.2); color: var(--amber); }
     .pill.no { background: rgba(239,68,68,.2); color: var(--red); }
@@ -6814,7 +6814,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.45.0';
+    const APP_VERSION = '1.45.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
