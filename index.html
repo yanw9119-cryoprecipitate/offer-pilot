@@ -293,7 +293,7 @@
     .leaflet-popup-content img { width: 160px; border-radius: 6px; margin-top: 6px; display: block; }
     .fire { color: #fb923c; font-size: 0.55rem; display: block; }
     .area-label {
-      background: rgba(255,255,255,0.85); border: none; box-shadow: none; color: var(--card-2);
+      background: var(--glass); border: none; box-shadow: none; color: var(--text);
       font-size: 0.6rem; font-weight: 700; padding: 1px 4px; border-radius: 4px;
     }
     .area-label::before { display: none; }
@@ -534,10 +534,10 @@
     /* Surge pins on the map */
     .surge-pin-wrap { background: none; border: none; }
     .zone-tag {
-      transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--card-2);
-      background: rgba(255,255,255,.92); border: 2px solid; border-radius: 8px; padding: 3px 7px; text-align: center;
+      transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
+      background: var(--glass-strong); border: 2px solid; border-radius: 10px; padding: 4px 8px; text-align: center; box-shadow: var(--shadow);
     }
-    .zone-tag span { display: block; font-weight: 700; font-size: 10px; color: #475569; }
+    .zone-tag span { display: block; font-weight: 700; font-size: 10px; color: var(--muted); }
     .surge-pin {
       transform: translate(-50%, -120%); white-space: nowrap; font: 800 11px/1 -apple-system, sans-serif;
       padding: 5px 8px 5px 6px; border-radius: 999px; color: #fff; display: inline-flex; align-items: center; gap: 5px;
@@ -2932,6 +2932,18 @@
       }
       return best;
     }
+    // Closest point on a zone's outline (where you'd enter it)
+    function nearestOnRing(lat, lng, ring) {
+      const k = Math.cos(lat * Math.PI / 180);
+      let best = null, bd = Infinity;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const ax = ring[j][1] * k, ay = ring[j][0], bx = ring[i][1] * k, by = ring[i][0], px = lng * k, py = lat;
+        const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / ((dx * dx + dy * dy) || 1)));
+        const x = ax + t * dx, y = ay + t * dy, d = (px - x) ** 2 + (py - y) ** 2;
+        if (d < bd) { bd = d; best = { lat: y, lng: x / k }; }
+      }
+      return best;
+    }
     // Which Uber zone a point is in. Points in the thin gaps between zones (or under the map's
     // labels) go to the nearest zone within 4 km; near a shared edge, a zone named after the suburb wins.
     function zoneAt(lat, lng) {
@@ -4868,17 +4880,29 @@
 
       // Uber trend zones with demand right now
       if (layers.zones) {
-        const now = new Date(), here = myZone();
+        const now = new Date(); now.setMinutes(0, 0, 0);
+        const here = myZone(), from = myPos(), zoneMissing = [];
         Object.entries(UBER_ZONE_SHAPES).forEach(([z, ring]) => {
-          const v = demandAt(z, dayIdx(now), now.getHours());
+          const v = demandAdj(z, now);
+          const hot = v !== null && v >= OK;                  // only busy zones are highlighted and labelled
           const col = v === null ? '#64748b' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#94a3b8';
-          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: 3, opacity: 0.9, dashArray: '10 6',
-            fillColor: col, fillOpacity: 0.06, interactive: false }).addTo(markerLayer);
+          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: hot ? 3 : 1.5, opacity: hot ? 0.95 : 0.5, dashArray: hot ? '10 6' : '4 6',
+            fillColor: col, fillOpacity: hot ? 0.08 : 0, interactive: false }).addTo(markerLayer);
+          if (!hot) return;
+          // Drive time to the nearest edge of the zone
+          let drive;
+          if (z === here) drive = 'you’re here';
+          else {
+            const t = nearestOnRing(from.lat, from.lng, ring), q = routeNow(from, t);
+            if (!q.real) zoneMissing.push(t);
+            drive = `🚗 ${q.real && !/rough/.test(q.r.source) ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min`;
+          }
           const c = L.polygon(ring).getBounds().getCenter();
           L.marker(c, { interactive: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
-            html: `<div class="zone-tag" style="border-color:${col}">${esc(z)}${z === here ? ' · you' : ''}<span>${v === null ? 'no trends yet' : demandName(v) + ' now'}</span></div>` }) })
+            html: `<div class="zone-tag" style="border-color:${col}">${esc(z)}<span>${demandName(v)} now · ${drive}</span></div>` }) })
             .addTo(markerLayer);
         });
+        if (zoneMissing.length && from.gps) fetchMissingRoutes(zoneMissing);
       }
 
       // History: individual snapshots for the chosen day/time
@@ -4936,7 +4960,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.22.4';
+    const APP_VERSION = '1.22.5';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
