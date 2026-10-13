@@ -755,10 +755,12 @@
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .fuel-pop .nav-row { gap: 8px; }
     .zone-tag.tap { cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+    .zone-tag.squeezed { padding: 2px 6px; font-size: 10px; }
+    .zone-tag.squeezed span { display: none; }
+    .zone-tag.crowded { visibility: hidden; pointer-events: none; }
     .zone-tag.picked { box-shadow: 0 0 0 3px #f97316, 0 4px 12px rgba(0,0,0,.3); z-index: 2; }
-    .zone-tag.tap:active { transform: scale(.97); }
     .zone-tag {
-      transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
+      transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
       background: var(--glass-strong); border: 2px solid; border-radius: 10px; padding: 4px 8px; text-align: center; box-shadow: var(--shadow);
     }
     .zone-tag.quiet { opacity: .85; font-size: 10px; }
@@ -5618,6 +5620,7 @@
       areaLayer = L.layerGroup().addTo(map);
       routeLayer = L.layerGroup().addTo(map);
       map.on('zoomend', () => renderMap());
+      map.on('moveend', () => requestAnimationFrame(spreadZoneLabels));
       map.on('moveend', () => { if (!layers.fuel) return; clearTimeout(fuelMoveT); fuelMoveT = setTimeout(drawFuel, 500); });
       markerLayer = L.layerGroup().addTo(map);
       surgeLayer = L.layerGroup().addTo(map);
@@ -5697,7 +5700,7 @@
 
     // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
     const MAP_HELP = {
-      zones: ['🗺 Zones', 'Tap a zone’s label for the drive, time and navigation. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
@@ -6142,7 +6145,7 @@
       closeSurgeCard();
       panel.hidden = false;
       busySel = null;
-      renderBusy();
+      renderBusy(); markPicked();
       showMapHelp('busy', true);
     }
     // Tap a zone's label on the map: the side list opens on that zone with the drive, time and navigation
@@ -6160,7 +6163,44 @@
       openZonePanel(t ? t.dataset.z : st.z);
     }, true);
     document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.zone-tag[data-z]')) { e.stopPropagation(); e.preventDefault(); } }, true);
-    function markPicked() { document.querySelectorAll('.zone-tag[data-z]').forEach(t => t.classList.toggle('picked', busySel === 'zone:' + t.dataset.z)); }
+    function markPicked() { document.querySelectorAll('.zone-tag[data-z]').forEach(t => t.classList.toggle('picked', busySel === 'zone:' + t.dataset.z)); requestAnimationFrame(spreadZoneLabels); }
+    // Keep zone labels apart: busy and picked labels keep their spot, others step up/down/sideways until clear
+    // (the side box counts as taken space, so labels move out from under it)
+    function spreadZoneLabels() {
+      const tags = [...document.querySelectorAll('#surgeMap .zone-tag[data-z]')];
+      if (!tags.length) return;
+      tags.forEach(t => { t.style.setProperty('--dx', '0px'); t.style.setProperty('--dy', '0px'); t.classList.remove('squeezed', 'crowded'); });
+      const rank = t => (t.classList.contains('picked') ? 0 : 2) + (t.classList.contains('quiet') ? 1 : 0);
+      tags.sort((a, b) => rank(a) - rank(b));
+      const placed = [], gap = 4, mapR = document.getElementById('surgeMap').getBoundingClientRect();
+      const panel = document.getElementById('busyPanel');
+      if (panel && !panel.hidden) { const r = panel.getBoundingClientRect(); placed.push({ l: r.left, r: r.right, t: r.top, b: r.bottom }); }
+      document.querySelectorAll('.map-chips, .map-fabs, #locPill').forEach(el => { const r = el.getBoundingClientRect(); if (r.width) placed.push({ l: r.left, r: r.right, t: r.top, b: r.bottom }); });
+      const hits = q => placed.some(p => q.l < p.r + gap && q.r > p.l - gap && q.t < p.b + gap && q.b > p.t - gap);
+      const findSpot = t => {
+        const r0 = t.getBoundingClientRect(), w = r0.width, h = r0.height, cands = [[0, 0]];
+        for (let k = 1; k <= 5; k++) {
+          const sx = k * (w / 2 + gap), sy = k * (h + gap);
+          cands.push([0, sy], [0, -sy], [sx, 0], [-sx, 0], [sx, sy], [-sx, sy], [sx, -sy], [-sx, -sy]);
+        }
+        for (const [dx, dy] of cands) {
+          const q = { l: r0.left + dx, r: r0.right + dx, t: r0.top + dy, b: r0.bottom + dy };
+          const inside = q.l >= mapR.left - w * 0.4 && q.r <= mapR.right + w * 0.4 && q.t >= mapR.top && q.b <= mapR.bottom;
+          if (inside && !hits(q)) return { dx, dy, q };
+        }
+        return null;
+      };
+      tags.forEach(t => {
+        let spot = findSpot(t);
+        if (!spot) { t.classList.add('squeezed'); spot = findSpot(t); }          // no room: name only, smaller
+        if (!spot) {
+          if (t.classList.contains('quiet') && !t.classList.contains('picked')) { t.classList.add('crowded'); return; }   // hide quiet ones that can't fit
+          const r0 = t.getBoundingClientRect(); spot = { dx: 0, dy: 0, q: { l: r0.left, r: r0.right, t: r0.top, b: r0.bottom } };
+        }
+        t.style.setProperty('--dx', spot.dx + 'px'); t.style.setProperty('--dy', spot.dy + 'px');
+        placed.push(spot.q);
+      });
+    }
     function openZonePanel(z) {
       if (busySel === 'zone:' + z && !document.getElementById('busyPanel').hidden) return;   // already showing it
       const panel = document.getElementById('busyPanel');
@@ -6446,9 +6486,15 @@
           const busy = v !== null && v >= OK;
           const hot = busy || layers.zonesAll;               // busy zones are highlighted; double-tap Zones to label all
           const col = v === null ? '#8b5cf6' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#2563eb';   // quiet = blue, stands out on the grey map
+          // Tap anywhere inside a zone shown on the map: same side box as its label (a surge there opens the surge instead)
+          const zoneTap = e => {
+            if (placeSnapId) return;
+            const ar = areaOf(e.latlng.lat, e.latlng.lng), sg = ar && surgeAreas.get(ar.name);
+            if (sg) openSurgeCard(sg.key); else openZonePanel(z);
+          };
           L.polygon(ring, { renderer: suburbRenderer, color: col, weight: busy ? 3 : 2, opacity: busy ? 0.95 : hot ? 0.85 : 0.6, dashArray: busy ? '10 6' : '5 6',
-            fillColor: col, fillOpacity: busy ? 0.08 : 0, interactive: false }).addTo(markerLayer);
-          if (ZONE_PATCHES[z] && busy) L.polygon(ZONE_PATCHES[z], { renderer: suburbRenderer, stroke: false, fillColor: col, fillOpacity: 0.08, interactive: false }).addTo(markerLayer);
+            fillColor: col, fillOpacity: busy ? 0.08 : 0, interactive: true }).on('click', zoneTap).addTo(markerLayer);
+          if (ZONE_PATCHES[z]) L.polygon(ZONE_PATCHES[z], { renderer: suburbRenderer, stroke: false, fillColor: col, fillOpacity: busy ? 0.08 : 0, interactive: true }).on('click', zoneTap).addTo(markerLayer);
           if (!hot) return;
           // Drive time to the nearest edge of the zone
           let drive;
@@ -6464,6 +6510,7 @@
             .addTo(markerLayer);
         });
         if (zoneMissing.length && from.gps) fetchMissingRoutes(zoneMissing);
+        requestAnimationFrame(spreadZoneLabels);
       }
 
       // History: individual snapshots for the chosen day/time
@@ -6531,7 +6578,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.36.5';
+    const APP_VERSION = '1.37.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
