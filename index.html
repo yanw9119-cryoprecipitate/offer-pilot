@@ -644,9 +644,12 @@
     .map-chips { display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
     .map-chips::-webkit-scrollbar { display: none; }
     /* Icon-only layer buttons: all fit on one row, no cut-off edges */
-    .map-chips { overflow: visible; flex-wrap: wrap; gap: 6px; }
-    .map-chips .chip { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; font-size: 1.05rem; line-height: 1; flex: none; }
-    .map-chips .chip.chip-go { width: auto; min-width: 38px; padding: 0 10px; font-size: .9rem; font-weight: 800; }
+    .map-chips { overflow: visible; flex-wrap: wrap; gap: 5px; }
+    .map-chips .chip { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; font-size: .95rem; line-height: 1; flex: none; }
+    .map-chips .chip.chip-go { width: auto; min-width: 34px; padding: 0 8px; font-size: .85rem; font-weight: 800; }
+    .map-chips #chipZones { width: auto; min-width: 34px; padding: 0 6px 0 8px; gap: 3px; grid-auto-flow: column; }
+    .zn { box-shadow: 0 0 0 1.5px #fff; font-style: normal; font-size: .68rem; font-weight: 900; min-width: 17px; height: 17px; line-height: 17px; padding: 0 4px; border-radius: 999px; color: #fff; text-align: center; }
+    .zn.g { background: #16a34a; } .zn.y { background: #eab308; color: #1f1a00; } .zn.q { background: #2563eb; }
     .map-chips .chip.all { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
     .chip {
       flex: none; background: var(--glass); border: 1px solid var(--card-border); color: var(--muted);
@@ -1153,7 +1156,7 @@
         <div class="drive-top">
           <div class="map-chips">
             <!-- Most useful first: surges near you, busy zones, then the layers you check less often -->
-            <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
+            <button class="chip chip-go" id="chipNear" onclick="openSurgeList()" aria-label="Busy near you">🔥</button>
             <button class="chip on" id="chipZones" onclick="zonesChipTap()" aria-label="Zones" title="Zones">🗺</button>
             <button class="chip on" id="chipLive" onclick="toggleLayer('live')" aria-label="Live surges" title="Live">🔴</button>
             <button class="chip on" id="chipPred" onclick="toggleLayer('pred')" aria-label="Predicted surges" title="Predicted">🔮</button>
@@ -5370,9 +5373,21 @@
       zonesTapAt = now;
       toggleLayer('zones');
     }
+    function zoneSummary() {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      let good = 0, ok = 0;
+      Object.keys(UBER_ZONE_SHAPES).forEach(z => { const v = demandAdj(z, now); if (v === null) return; if (v >= GOOD) good++; else if (v >= OK) ok++; });
+      return { good, ok, n: good + ok, cls: good ? 'g' : ok ? 'y' : 'q' };
+    }
     function syncLayerChips() {
       const zc = document.getElementById('chipZones');
-      if (zc) { zc.textContent = '🗺'; zc.classList.toggle('all', !!layers.zonesAll); zc.setAttribute('aria-label', layers.zonesAll ? 'All zones labelled' : 'Zones'); }
+      if (zc) {
+        // 🗺 with how many zones are busy right now, coloured by the best one (green busy, yellow fair, blue quiet)
+        const zs = zoneSummary();
+        zc.innerHTML = `🗺<b class="zn ${zs.cls}">${zs.n}</b>`;
+        zc.classList.toggle('all', !!layers.zonesAll);
+        zc.setAttribute('aria-label', `Zones: ${zs.good} busy, ${zs.ok} fair${layers.zonesAll ? ', all labelled' : ''}`);
+      }
       Object.entries({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots', fuel: 'chipFuel' })
         .forEach(([k, id]) => document.getElementById(id).classList.toggle('on', !!layers[k]));
       document.getElementById('histBar').hidden = !layers.hist;
@@ -5397,7 +5412,7 @@
 
     // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
     const MAP_HELP = {
-      zones: ['🗺 Zones', 'Uber’s trend zones right now: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zones: ['🗺 Zones', 'The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       fuel: ['⛽ Fuel stations', 'Petrol stations from OpenStreetMap. Tap one for brand, fuels, 24/7 and drive time, then navigate. Zoom in if none show.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
@@ -6139,6 +6154,7 @@
       const nBusy = busyCount();
       if (!document.getElementById('busyPanel').hidden && !busyRefining && !busySel) renderBusy();
       document.getElementById('chipNear').textContent = `🔥 ${nBusy}`;
+      syncLayerChips();
       document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
       let msg = '', place = false;
       if (placeSnapId) { msg = '👆 Tap the map where the surge is'; place = true; }
@@ -6165,7 +6181,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.33.1';
+    const APP_VERSION = '1.33.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
