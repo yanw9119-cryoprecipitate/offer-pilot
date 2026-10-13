@@ -358,6 +358,8 @@
     .plan-lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .plan-end input { width: 18px; height: 18px; accent-color: var(--accent); }
     #planEndWrap[hidden] { display: none; }
+    .wn-hrs { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: .7rem; font-weight: 800; }
+    .wn-hrs i { font-style: normal; } .wn-hrs i.yes { color: var(--green); } .wn-hrs i.maybe { color: var(--amber); } .wn-hrs i.no { color: var(--red); }
     .wn-why { font-size: .62rem; color: #fbbf24; line-height: 1.25; }
     .ev-add { margin-top: 8px; font-size: .85rem; }
     .ev-add summary { cursor: pointer; color: var(--accent); font-weight: 700; }
@@ -3115,14 +3117,26 @@
       const box = document.getElementById('whereNow');
       if (!box) return;
       const now = new Date(); now.setMinutes(0, 0, 0);
-      const slots = [['Now', now], ['Next hour', new Date(now.getTime() + 3600000)], ['In 2 hours', new Date(now.getTime() + 7200000)]];
-      const cells = slots.map(([label, dt]) => {
-        const b = bestZoneAt(dt);
-        if (!b) return `<div class="wn-cell"><span class="wn-when">${label}</span><b>No data</b></div>`;
-        const v = VERDICT(b.v), km = zoneKm(b.z);
-        return `<div class="wn-cell ${v.c}"><span class="wn-when">${label} · ${hourName(dt)}</span>` +
-          `<b>${esc(b.z)}</b><span class="wn-lvl">${demandName(b.v)}${b.here ? ' · you’re here' : km !== null ? ` · ${km.toFixed(0)} km` : ''}</span>` +
-          (b.why && b.why.length ? `<span class="wn-why">${esc(b.why.join(' · '))}</span>` : '') +
+      const slots = [['Now', now], ['In 1 hour', new Date(now.getTime() + 3600000)], ['In 2 hours', new Date(now.getTime() + 7200000)]];
+      // One box per area: hours in a row with the same best area share a box
+      const groups = [];
+      slots.forEach(([label, dt]) => {
+        const b = bestZoneAt(dt), last = groups[groups.length - 1];
+        if (last && b && last.b && last.b.z === b.z) last.hrs.push({ label, dt, b });
+        else groups.push({ b, hrs: [{ label, dt, b }] });
+      });
+      const cells = groups.map(g => {
+        const h0 = g.hrs[0], h1 = g.hrs[g.hrs.length - 1];
+        const lbl = g.hrs.map(h => h.label).join('|');
+        const when = ({ 'Now|In 1 hour|In 2 hours': 'Now, in 1 & 2 hours', 'Now|In 1 hour': 'Now & in 1 hour', 'In 1 hour|In 2 hours': 'In 1 & 2 hours' }[lbl] || h0.label) +
+          ` · ${hourName(h0.dt)}${g.hrs.length > 1 ? '–' + fmtHour((h1.dt.getHours() + 1) % 24) : ''}`;
+        if (!g.b) return `<div class="wn-cell"><span class="wn-when">${when}</span><b>No data</b></div>`;
+        const best = g.hrs.reduce((a, h) => h.b.v > a.b.v ? h : a, h0);
+        const v = VERDICT(best.b.v), km = zoneKm(g.b.z), why = [...new Set(g.hrs.flatMap(h => h.b.why || []))];
+        const lv = g.hrs.length > 1 ? `<span class="wn-hrs">${g.hrs.map(h => `<i class="${VERDICT(h.b.v).c}">${hourName(h.dt)} ${demandName(h.b.v).toLowerCase()}</i>`).join('')}</span>` : '';
+        return `<div class="wn-cell ${v.c}"><span class="wn-when">${when}</span>` +
+          `<b>${esc(g.b.z)}</b><span class="wn-lvl">${g.hrs.length === 1 ? demandName(g.b.v) : ''}${g.b.here ? `${g.hrs.length === 1 ? ' · ' : ''}you’re here` : km !== null ? `${g.hrs.length === 1 ? ' · ' : ''}${km.toFixed(0)} km away` : ''}</span>` + lv +
+          (why.length ? `<span class="wn-why">${esc(why.join(' · '))}</span>` : '') +
           `<i class="pill ${v.c}">${v.t}</i></div>`;
       }).join('');
       const nowB = bestZoneAt(now);
@@ -3141,7 +3155,7 @@
       const apIn = airportScore('in', now), apOut = airportRun(now);
       if (apIn >= GOOD) head += `<br>✈️ Airport pickups are ${demandName(apIn).toLowerCase()} now: a good time to wait at the airport for a ride to the city.`;
       else if (apOut.both >= GOOD) head += `<br>✈️ Good time for city → airport runs: you’ll likely get a ride back.`;
-      box.innerHTML = `<div class="wn-head">${head}</div><div class="wn-grid">${cells}</div>`;
+      box.innerHTML = `<div class="wn-head">${head}</div><div class="wn-grid" style="grid-template-columns: repeat(${groups.length}, 1fr)">${cells}</div>`;
     }
 
     // ---- Shift planner ----
@@ -5279,7 +5293,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.24.2';
+    const APP_VERSION = '1.24.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
