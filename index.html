@@ -1695,8 +1695,10 @@
       tip.hidden = false;
       tip.classList.remove('show'); void tip.offsetWidth; tip.classList.add('show');
       clearTimeout(fieldHelpT);
-      fieldHelpT = setTimeout(hideFieldHelp, 5000);
+      fieldHelpT = setTimeout(hideFieldHelp, 4000);
     }
+    // Scrolling the page hides it straight away
+    window.addEventListener('scroll', () => { const t = document.getElementById('fieldHelp'); if (t && !t.hidden) { clearTimeout(fieldHelpT); hideFieldHelp(); } }, { passive: true });
     function hideFieldHelp() { const t = document.getElementById('fieldHelp'); if (t) { t.classList.remove('show'); t.hidden = true; } }
 
     function pressKey(key) {
@@ -5414,7 +5416,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.4';
+    const APP_VERSION = '1.25.5';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
