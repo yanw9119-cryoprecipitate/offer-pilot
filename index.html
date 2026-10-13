@@ -776,6 +776,21 @@
     .log-back { border: none; background: var(--card); color: var(--accent); font: inherit; font-weight: 800; font-size: .85rem; border-radius: 999px; padding: 8px 12px; }
     .zone-tag.airport { border-color: #0284c7; background: color-mix(in srgb, #e0f2fe 85%, var(--glass-strong)); color: #075985; }
     .zone-tag.airport span { color: #0369a1; }
+    .fl-box { margin: 8px 0 4px; padding: 6px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: .72rem; }
+    .fl-h { font-weight: 800; } .fl-h small { display: block; font-weight: 600; color: var(--muted); }
+    .fl-bars { display: flex; gap: 3px; align-items: flex-end; height: 54px; margin: 6px 0 4px; }
+    .fl-bar { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; font-size: .55rem; white-space: nowrap; color: var(--muted); }
+    .fl-bar i { width: 100%; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--line-strong); order: 1; }
+    .fl-bar i.y { background: var(--amber); } .fl-bar i.g { background: var(--green); }
+    .fl-bar b { order: 0; color: var(--text); font-size: .62rem; } .fl-bar span { order: 2; }
+    .flt-row { padding: 3px 0; border-bottom: 1px dashed var(--line); line-height: 1.25; }
+    .flt-row em { font-style: normal; font-weight: 700; font-size: .62rem; padding: 0 4px; border-radius: 4px; background: color-mix(in srgb, #0284c7 18%, transparent); color: #0284c7; }
+    .fl-sub { margin-top: 4px; font-weight: 700; color: var(--muted); font-size: .64rem; text-transform: uppercase; letter-spacing: .03em; }
+    .flt-row > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+    .fl-late { color: #f59e0b; } .fl-x { color: #ef4444; } .fl-ok { color: var(--green); font-weight: 600; }
+    .fl-foot { margin-top: 4px; color: var(--muted); font-size: .64rem; } .fl-foot a, .fl-plan a { color: var(--accent); }
+    .fl-plan { margin: 6px 0 2px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, #0284c7 12%, var(--card-2)); font-size: .78rem; line-height: 1.35; }
+    .fl-plan small { color: var(--muted); }
     .ap-pk { margin-top: 6px; font-size: .74rem; line-height: 1.3; }
     .ap-pk small { color: var(--muted); font-weight: 600; }
     .zone-tag.squeezed { padding: 2px 6px; font-size: 10px; }
@@ -1904,6 +1919,11 @@
         <div class="sx-field"><label for="cfgTrainKey">Transport Victoria open data key (optional)</label><input type="text" id="cfgTrainKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-hint" id="trainKeyNote">Free key from opendata.transport.vic.gov.au (sign in, then API keys). Shows Metro train suspensions and replacement buses on the map; the key stays on this phone.</div>
       </div>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">✈️ Live flights</h3>
+        <div class="sx-field"><label for="cfgFlightKey">AeroDataBox key from RapidAPI (optional)</label><input type="text" id="cfgFlightKey" placeholder="Paste your X-RapidAPI-Key" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-hint" id="flightKeyNote"></div>
+      </div>
       <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
     </section>
 
@@ -2372,6 +2392,8 @@
         document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
         document.getElementById('cfgTrainKey').value = lsGet('cfgTrainKey') || '';
         syncTrainNote();
+        document.getElementById('cfgFlightKey').value = lsGet('cfgFlightKey') || '';
+        syncFlightNote();
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
         fillVehicleUI();
         renderFillLog();
@@ -2408,6 +2430,8 @@
       lsSet('cfgTomTom', chaseCfg.tomtom);
       { const tk = document.getElementById('cfgTrainKey').value.trim(), old = lsGet('cfgTrainKey') || '';
         lsSet('cfgTrainKey', tk); if (tk !== old) { train.at = 0; train.err = ''; if (tk) loadTrainAlerts(true); else { train.alerts = []; drawTrain(); } } }
+      { const fk = document.getElementById('cfgFlightKey').value.trim(), old = lsGet('cfgFlightKey') || '';
+        lsSet('cfgFlightKey', fk); if (fk !== old) { Object.keys(flights).forEach(k => { delete flights[k]; lsDel('flights:' + k); }); if (fk) loadFlights('MEL', true); } }
       routeCache.clear();
       if (themePick) { lsSet('theme', themePick); themePick = null; }
       if (mapStylePick) { lsSet('mapStyle', mapStylePick); mapStylePick = null; }
@@ -6418,8 +6442,9 @@
         L.polygon(ap.ring, { color, weight: 3, fillColor: color, fillOpacity: 0.12, interactive: false }).addTo(routeLayer);
         ap.pickups.forEach(p => L.circleMarker([p.lat, p.lng], { radius: 8, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }).addTo(routeLayer)
           .bindTooltip(esc(p.key === 'TERM' ? 'Pick-up' : p.key), { permanent: true, direction: 'top', offset: [0, -8], className: 'ev-tip' }));
-        html = `<div class="bp-why">${ap.code} · ${esc(ap.short)} · on top of the Melbourne City zone${v != null ? ` · pick-ups ${demandName(v).toLowerCase()} now` : ''}</div>` +
+        html = `<div class="bp-why">${ap.code} · ${esc(ap.short)} · on top of the Melbourne City zone${v != null ? ` · pick-ups ${demandName(v).toLowerCase()} now` : ''}</div>` + flightsHTML(ap.code) +
           pks.map((p, i) => `<div class="ap-pk"><b>🚖 ${esc(p.name)}</b>${i === 0 ? ' <small>(route shown)</small>' : ''}<div class="bp-nav">${navLinks(p.lat, p.lng)}</div></div>`).join('');
+        loadFlights(ap.code);
         fitBusy([[from.lat, from.lng]].concat(ap.ring));
         box.innerHTML = html + `<div class="bp-drive">Working out the drive…</div>`;
         const r = await getRoute(from, to);
@@ -6744,7 +6769,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.41.1';
+    const APP_VERSION = '1.42.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7007,6 +7032,122 @@
     function toggleWx() {
       layers.wx = !layers.wx; lsSet('mapLayers', JSON.stringify(layers));
       drawWx(); showMapHelp('wx', layers.wx);
+    }
+
+    // ================= ✈️ LIVE FLIGHTS (AeroDataBox via RapidAPI) =================
+    // Arrivals and departures for the next ~11 hours. The free plan has a small monthly allowance, so each
+    // airport is fetched at most once an hour, and only when you look at airport info (map panel or Plan a Shift).
+    const FL_HOST = 'aerodatabox.p.rapidapi.com', FL_TTL = 60 * 60000;
+    const flights = {};      // code → { at, from, to, arr: [], dep: [], err }
+    const flLoading = {};
+    ['MEL', 'MEB'].forEach(c => { try { const x = JSON.parse(lsGet('flights:' + c)); if (x && Date.now() - x.at < 12 * 3600000) flights[c] = x; } catch (e) {} });
+    function flCalls() { try { const c = JSON.parse(lsGet('flCalls')); if (c && c.m === ymd(new Date()).slice(0, 7)) return c.n; } catch (e) {} return 0; }
+    function flTime(x) {                    // { utc: '2026-10-13 12:30Z', local: … } or the older flat strings
+      const s = x && (x.utc || x.local || (typeof x === 'string' ? x : ''));
+      const t = s ? Date.parse(String(s).replace(' ', 'T')) : NaN;
+      return isNaN(t) ? null : t;
+    }
+    function flParse(list, code) {
+      return (list || []).map(f => {
+        const m = f.movement || f.arrival || f.departure || {};
+        const t = flTime(m.scheduledTime || m.scheduledTimeUtc || m.scheduledTimeLocal), rt = flTime(m.revisedTime || m.actualTimeUtc || m.estimatedTimeUtc || m.revisedTimeUtc);
+        const ap = m.airport || {}, term = m.terminal ? String(m.terminal).replace(/^T/i, '') : '';
+        return { n: f.number || '', al: (f.airline || {}).name || '', ap: ap.shortName || ap.municipalityName || ap.name || ap.iata || '',
+          t, rt: rt || null, term, st: f.status || '', intl: code === 'MEL' ? term === '2' : !!(ap.countryCode && ap.countryCode !== 'AU') };
+      }).filter(f => f.t).sort((a, b) => (a.rt || a.t) - (b.rt || b.t));
+    }
+    const flCancelled = f => /cancel/i.test(f.st);
+    const flEt = f => f.rt || f.t;
+    const flOut = f => flEt(f) + (f.intl ? 50 : 25) * 60000;     // when passengers reach the pick-up (bags, customs)
+    function syncFlightNote() {
+      const n = document.getElementById('flightKeyNote'); if (!n) return;
+      const base = 'Free key from rapidapi.com (subscribe to AeroDataBox, Basic plan, then copy the X-RapidAPI-Key). Adds real Melbourne Airport arrivals and departures; the key stays on this phone.';
+      const c = flights.MEL, used = flCalls();
+      n.textContent = !lsGet('cfgFlightKey') ? base : c && c.err ? `⚠️ ${c.err}` :
+        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} call${used === 1 ? '' : 's'} this month` :
+        'Key saved. Flights load when you open the airport on the map or Plan a Shift.';
+    }
+    async function loadFlights(code = 'MEL', force) {
+      const key = lsGet('cfgFlightKey'), c = flights[code];
+      if (!key || flLoading[code]) return;
+      if (!force && c && Date.now() - c.at < (c.err ? 10 * 60000 : FL_TTL)) return;
+      flLoading[code] = true;
+      const prev = c && !c.err ? c : null;
+      try {
+        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 15000);
+        const url = `https://${FL_HOST}/flights/airports/iata/${code}?offsetMinutes=-60&durationMinutes=720&withLeg=false&direction=Both` +
+          '&withCancelled=true&withCodeshared=false&withCargo=false&withPrivate=false&withLocation=false';
+        const r = await fetch(url, { headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': FL_HOST }, signal: ctl.signal });
+        clearTimeout(tm);
+        const m = ymd(new Date()).slice(0, 7); lsSet('flCalls', JSON.stringify({ m, n: flCalls() + 1 }));
+        if (r.status === 401 || r.status === 403) throw new Error('The key was refused. Check you subscribed to AeroDataBox on RapidAPI and copied the right key.');
+        if (r.status === 429) throw new Error('The monthly or per-second limit on your flight key was reached. It will try again later.');
+        if (!r.ok && r.status !== 204) throw new Error('The flight service answered ' + r.status + '. It will try again later.');
+        const j = r.status === 204 ? {} : await r.json(), now = Date.now();
+        flights[code] = { at: now, from: now - 3600000, to: now + 11 * 3600000, arr: flParse(j.arrivals, code), dep: flParse(j.departures, code), err: '' };
+        lsSet('flights:' + code, JSON.stringify(flights[code]));
+      } catch (e) {
+        const err = e.name === 'AbortError' ? 'The flight service didn’t answer in time.' : e instanceof TypeError ? 'Couldn’t reach the flight service from this browser.' : e.message;
+        flights[code] = Object.assign({}, prev || { arr: [], dep: [], from: 0, to: 0 }, { at: Date.now(), err, okAt: prev ? prev.at : 0 });
+      } finally {
+        flLoading[code] = false; syncFlightNote();
+        if (busySel === 'airport:' + code) fillBusyDetail();
+        if (code === 'MEL') { try { renderAirport(); } catch (e) {} }
+      }
+    }
+    // Live counts for a time window, or null when there is no live data covering it
+    function flCount(code, dir, s, e) {
+      const c = flights[code];
+      if (!c || !c.to || s < c.from || e > c.to + 3600000 || !(c.arr.length + c.dep.length)) return null;
+      return dir === 'in' ? c.arr.filter(f => !flCancelled(f) && flOut(f) >= s && flOut(f) < e).length
+                          : c.dep.filter(f => !flCancelled(f) && flEt(f) >= s && flEt(f) < e).length;
+    }
+    // Real flights blended into the airport score: pickups follow arrivals; drop-offs come 1–2 hours before departures
+    const FL_FULL = 24;      // flights an hour at MEL that count as very busy
+    function flScore(dir, dt) {
+      const s = dt.getTime(), n = dir === 'in' ? flCount('MEL', 'in', s, s + 3600000) : flCount('MEL', 'out', s + 3600000, s + 2 * 3600000);
+      return n === null ? null : Math.min(1, n / FL_FULL);
+    }
+    function flStatus(f) {
+      if (flCancelled(f)) return '<b class="fl-x">Cancelled</b>';
+      const late = f.rt ? Math.round((f.rt - f.t) / 60000) : 0;
+      if (/arrived|landed/i.test(f.st)) return '<span class="fl-ok">Landed</span>';
+      if (/departed/i.test(f.st)) return '<span class="fl-ok">Departed</span>';
+      if (/divert/i.test(f.st)) return '<b class="fl-x">Diverted</b>';
+      if (late >= 10) return `<b class="fl-late">+${late}m</b>`;
+      if (late <= -10) return `<span class="fl-ok">${-late}m early</span>`;
+      return '';
+    }
+    // Plan a Shift: real counts around your start time, and the busiest arrival hour still ahead
+    function flightPlanHTML(st, hrsOfDay) {
+      if (!lsGet('cfgFlightKey')) return '';
+      const c = flights.MEL, s = st.getTime();
+      if (!c || !c.to) return `<div class="fl-plan">✈️ ${flLoading.MEL ? 'Loading live flights…' : c && c.err ? '⚠️ ' + esc(c.err) : 'Live flights load when you open this page.'}</div>`;
+      const a = flCount('MEL', 'in', s, s + 3600000), d = flCount('MEL', 'out', s + 3600000, s + 2 * 3600000);
+      const ahead = hrsOfDay.map(t => ({ t, n: flCount('MEL', 'in', t.getTime(), t.getTime() + 3600000) })).filter(x => x.n !== null && x.t.getTime() >= Date.now() - 3600000);
+      const top = ahead.slice().sort((x, y) => y.n - x.n)[0];
+      const foot = `${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('MEL', true);return false;">Refresh</a>`;
+      if (a === null) return `<div class="fl-plan">✈️ Live flights cover until ${fmtTime(c.to)}${top ? ` · busiest arrivals ${fmtHour(top.t.getHours())} (${top.n} flights)` : ''} · ${foot}</div>`;
+      return `<div class="fl-plan">✈️ <b>Live at ${fmtTime(st)}:</b> ${a} flight${a === 1 ? '' : 's'} with passengers coming out in that hour` +
+        (d !== null ? ` · ${d} departure${d === 1 ? '' : 's'} an hour later (drop-off runs)` : '') +
+        (top ? ` · busiest arrivals ${fmtHour(top.t.getHours())} (${top.n})` : '') + `<br><small>${foot}</small></div>`;
+    }
+    // Map side box: arrivals per hour (when passengers come out), then the next arrivals
+    function flightsHTML(code) {
+      if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Surge chasing to see real arrivals here.</div></div>`;
+      const c = flights[code];
+      if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">${flLoading[code] || !c ? 'Loading flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div></div>`;
+      const now = Date.now(), h0 = new Date(now); h0.setMinutes(0, 0, 0);
+      const hrs = Array.from({ length: 5 }, (_, k) => { const s = h0.getTime() + k * 3600000; return { s, a: flCount(code, 'in', s, s + 3600000), d: flCount(code, 'out', s, s + 3600000) }; })
+        .filter(x => x.a !== null);
+      const mx = Math.max(6, ...hrs.map(x => x.a));
+      const bars = hrs.map(x => `<div class="fl-bar"><i style="height:${Math.max(2, Math.round(30 * x.a / mx))}px" class="${x.a >= FL_FULL * 0.75 ? 'g' : x.a >= FL_FULL * 0.4 ? 'y' : ''}"></i><b>${x.a}</b><span>${fmtHour(new Date(x.s).getHours())}</span></div>`).join('');
+      const next = c.arr.filter(f => flOut(f) > now).slice(0, 6);      // passengers not out yet
+      const soon = flCount(code, 'in', now, now + 3600000);
+      return `<div class="fl-box"><div class="fl-h">✈️ Passengers coming out <small>${soon} flight${soon === 1 ? '' : 's'} in the next hour</small></div>
+        <div class="fl-bars">${bars}</div>
+        ${next.length ? '<div class="fl-sub">Passengers still to come out</div>' : ''}${next.map(f => `<div class="flt-row"><div><b>${fmtTime(flEt(f))}</b>${f.term ? ` <em>T${esc(f.term)}</em>` : ''} ${flStatus(f)}</div><span>${esc(f.n)}${f.ap ? ' · ' + esc(f.ap) : ''}</span></div>`).join('')}
+        <div class="fl-foot">${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}Checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('${code}', true);return false;">Refresh</a></div></div>`;
     }
 
     // ================= 🚆 TRAIN DISRUPTIONS (Transport Victoria open data, GTFS Realtime) =================
@@ -7279,6 +7420,8 @@
       } else {                 // city → airport: departures
         p = DEP[h] * (d === 0 && h < 10 ? 1.15 : d === 4 && h >= 12 && h < 20 ? 1.15 : d === 6 && h >= 12 && h < 21 ? 1.1 : d === 5 ? 0.8 : 1);
       }
+      const live = flScore(dir, dt);                     // real flights, when loaded for this hour
+      if (live !== null) p = 0.35 * Math.min(1, p) + 0.65 * live;
       const city = demandAt('Melbourne City', d, h);
       let v = city === null ? p : dir === 'in' ? 0.7 * p + 0.3 * city : 0.6 * p + 0.4 * city;
       const r = rainAt(dt);
@@ -7324,7 +7467,8 @@
       const vo = VERDICT(run.both), vi = VERDICT(inNow);
       const peaks = allEvents().filter(e => e.zone === AIRPORT_ZONE && e.e > base.getTime() + 4 * 3600000 && e.s < base.getTime() + 28 * 3600000);
       const bo = best('out'), bi = best('in');
-      box.innerHTML = `
+      if (document.getElementById('view-insights').style.display !== 'none') loadFlights('MEL');
+      box.innerHTML = flightPlanHTML(st, hrsOfDay) + `
         <div class="rank-item"><div><div>🏙 → ✈️ City to airport at ${fmtMin(sm)}</div>
           <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
           `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
