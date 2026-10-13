@@ -1171,18 +1171,19 @@
     .side-stack .snap-dot { top: 6px; right: calc(50% - 16px); box-shadow: 0 0 0 2px var(--glass-strong); }
     @media (max-width: 520px) { .app-container { padding-right: 0; } }
     body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
-    /* ================= Bigger screens (iPad, desktop, full-screen window): keep the phone layout =================
-       The app stays phone-width in the middle, framed like a phone screen, and every pop-up lines up with it. */
-    @media (min-width: 600px) {
-      html { background: color-mix(in srgb, var(--bg) 82%, var(--muted)); }
-      body { background: transparent; padding-top: 12px; }
-      .app-container { max-width: 444px; background: var(--bg); border-radius: 30px; padding: 12px 12px 92px;
-        min-height: calc(100dvh - 24px); box-shadow: 0 0 0 1px var(--card-border), 0 20px 60px rgba(0,0,0,.18); }
-      .drive { height: calc(100dvh - 140px); }
-      .side-stack { width: 420px; }
-      .toast { width: max-content; max-width: 400px; text-align: center; }
-      .ver-badge { right: calc(50% - 222px + 10px); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); border-right: 1px solid var(--line-strong); border-radius: 8px; }
-      .bar-help, .chase-toast { max-width: 400px; }
+    /* ================= Bigger screens (iPad, landscape, desktop): use the whole width =================
+       The phone layout is the main design; wider screens only spread the same cards out. */
+    @media (min-width: 700px) {
+      .app-container { max-width: 1500px; }
+      .tabs { max-width: 640px; margin-left: auto; margin-right: auto; }
+      #view-offer { max-width: 640px; margin: 0 auto; }
+      #view-trends, #view-insights { column-count: 2; column-gap: 14px; }
+      #view-trends > *, #view-insights > * { break-inside: avoid; -webkit-column-break-inside: avoid; display: inline-block; width: 100%; vertical-align: top; }
+      #view-trends > [hidden], #view-insights > [hidden] { display: none !important; }
+      .busy-panel { width: min(320px, 40%); }
+    }
+    @media (min-width: 1200px) {
+      #view-trends, #view-insights { column-count: 3; }
     }
     .ver-badge { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 890; }
     /* Map tab fills the screen between the tabs and the bottom bar */
@@ -6465,7 +6466,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.36.1';
+    const APP_VERSION = '1.36.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
