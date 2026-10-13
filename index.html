@@ -656,15 +656,17 @@
     .ev-badge { position: absolute; top: -7px; right: -7px; display: flex; gap: 1px; padding: 1px 3px; border-radius: 999px; background: #fff;
       font-size: .62rem; line-height: 1.2; box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 1.5px solid #ef4444; pointer-events: none; z-index: 2; }
     /* 💥 all 8 zones busy: on the 🔥 button a bomb shakes then explodes, over and over while it lasts */
-    #chipNear .cb-bomb { display: inline-block; position: relative; animation: cbBomb 2.2s linear infinite; }
-    #chipNear .cb-boom { position: absolute; left: 50%; top: 50%; width: 1.2em; margin: -.6em 0 0 -.6em; text-align: center; line-height: 1.2em; opacity: 0; animation: cbBoom 2.2s ease-out infinite; }
-    #chipNear .chip-flame i { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 1px; background: #f97316; opacity: 0; animation: cbDebris 2.2s ease-out infinite; }
+    #chipNear .cb-bomb { display: inline-block; position: relative; animation: cbBomb var(--bt, 2.2s) linear infinite; }
+    #chipNear .cb-boom { position: absolute; left: 50%; top: 50%; width: 1.2em; margin: -.6em 0 0 -.6em; text-align: center; line-height: 1.2em; opacity: 0; animation: cbBoom var(--bt, 2.2s) ease-out infinite; }
+    #chipNear .chip-flame i { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 1px; background: #f97316; opacity: 0; animation: cbDebris var(--bt, 2.2s) ease-out infinite; }
     #chipNear .chip-flame i:nth-of-type(2n) { background: #fde047; } #chipNear .chip-flame i:nth-of-type(3n) { background: #dc2626; }
     @keyframes sparkle { from { transform: scale(.7); opacity: .7; } to { transform: scale(1.3); opacity: 1; } }
+    .map-chips #chipNear.t-boom.hot { animation: chipHot calc(var(--bt, 2.2s) / 4) ease-in-out infinite; }
+    @keyframes chipHot { 0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0), var(--shadow); } 50% { box-shadow: 0 0 14px 5px rgba(220,38,38,.7), var(--shadow); } }
     @keyframes cbBomb { 0% { opacity: 1; transform: none; } 6%, 18%, 30%, 42%, 54% { transform: translate(-1.5px,.5px) rotate(-10deg); } 12%, 24%, 36%, 48% { transform: translate(1.5px,-.5px) rotate(8deg); }
       58% { opacity: 1; transform: scale(1.15); } 60%, 92% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: none; } }
-    @keyframes cbBoom { 0%, 58% { opacity: 0; transform: scale(.3); } 64% { opacity: 1; transform: scale(1.5); } 80% { opacity: 1; transform: scale(1.2); } 94%, 100% { opacity: 0; transform: scale(.6); } }
-    @keyframes cbDebris { 0%, 59% { opacity: 0; transform: rotate(var(--a)) translateY(0); } 61% { opacity: 1; } 85%, 100% { opacity: 0; transform: rotate(var(--a)) translateY(-15px) rotate(180deg); } }
+    @keyframes cbBoom { 0%, 58% { opacity: 0; transform: scale(.3); } 64% { opacity: 1; transform: scale(var(--bs, 1.5)); } 80% { opacity: 1; transform: scale(calc(var(--bs, 1.5) * .8)); } 94%, 100% { opacity: 0; transform: scale(.6); } }
+    @keyframes cbDebris { 0%, 59% { opacity: 0; transform: rotate(var(--a)) translateY(0); } 61% { opacity: 1; } 85%, 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(-1 * var(--bd, 15px))) rotate(180deg); } }
     @media (prefers-reduced-motion: reduce) { #chipNear .cb-bomb, #chipNear .chip-flame i { animation: none; } #chipNear .cb-boom { display: none; } }
     .map-chips .chip.all { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
     .chip {
@@ -5774,14 +5776,23 @@
       const now = new Date(); now.setMinutes(0, 0, 0);
       const all = Object.keys(UBER_ZONE_SHAPES).map(z => demandAdj(z, now)), vals = all.filter(v => v !== null);
       if (vals.length < all.length || vals.some(v => v < OK)) return;   // every zone (all 8) medium or busier
-      const key = ymd(now) + 'T' + now.getHours();
-      if (lsGet('bombAt') === key) return;
+      // Once an hour, or again within the hour if the blast tier gets stronger
+      const bt = blastTier(), key = ymd(now) + 'T' + now.getHours(), [k0, t0] = String(lsGet('bombAt') || '').split('|');
+      if (!bt || (k0 === key && +t0 <= bt.n)) return;
       if (document.getElementById('view-drive').style.display === 'none' || document.hidden) return;
-      lsSet('bombAt', key);
-      playBomb(vals.filter(v => v >= GOOD).length, vals.length);
+      lsSet('bombAt', key + '|' + bt.n);
+      playBomb(bt);
     }
-    function playBomb(nHigh, n) {
-      toast(`💥 Every zone is active! ${nHigh} of ${n} high or very high · pick any zone`, 'Show', () => { if (document.getElementById('busyPanel').hidden) openSurgeList(); });
+    // Blast tier when all 8 zones are medium or busier: tier 1 = 8 high … tier 9 = 8 medium (high includes very high)
+    function blastTier() {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      const all = Object.keys(UBER_ZONE_SHAPES).map(z => demandAdj(z, now));
+      if (all.some(v => v === null || v < OK)) return null;
+      const high = all.filter(v => v >= GOOD).length;
+      return { n: all.length - high + 1, high, med: all.length - high };
+    }
+    function playBomb(bt) {
+      toast(`💥 Every zone is active! Tier ${bt.n} of 9 · ${bt.high} high, ${bt.med} medium · pick any zone`, 'Show', () => { if (document.getElementById('busyPanel').hidden) openSurgeList(); });
       try { navigator.vibrate && navigator.vibrate([60, 40, 60, 40, 200]); } catch (e) {}
     }
     function zoneSummary() {
@@ -6787,9 +6798,19 @@
       const tier = nZ >= nAll ? 'boom' : nZ >= 6 ? 'bomb' : nZ >= 3 ? 'fire2' : 'fire';
       ['fire2', 'bomb', 'boom'].forEach(t => cn.classList.toggle('t-' + t, tier === t));
       checkAllZonesBusy();
-      const ico = { fire: '🔥', fire2: '🔥🔥', bomb: '<span class="cf-spark"></span>💣', boom: '<span class="cb-bomb"><span class="cf-spark"></span>💣</span><span class="cb-boom">💥</span>' + [0, 60, 120, 180, 240, 300].map(a => `<i style="--a:${a}deg"></i>`).join('') }[tier];
+      // All zones busy: blast tier 1 (all 8 high) to 9 (all medium) sets how big, fast and wide the explosion is
+      const bt = tier === 'boom' ? blastTier() : null;
+      if (bt) {
+        const f = (bt.n - 1) / 8;                  // 0 = strongest, 1 = weakest
+        cn.style.setProperty('--bt', (1.3 + 1.5 * f).toFixed(2) + 's');
+        cn.style.setProperty('--bs', (2.1 - 0.9 * f).toFixed(2));
+        cn.style.setProperty('--bd', Math.round(22 - 11 * f) + 'px');
+      } else ['--bt', '--bs', '--bd'].forEach(v => cn.style.removeProperty(v));
+      cn.classList.toggle('hot', !!bt && bt.n <= 3);
+      const nDeb = bt ? 12 - Math.round(6 * (bt.n - 1) / 8) : 0;
+      const ico = { fire: '🔥', fire2: '🔥🔥', bomb: '<span class="cf-spark"></span>💣', boom: '<span class="cb-bomb"><span class="cf-spark"></span>💣</span><span class="cb-boom">💥</span>' + Array.from({ length: nDeb }, (_, k) => `<i style="--a:${Math.round(k * 360 / nDeb)}deg"></i>`).join('') }[tier];
       cn.innerHTML = `<span class="chip-flame"><span class="cf-glow"></span>${ico}<em></em><em></em><em></em></span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
-      cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (evTypes.length ? ' including events' : ''));
+      cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (bt ? `, every zone busy, blast tier ${bt.n} of 9` : '') + (evTypes.length ? ' including events' : ''));
       syncLayerChips();
       document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
       let msg = '', place = false;
@@ -6818,7 +6839,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.47.0';
+    const APP_VERSION = '1.48.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
