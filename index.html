@@ -602,6 +602,19 @@
     .rc-view img { max-width: 100%; max-height: 85vh; border-radius: 8px; } .rc-view small { color: #ddd; }
     .cal-add { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
     .cal-add .rs-main { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 800; }
+    .rs-cal { margin-top: 10px; } .rs-cal .cal-top small { color: var(--muted); font-size: .7rem; font-weight: 600; }
+    .rs-cal .cal-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+    .rs-day.today { box-shadow: 0 0 0 2px var(--accent) inset; } .rs-day.has { background: color-mix(in srgb, var(--accent) 16%, var(--card-2)); border-color: var(--accent); }
+    .rs-day.has small { color: var(--accent); font-weight: 800; } .rs-day.past { opacity: .35; } .rs-day.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .rs-cal .cal-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: .64rem; color: var(--muted); }
+    .rs-cal .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
+    .rs-cal .cal-key i.yes { background: color-mix(in srgb, var(--green) 40%, var(--card-2)); } .rs-cal .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 35%, var(--card-2)); }
+    .rs-pop-sec { padding: 8px 12px 2px; font-weight: 800; font-size: .78rem; color: var(--muted); }
+    .rs-pop-row { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-top: 1px dashed var(--line); }
+    .rs-pop-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: .86rem; } .rs-pop-row span { color: var(--muted); font-size: .74rem; }
+    .rs-pop-row.mine { background: color-mix(in srgb, var(--accent) 8%, transparent); } .rs-pop-row .rs-btn { padding: 6px 10px; font-size: .76rem; }
+    .rs-clash { font-style: normal; font-size: .68rem; color: #ef4444; font-weight: 700; } .rs-none { padding: 4px 0; }
+    .rs-pop-foot { padding: 8px 12px 10px; border-top: 1px solid var(--line); }
     .rs-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
     .rs-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; text-align: left; width: 100%; padding: 9px 11px; border-radius: 12px;
       border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; font-size: .85rem; cursor: pointer; }
@@ -5061,6 +5074,78 @@
       r.push({ id: 'r' + Date.now().toString(36), s, e, z, src: 'pilot' }); saveRoster(r);
       toast('✓ Picked up'); renderRoster(); renderPlanCal();
     }
+    // ---- Roster calendar: 4 weeks from this Monday. Days are coloured by demand in your home area; rostered days
+    // show the shift time. Tap a day: a pop-up with that day's shifts and Pilot's suggested shifts to take or adjust.
+    function daySuggestions(base, max = 3) {
+      const now = Date.now(), cands = [];
+      for (let h = 5; h <= 23; h++) {
+        const t = new Date(base + h * 3600000); if (t.getTime() < now) continue;
+        for (const z of [homeZone(), (bestZoneAt(t) || {}).z]) {
+          if (!z) continue;
+          const v0 = demandAdj(z, t); if (v0 === null || v0 < GOOD) continue;
+          const sug = suggestShift(t, z); if (sug.len < 4) continue;
+          const len = Math.min(sug.len, MAX_SLOTS), vals = Array.from({ length: len }, (_, i) => slotVal(z, new Date(t.getTime() + i * SLOT_MS)) ?? 0);
+          const avg = vals.reduce((a, c) => a + c, 0) / len, home = z === homeZone();
+          cands.push({ s: t.getTime(), e: t.getTime() + len * SLOT_MS, z, avg, home, score: avg * Math.min(len, 12) * (home ? 1.35 : 1) });
+        }
+      }
+      // best first, without overlaps
+      const out = [];
+      cands.sort((a, b) => b.score - a.score).forEach(c => { if (out.length < max && !out.some(o => o.s < c.e && o.e > c.s)) out.push(c); });
+      return out.sort((a, b) => a.s - b.s);
+    }
+    function rosterCalHTML() {
+      const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+      const mon = d0.getTime() - dayIdx(d0) * 86400000, r = loadRoster(), z = homeZone();
+      let cells = '';
+      for (let k = 0; k < 28; k++) {
+        const base = mon + k * 86400000, d = new Date(base), past = base < d0.getTime();
+        const shifts = r.filter(x => x.s >= base && x.s < base + 86400000);
+        const o = past ? null : dayOutlook(d, z);
+        const cls = (past ? ' past' : o ? ' ' + o.cls : '') + (base === d0.getTime() ? ' today' : '') + (shifts.length ? ' has' : '') + (rsCalSel === base ? ' sel' : '');
+        cells += `<button type="button" class="cal-day rs-day${cls}" data-b="${base}" ${past ? 'disabled' : `onclick="rosterDayPop(${base}, this)"`}>` +
+          `<b>${d.getDate()}</b><small>${shifts.length ? fmtTime(shifts[0].s).replace(/:00/, '') : o && o.good ? o.good + 'h' : ''}</small>${shifts.length ? '<em>🚗</em>' : ''}</button>`;
+      }
+      const m0 = new Date(mon).toLocaleDateString([], { month: 'long' }), m1 = new Date(mon + 27 * 86400000).toLocaleDateString([], { month: 'long' });
+      return `<div class="rs-cal"><div class="cal-top"><b><svg class="h-ic"><use href="#h-cal"/></svg>${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><small>${esc(z)} · tap a day</small></div>` +
+        `<div class="cal-grid">${DAYS.map(x => `<span class="cal-dow">${x.slice(0, 1)}</span>`).join('')}${cells}</div>` +
+        `<div class="cal-key"><span><i class="yes"></i>Busy day</span><span><i class="maybe"></i>Some good hours</span><span>🚗 rostered (start time) · “9h” = good hours</span></div></div>`;
+    }
+    let rsCalSel = null, rsPopAt = 0, rsPopY = 0;
+    function rosterDayPop(base, cell) {
+      if (rsCalSel === base && document.getElementById('rsPop')) { closeRsPop(); return; }
+      closeRsPop(); rsCalSel = base; cell.classList.add('sel');
+      const d = new Date(base), r = loadRoster().filter(x => x.s >= base && x.s < base + 86400000), sugs = daySuggestions(base);
+      const lbl = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+      const qs = s => `'${esc(s).replace(/'/g, '&#39;')}'`;
+      let h = `<div class="flp-h"><b>${lbl}</b></div>`;
+      if (r.length) h += `<div class="rs-pop-sec">Your shift${r.length > 1 ? 's' : ''}</div>` + r.map(x => `<div class="rs-pop-row mine"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${x.z ? esc(x.z) + ' · ' : ''}${shiftLen(x)}</span></div>` +
+        `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterOpen('${x.id}')">Change</button></div>`).join('');
+      h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-spark"/></svg>Pilot suggests</div>` + (sugs.length ? sugs.map(x => {
+        const clash = r.some(y => y.s < x.e && y.e > x.s);
+        return `<div class="rs-pop-row"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${x.home ? '🏠 ' : ''}${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}</span></div>` +
+          (clash ? '<i class="rs-clash">overlaps</i>' : `<button type="button" class="rs-btn go" onclick="rosterPick(${x.s}, ${x.e}, ${qs(x.z)}); closeRsPop(); renderRoster()">Take</button>`) +
+          `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`; }).join('')
+        : `<div class="rs-pop-row"><span class="rs-none">No busy stretch found${Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)'}.</span></div>`);
+      h += `<div class="rs-pop-foot"><button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${base + 17 * 3600000}, ${base + 21 * 3600000})">✍️ Plan my own for this day</button></div>`;
+      const p = document.createElement('div'); p.id = 'rsPop'; p.className = 'fl-pop'; p.innerHTML = h; document.body.appendChild(p);
+      const rc = cell.getBoundingClientRect(), vh = innerHeight, below = vh - 92 - rc.bottom - 8, above = rc.top - 70 - 8, useBelow = below >= 240 || below >= above;
+      const maxH = Math.max(180, Math.min(useBelow ? below : above, vh * 0.62)); p.style.maxHeight = maxH + 'px';
+      const ph = Math.min(p.scrollHeight, maxH); p.style.top = (useBelow ? rc.bottom + 8 : rc.top - 8 - ph) + 'px';
+      rsPopAt = Date.now(); rsPopY = scrollY;
+    }
+    function closeRsPop() { const p = document.getElementById('rsPop'); if (p) p.remove(); document.querySelectorAll('.rs-day.sel').forEach(x => x.classList.remove('sel')); rsCalSel = null; }
+    document.addEventListener('pointerdown', e => {
+      if (!document.getElementById('rsPop')) return;
+      if (e.target.closest && (e.target.closest('#rsPop') || e.target.closest('.rs-day.sel'))) return;
+      closeRsPop();
+    }, true);
+    addEventListener('scroll', e => {
+      const p = document.getElementById('rsPop'); if (!p) return;
+      if (e.target instanceof Node && p.contains(e.target)) return;
+      if (Date.now() - rsPopAt < 350 || ((e.target === document || e.target === document.documentElement) && Math.abs(scrollY - rsPopY) < 12)) return;
+      closeRsPop();
+    }, true);
     function rosterToggleSug() { rosterShowSug = !rosterShowSug; renderRoster(); }
     function renderRoster() {
       const box = document.getElementById('rosterCard'); if (!box) return;
@@ -5083,7 +5168,8 @@
             : '<div class="autoread-hint">No busy stretches found in the next 7 days' + (Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)') + '.</div>');
       }
       box.innerHTML = `<div class="demand-title"><svg class="h-ic"><use href="#h-roster"/></svg>My roster</div>` +
-        `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}. Tap a shift to change its times. Add your own in Plan, or let Pilot suggest some.</div>` +
+        `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}. Tap a day for Pilot's suggested shifts to take or adjust, or a shift below to change it.</div>` +
+        rosterCalHTML() +
         `<div class="rs-list">${up.length ? up.map(x => row(x)).join('') : '<div class="autoread-hint">No shifts planned yet.</div>'}</div>` +
         `<div class="rs-acts"><button type="button" class="rs-btn${rosterShowSug ? ' on' : ''}" onclick="rosterToggleSug()"><svg class="h-ic"><use href="#h-spark"/></svg>${rosterShowSug ? 'Hide suggestions' : 'Suggest shifts'}</button>` +
         `<button type="button" class="rs-btn" onclick="rosterEdit=null; setPlanSide('plan', true); const b=document.querySelector('#view-insights .plan-box'); if (b) setTimeout(() => b.scrollIntoView({behavior:'smooth', block:'start'}), 60)"><svg class="h-ic"><use href="#h-compass"/></svg>Add my own in Plan</button></div>` +
@@ -7674,7 +7760,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.67.0';
+    const APP_VERSION = '1.68.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
