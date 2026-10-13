@@ -789,6 +789,12 @@
     .flt-row > span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
     .fl-late { color: #f59e0b; } .fl-x { color: #ef4444; } .fl-ok { color: var(--green); font-weight: 600; }
     .fl-foot { margin-top: 4px; color: var(--muted); font-size: .64rem; } .fl-foot a, .fl-plan a { color: var(--accent); }
+    .fl-wide { font-size: .8rem; } .fl-wide .fl-bars { height: 70px; } .fl-wide .fl-bar { font-size: .66rem; } .fl-wide .fl-bar b { font-size: .74rem; }
+    .fl-wide .flt-row em { font-size: .7rem; } .fl-wide .fl-sub, .fl-wide .fl-foot { font-size: .7rem; }
+    .fl-sum { margin-top: 2px; } .fl-sum b { font-size: 1rem; } .fl-sum b.g { color: var(--green); } .fl-sum b.y { color: #f59e0b; }
+    .fl-more { display: inline-block; margin-top: 4px; font-weight: 700; color: var(--accent); }
+    .ap-sec { margin-top: 12px; font-weight: 800; font-size: .9rem; }
+    .ap-out-h small { font-weight: 600; color: var(--muted); font-size: .7rem; }
     .fl-plan { margin: 6px 0 2px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, #0284c7 12%, var(--card-2)); font-size: .78rem; line-height: 1.35; }
     .fl-plan small { color: var(--muted); }
     .ap-pk { margin-top: 6px; font-size: .74rem; line-height: 1.3; }
@@ -1487,7 +1493,7 @@
       </div>
       <div class="demand-card">
         <div class="demand-title">✈️ Airport runs</div>
-        <div class="demand-sub">City ⇄ Melbourne Airport for the day and start time chosen above.</div>
+        <div class="demand-sub">City ⇄ Melbourne Airport for the day and start time chosen above. Everything here follows the date you pick.</div>
         <div id="airportBox"></div>
       </div>
       <div class="demand-card">
@@ -4020,7 +4026,7 @@
       const sum = parts.length
         ? `<b>Next 7 days:</b> ${recN} of 7 recommended. Best ${parts.slice(0, 3).map((p, i) => `${i === 0 ? '' : i === parts.slice(0, 3).length - 1 ? ' and ' : ', '}<b>${p.name}</b> (${dayList(p.ds)})`).join('')}.`
         : '<b>Next 7 days:</b> no busy airport times expected.';
-      return `<div class="ap-out"><div class="ap-out-h">✈️ Airport runs from ${lbl(days[0].d)}</div>${rows}<div class="ap-sum">${sum}</div></div>`;
+      return `<div class="ap-out"><div class="ap-out-h">📅 Next 3 days from ${lbl(days[0].d)} <small>tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
     }
     function renderPlanCal() {
       const box = document.getElementById('planCal');
@@ -4052,7 +4058,7 @@
           `<option value="${esc(z)}"${z === zone ? ' selected' : ''}>${esc(z === here ? hereLabel(z) : z)}</option>`).join('')}</select></div>` +
         `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
         `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (${fmtRange(6, 2)}) · ✈️ airport runs recommended · 🏟 event · 📅 holiday</span></div>` +
-        airportOutlookHTML(today, sel, evs) + weatherOutlookHTML(today, sel);
+        weatherOutlookHTML(today, sel);
     }
     // 📍 back to the area you're in; Today back to today
     function calHere() {
@@ -5882,8 +5888,8 @@
       insights: ['🗓 Plan a Shift', [
         ['📍 Where to drive', 'The best area now, in 1 hour and in 2 hours; one box per area.'],
         ['📅 Calendar', 'Green dates are mostly recommended days for the area you choose; “9h” = recommended hours. ✈️ airport days, 🏟 events.'],
-        ['🕘 Choose your hours', 'Tap a calendar day (the ✈️ airport list below it follows: next 3 days plus a 7-day summary), then tap From or Until and scroll the hour and minutes (30-minute steps). Until also has Suggest and 2 hrs. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
-        ['✈️ Airport runs', 'City → airport and airport → city for that day, and whether you’ll likely get a ride back.'],
+        ['🕘 Choose your hours', 'Tap a calendar day (the ✈️ Airport runs card below follows it: next 3 days, a 7-day summary, the hour strips and live flights), then tap From or Until and scroll the hour and minutes (30-minute steps). Until also has Suggest and 2 hrs. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
+        ['✈️ Airport runs', 'The next 3 days (tap one to choose it), then city → airport and airport → city for your day and start, and live arrivals: passengers coming out each hour and the flights still to come.'],
         ['⭐ Spots · 🏟 Events', 'Your best pickup suburbs, and events that raise demand (add your own).'],
         ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
     };
@@ -6769,7 +6775,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.42.0';
+    const APP_VERSION = '1.43.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7118,36 +7124,59 @@
       if (late <= -10) return `<span class="fl-ok">${-late}m early</span>`;
       return '';
     }
-    // Plan a Shift: real counts around your start time, and the busiest arrival hour still ahead
-    function flightPlanHTML(st, hrsOfDay) {
-      if (!lsGet('cfgFlightKey')) return '';
-      const c = flights.MEL, s = st.getTime();
-      if (!c || !c.to) return `<div class="fl-plan">✈️ ${flLoading.MEL ? 'Loading live flights…' : c && c.err ? '⚠️ ' + esc(c.err) : 'Live flights load when you open this page.'}</div>`;
-      const a = flCount('MEL', 'in', s, s + 3600000), d = flCount('MEL', 'out', s + 3600000, s + 2 * 3600000);
-      const ahead = hrsOfDay.map(t => ({ t, n: flCount('MEL', 'in', t.getTime(), t.getTime() + 3600000) })).filter(x => x.n !== null && x.t.getTime() >= Date.now() - 3600000);
-      const top = ahead.slice().sort((x, y) => y.n - x.n)[0];
-      const foot = `${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('MEL', true);return false;">Refresh</a>`;
-      if (a === null) return `<div class="fl-plan">✈️ Live flights cover until ${fmtTime(c.to)}${top ? ` · busiest arrivals ${fmtHour(top.t.getHours())} (${top.n} flights)` : ''} · ${foot}</div>`;
-      return `<div class="fl-plan">✈️ <b>Live at ${fmtTime(st)}:</b> ${a} flight${a === 1 ? '' : 's'} with passengers coming out in that hour` +
-        (d !== null ? ` · ${d} departure${d === 1 ? '' : 's'} an hour later (drop-off runs)` : '') +
-        (top ? ` · busiest arrivals ${fmtHour(top.t.getHours())} (${top.n})` : '') + `<br><small>${foot}</small></div>`;
+    // Live flight pieces shared by Plan a Shift (full) and the map side box (summary)
+    function flBarsHTML(code, h0, n) {
+      const hrs = Array.from({ length: n }, (_, k) => { const s = h0 + k * 3600000; return { s, a: flCount(code, 'in', s, s + 3600000) }; }).filter(x => x.a !== null);
+      if (!hrs.length) return '';
+      const mx = Math.max(6, ...hrs.map(x => x.a));
+      return `<div class="fl-bars">${hrs.map(x => `<div class="fl-bar"><i style="height:${Math.max(2, Math.round(30 * x.a / mx))}px" class="${x.a >= FL_FULL * 0.75 ? 'g' : x.a >= FL_FULL * 0.4 ? 'y' : ''}"></i><b>${x.a}</b><span>${fmtHour(new Date(x.s).getHours())}</span></div>`).join('')}</div>`;
     }
-    // Map side box: arrivals per hour (when passengers come out), then the next arrivals
+    function flListHTML(code, from, n) {
+      const c = flights[code], next = c.arr.filter(f => flOut(f) > from).slice(0, n);      // passengers not out yet
+      return next.length ? '<div class="fl-sub">Passengers still to come out</div>' + next.map(f => `<div class="flt-row"><div><b>${fmtTime(flEt(f))}</b>${f.term ? ` <em>T${esc(f.term)}</em>` : ''} ${flStatus(f)}</div><span>${esc(f.n)}${f.ap ? ' · from ' + esc(f.ap) : ''}${f.al ? ' · ' + esc(f.al) : ''}</span></div>`).join('') : '';
+    }
+    const flFoot = code => { const c = flights[code]; return `${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}Checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('${code}', true);return false;">Refresh</a>`; };
+    // Plan a Shift: the live picture from your chosen start (or now, if that has passed), for the date you picked
+    function flightPlanHTML(st) {
+      if (!lsGet('cfgFlightKey')) return `<div class="fl-plan">✈️ Add a free AeroDataBox key in Settings → Surge chasing to see live arrivals here.</div>`;
+      const c = flights.MEL;
+      if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-plan">✈️ ${flLoading.MEL || !c ? 'Loading live flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div>`;
+      const now = Date.now(), from = Math.max(st.getTime(), now), h0 = new Date(from); h0.setMinutes(0, 0, 0);
+      if (from > c.to) {
+        const top = Array.from({ length: 11 }, (_, k) => { const s = Math.floor(now / 3600000) * 3600000 + k * 3600000; return { s, n: flCount('MEL', 'in', s, s + 3600000) }; })
+          .filter(x => x.n !== null).sort((x, y) => y.n - x.n)[0];
+        return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Live arrivals reach only until ${fmtTime(c.to)}${new Date(c.to).toDateString() === new Date().toDateString() ? ' today' : ' ' + DAYS[dayIdx(new Date(c.to))]}, so this date and time use the estimate above. Pick today or a time before then to see them.${top ? ` Busiest coming up: ${fmtHour(new Date(top.s).getHours())} (${top.n} flights).` : ''}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
+      }
+      const a = flCount('MEL', 'in', h0.getTime(), h0.getTime() + 3600000), d = flCount('MEL', 'out', h0.getTime() + 3600000, h0.getTime() + 2 * 3600000);
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live: passengers coming out each hour <small>from ${fmtTime(from)}${from > st.getTime() ? ' (now)' : ''} · ${a} flight${a === 1 ? '' : 's'} that hour${d !== null ? ` · ${d} departure${d === 1 ? '' : 's'} an hour later for drop-off runs` : ''}</small></div>` +
+        flBarsHTML('MEL', h0.getTime(), 5) + flListHTML('MEL', from, 8) + `<div class="fl-foot">${flFoot('MEL')}</div></div>`;
+    }
+    // Map side box: a short summary, with the full list in Plan a Shift
     function flightsHTML(code) {
       if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Surge chasing to see real arrivals here.</div></div>`;
       const c = flights[code];
       if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">${flLoading[code] || !c ? 'Loading flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div></div>`;
-      const now = Date.now(), h0 = new Date(now); h0.setMinutes(0, 0, 0);
-      const hrs = Array.from({ length: 5 }, (_, k) => { const s = h0.getTime() + k * 3600000; return { s, a: flCount(code, 'in', s, s + 3600000), d: flCount(code, 'out', s, s + 3600000) }; })
-        .filter(x => x.a !== null);
-      const mx = Math.max(6, ...hrs.map(x => x.a));
-      const bars = hrs.map(x => `<div class="fl-bar"><i style="height:${Math.max(2, Math.round(30 * x.a / mx))}px" class="${x.a >= FL_FULL * 0.75 ? 'g' : x.a >= FL_FULL * 0.4 ? 'y' : ''}"></i><b>${x.a}</b><span>${fmtHour(new Date(x.s).getHours())}</span></div>`).join('');
-      const next = c.arr.filter(f => flOut(f) > now).slice(0, 6);      // passengers not out yet
-      const soon = flCount(code, 'in', now, now + 3600000);
-      return `<div class="fl-box"><div class="fl-h">✈️ Passengers coming out <small>${soon} flight${soon === 1 ? '' : 's'} in the next hour</small></div>
-        <div class="fl-bars">${bars}</div>
-        ${next.length ? '<div class="fl-sub">Passengers still to come out</div>' : ''}${next.map(f => `<div class="flt-row"><div><b>${fmtTime(flEt(f))}</b>${f.term ? ` <em>T${esc(f.term)}</em>` : ''} ${flStatus(f)}</div><span>${esc(f.n)}${f.ap ? ' · ' + esc(f.ap) : ''}</span></div>`).join('')}
-        <div class="fl-foot">${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}Checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('${code}', true);return false;">Refresh</a></div></div>`;
+      const now = Date.now(), h0 = Math.floor(now / 3600000) * 3600000;
+      const soon = flCount(code, 'in', now, now + 3600000), d = flCount(code, 'out', now + 3600000, now + 2 * 3600000);
+      const top = Array.from({ length: 5 }, (_, k) => ({ s: h0 + k * 3600000, n: flCount(code, 'in', h0 + k * 3600000, h0 + (k + 1) * 3600000) })).filter(x => x.n !== null).sort((x, y) => y.n - x.n)[0];
+      const up = c.arr.filter(f => flOut(f) > now && flEt(f) < now + 3 * 3600000);
+      const late = up.filter(f => !flCancelled(f) && f.rt && f.rt - f.t >= 600000).length, canc = up.filter(flCancelled).length;
+      const lvl = soon >= FL_FULL * 0.75 ? 'g' : soon >= FL_FULL * 0.4 ? 'y' : '';
+      return `<div class="fl-box"><div class="fl-h">✈️ Live arrivals</div>
+        <div class="fl-sum"><b class="${lvl}">${soon}</b> flight${soon === 1 ? '' : 's'} with passengers out in the next hour</div>` +
+        (top ? `<div class="bp-why">Busiest: ${fmtHour(new Date(top.s).getHours())} (${top.n})${d !== null ? ` · ${d} departures the hour after` : ''}</div>` : '') +
+        (late || canc ? `<div class="bp-why">${late ? `<b class="fl-late">${late} late</b>` : ''}${late && canc ? ' · ' : ''}${canc ? `<b class="fl-x">${canc} cancelled</b>` : ''} in the next 3 hours</div>` : '') +
+        (code === 'MEL' ? `<a href="#" class="fl-more" onclick="openAirportPlan();return false;">All flights in Plan a Shift ›</a>` : '') +
+        `<div class="fl-foot">${flFoot(code)}</div></div>`;
+    }
+    // From the map: Plan a Shift on today, starting now, scrolled to the airport card
+    function openAirportPlan() {
+      const n = nowSlot();
+      document.getElementById('planDay').value = String(n.day);
+      document.getElementById('planStart').value = String(n.min);
+      try { fillPlanUntil(); } catch (e) {}
+      showTab('insights'); renderPlan(); renderPlanCal();
+      setTimeout(() => { const el = document.getElementById('airportBox'); if (el) el.closest('.demand-card').scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 80);
     }
 
     // ================= 🚆 TRAIN DISRUPTIONS (Transport Victoria open data, GTFS Realtime) =================
@@ -7468,7 +7497,8 @@
       const peaks = allEvents().filter(e => e.zone === AIRPORT_ZONE && e.e > base.getTime() + 4 * 3600000 && e.s < base.getTime() + 28 * 3600000);
       const bo = best('out'), bi = best('in');
       if (document.getElementById('view-insights').style.display !== 'none') loadFlights('MEL');
-      box.innerHTML = flightPlanHTML(st, hrsOfDay) + `
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      box.innerHTML = airportOutlookHTML(today, dayOff, allEvents()) + `<div class="ap-sec">🕘 ${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</div>` + `
         <div class="rank-item"><div><div>🏙 → ✈️ City to airport at ${fmtMin(sm)}</div>
           <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
           `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
@@ -7479,7 +7509,8 @@
         <div class="demand-axis ap-axis">${AXIS_HRS.map(h => `<span>${fmtHour(h)}</span>`).join('')}</div>
         ${peaks.map(e => `<div class="ap-peak">🟣 Uber: <b>${esc(e.name)}</b> ${fmtTimeRange(e.s, e.e)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}</div>`).join('')}
         <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.
-          Estimated from typical Melbourne Airport flight times and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</div>`;
+          Estimated from typical Melbourne Airport flight times${lsGet('cfgFlightKey') ? ', live flights where loaded,' : ''} and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</div>` +
+        flightPlanHTML(st);
       return { out: run, in: inNow };
     }
 
