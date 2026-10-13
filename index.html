@@ -1111,6 +1111,7 @@
     .rank-item { padding: 12px 14px; }
     .wn-cell { border-radius: 14px; background: var(--card-2); }
     .toast { background: var(--text); color: var(--bg); border: none; border-radius: 999px; box-shadow: var(--shadow-strong); }
+    .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); z-index: 960; width: max-content; max-width: min(400px, calc(100vw - 32px)); text-align: center; border-radius: 18px; }   /* above the bottom bar */
     .toast span[style] { color: var(--accent) !important; }
     :root[data-theme="contrast"] .toast { border: 2px solid var(--accent); }
     .ver-badge { background: var(--card); border-color: var(--card-border); }
@@ -1170,6 +1171,19 @@
     .side-stack .snap-dot { top: 6px; right: calc(50% - 16px); box-shadow: 0 0 0 2px var(--glass-strong); }
     @media (max-width: 520px) { .app-container { padding-right: 0; } }
     body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+    /* ================= Bigger screens (iPad, desktop, full-screen window): keep the phone layout =================
+       The app stays phone-width in the middle, framed like a phone screen, and every pop-up lines up with it. */
+    @media (min-width: 600px) {
+      html { background: color-mix(in srgb, var(--bg) 82%, var(--muted)); }
+      body { background: transparent; padding-top: 12px; }
+      .app-container { max-width: 444px; background: var(--bg); border-radius: 30px; padding: 12px 12px 92px;
+        min-height: calc(100dvh - 24px); box-shadow: 0 0 0 1px var(--card-border), 0 20px 60px rgba(0,0,0,.18); }
+      .drive { height: calc(100dvh - 140px); }
+      .side-stack { width: 420px; }
+      .toast { width: max-content; max-width: 400px; text-align: center; }
+      .ver-badge { right: calc(50% - 222px + 10px); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); border-right: 1px solid var(--line-strong); border-radius: 8px; }
+      .bar-help, .chase-toast { max-width: 400px; }
+    }
     .ver-badge { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 890; }
     /* Map tab fills the screen between the tabs and the bottom bar */
     .drive { height: calc(100dvh - 150px - env(safe-area-inset-bottom, 0px)); min-height: 420px; }
@@ -6451,7 +6465,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.36.0';
+    const APP_VERSION = '1.36.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
