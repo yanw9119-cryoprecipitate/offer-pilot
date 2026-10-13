@@ -5297,8 +5297,8 @@
           const v = demandAdj(z, now);
           const busy = v !== null && v >= OK;
           const hot = busy || layers.zonesAll;               // busy zones are highlighted; double-tap Zones to label all
-          const col = v === null ? '#64748b' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#94a3b8';
-          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: busy ? 3 : 1.5, opacity: busy ? 0.95 : hot ? 0.8 : 0.5, dashArray: busy ? '10 6' : '4 6',
+          const col = v === null ? '#8b5cf6' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#2563eb';   // quiet = blue, stands out on the grey map
+          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: busy ? 3 : 2, opacity: busy ? 0.95 : hot ? 0.85 : 0.6, dashArray: busy ? '10 6' : '5 6',
             fillColor: col, fillOpacity: busy ? 0.08 : 0, interactive: false }).addTo(markerLayer);
           if (!hot) return;
           // Drive time to the nearest edge of the zone
@@ -5376,7 +5376,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.2';
+    const APP_VERSION = '1.25.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
