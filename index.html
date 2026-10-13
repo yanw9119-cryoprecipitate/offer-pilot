@@ -172,7 +172,8 @@
     .heat-wrap { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 8px; }
     table.heat { width: 100%; border-collapse: separate; border-spacing: 2px; table-layout: fixed; }
     table.heat th { font-size: 0.65rem; color: var(--muted); font-weight: 600; padding: 2px 0; }
-    table.heat th.rowh { text-align: right; padding-right: 4px; width: 54px; white-space: nowrap; }
+    table.heat th.rowh { text-align: right; padding-right: 4px; width: 62px; white-space: nowrap; }
+    table.heat.t24 th.rowh { width: 40px; }
     table.heat td {
       height: 32px; border-radius: 5px; text-align: center; vertical-align: middle;
       background: rgba(148,163,184,0.06); font-size: 0.68rem; line-height: 1.05; cursor: pointer;
@@ -4472,7 +4473,7 @@
       const sgrid = surgeGrid();
       let html = '<tr><th class="rowh"></th>' + DAYS.map(d => `<th>${d}</th>`).join('') + '</tr>';
       for (let b = 0; b < BLOCKS; b++) {
-        html += `<tr><th class="rowh">${blockLabel(b)}</th>`;
+        html += `<tr><th class="rowh">${is24() ? pad2(b * 2) + '–' + pad2((b * 2 + 2) % 24) : blockLabel(b)}</th>`;   // short in 24-hour: 00–02
         for (let d = 0; d < 7; d++) {
           const es = grid[b][d];
           const ss = sgrid[b][d];
@@ -4492,6 +4493,7 @@
         html += '</tr>';
       }
       document.getElementById('heatTable').innerHTML = html;
+      document.getElementById('heatTable').classList.toggle('t24', is24());
 
       // Top slots
       const slots = [];
@@ -6914,7 +6916,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.50.0';
+    const APP_VERSION = '1.50.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
