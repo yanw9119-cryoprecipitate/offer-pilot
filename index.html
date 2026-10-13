@@ -5386,7 +5386,7 @@
       if (zc) {
         // 🗺 with how many zones are busy right now, coloured by the best one (green busy, yellow fair, blue quiet)
         const zs = zoneSummary();
-        zc.innerHTML = `🗺<b class="zn ${zs.cls}">${zs.n}</b>`;
+        zc.innerHTML = zs.n ? `🗺<b class="zn ${zs.cls}">${zs.n}</b>` : '🗺';   // no number when no zone is busy or fair
         zc.classList.toggle('all', !!layers.zonesAll);
         zc.setAttribute('aria-label', `Zones: ${zs.good} busy, ${zs.ok} fair${layers.zonesAll ? ', all labelled' : ''}`);
       }
@@ -6183,7 +6183,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.33.3';
+    const APP_VERSION = '1.33.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
