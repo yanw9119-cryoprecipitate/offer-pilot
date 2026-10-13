@@ -365,6 +365,24 @@
     .plan-line span { font-size: .66rem; font-weight: 800; color: var(--muted); padding-left: 4px; }
     .plan-line select { width: 100%; min-width: 0; background-color: var(--card-2); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 12px;
       padding: 9px 22px 9px 9px; font-size: .85rem; font-weight: 700; -webkit-appearance: none; appearance: none; background-image: var(--arrow); background-repeat: no-repeat; background-position: right 6px center; background-size: 13px; text-overflow: ellipsis; }
+.plan-pick { width: 100%; min-width: 0; text-align: left; background: var(--card-2) var(--arrow) no-repeat right 6px center / 13px; color: var(--text); border: var(--bw) solid var(--card-border);
+      border-radius: 12px; padding: 9px 22px 9px 9px; font: inherit; font-size: .85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+    .wheel-card { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+    .wh-done { border: none; background: var(--accent); color: var(--on-accent); font-weight: 800; border-radius: 999px; padding: 8px 18px; font-size: .9rem; }
+    .wh-modes { display: flex; gap: 6px; margin: 4px 0 10px; }
+    .wh-modes[hidden] { display: none; }
+    .wh-modes button { flex: 1; border: var(--bw) solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 8px 4px; font-weight: 800; font-size: .82rem; }
+    .wh-modes button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .wheels { position: relative; display: flex; justify-content: center; gap: 4px; height: 200px; overflow: hidden;
+      -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+    .wheels.off { opacity: .35; }
+    .wh-band { position: absolute; left: 8px; right: 8px; top: 80px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, transparent); pointer-events: none; }
+    .wh-col { position: relative; width: 76px; height: 200px; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .wh-col::-webkit-scrollbar { display: none; }
+    .wh-col div { height: 40px; line-height: 40px; text-align: center; font-size: 1.45rem; font-weight: 800; color: var(--text); scroll-snap-align: center; font-variant-numeric: tabular-nums; }
+    .wh-col div.pad { scroll-snap-align: none; }
+    .wh-sep { align-self: center; font-size: 1.45rem; font-weight: 800; color: var(--muted); z-index: 1; }
+    .wh-note { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 8px; min-height: 1em; }
     .plan-lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .plan-end input { width: 18px; height: 18px; accent-color: var(--accent); }
     #planEndWrap[hidden] { display: none; }
@@ -1219,10 +1237,10 @@
           <div class="plan-title">🕘 Choose your hours</div>
           <div class="plan-line">
             <label><span>Day</span><select id="planDay" onchange="renderPlan(); renderPlanCal()" aria-label="Day"></select></label>
-            <label><span>From</span><select id="planStart" onchange="renderPlan()" aria-label="Start time"></select></label>
-            <label><span>Until</span><select id="planUntil" onchange="onPlanUntil()" aria-label="End time"></select></label>
+            <label><span>From</span><button type="button" class="plan-pick" id="planStartBtn" onclick="openWheel('start')" aria-label="Start time"></button></label>
+            <label><span>Until</span><button type="button" class="plan-pick" id="planUntilBtn" onclick="openWheel('end')" aria-label="End time"></button></label>
           </div>
-          <div hidden><select id="planMode"><option value="suggest"></option><option value="end"></option><option value="two"></option></select>
+          <div hidden><select id="planStart"></select><select id="planUntil" onchange="onPlanUntil()"></select><select id="planMode"><option value="suggest"></option><option value="end"></option><option value="two"></option></select>
             <span id="planEndWrap"><select id="planEnd"></select></span></div>
           <div id="planResult"></div>
         </div>
@@ -1306,6 +1324,20 @@
   </div>
 
   <!-- Fill-up sheet -->
+  <!-- Time wheel (Plan a Shift: From / Until) -->
+  <div class="sheet" id="wheelSheet" onclick="if (event.target === this) closeWheel()">
+    <div class="sheet-content wheel-card">
+      <div class="sheet-head"><h3 id="wheelTitle">Start time</h3><button type="button" class="wh-done" onclick="closeWheel()">Done</button></div>
+      <div class="wh-modes" id="wheelModes">
+        <button type="button" data-m="suggest" onclick="wheelMode('suggest')">✨ Suggest</button>
+        <button type="button" data-m="two" onclick="wheelMode('two')">2 hrs</button>
+        <button type="button" data-m="end" onclick="wheelMode('end')">Set time</button>
+      </div>
+      <div class="wheels" id="wheels"><div class="wh-band"></div></div>
+      <div class="wh-note" id="wheelNote"></div>
+    </div>
+  </div>
+
   <div class="sheet" id="fillSheet" onclick="if (event.target === this) closeFillSheet()">
     <div class="sheet-content">
       <div class="sheet-head">
@@ -2217,7 +2249,7 @@
       ['planStart', 'planEnd'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = planSlotOpts(); });
       if (ps !== null) document.getElementById('planStart').value = ps;
       if (pe !== null) document.getElementById('planEnd').value = pe;
-      try { fillPlanUntil(); } catch (e) {}
+      try { fillPlanUntil(); syncPlanBtns(); } catch (e) {}
       try { initTimeFilter(); if (ft !== null) document.getElementById('fTime').value = ft; } catch (e) {}
       ['renderDemand', 'renderTrendNow', 'renderEvents', 'renderWhereNow', 'renderPlanCal', 'renderPlan', 'renderInsights', 'renderAirport', 'renderShiftBar', 'renderSpotList']
         .forEach(f => { try { if (typeof window[f] === 'function') window[f](); } catch (e) {} });
@@ -3632,7 +3664,7 @@
       document.getElementById('planMode').value = 'suggest';
       document.getElementById('planStart').value = String(next);
       document.getElementById('planEnd').value = String((next + 180) % 1440);
-      fillPlanUntil();
+      fillPlanUntil(); syncPlanBtns();
     }
     // "Until" = Suggest / 2 hours / a set end hour; drives the hidden planMode + planEnd
     function fillPlanUntil() {
@@ -3642,6 +3674,73 @@
         planSlotOpts('h');
       el.value = mode === 'end' ? 'h' + eh : mode;
     }
+    // ---- Scroll wheels for From / Until (hour : minute, plus AM/PM in 12-hour mode) ----
+    let wheelFor = null, wheelTimer = null, wheelBuiltAt = 0;
+    function syncPlanBtns() {
+      const a = document.getElementById('planStartBtn'), b = document.getElementById('planUntilBtn'); if (!a) return;
+      a.textContent = fmtMin(+document.getElementById('planStart').value);
+      const mode = document.getElementById('planMode').value;
+      b.textContent = mode === 'two' ? '2 hrs' : mode === 'end' ? fmtMin(+document.getElementById('planEnd').value)
+        : '✨ ' + (lastPlan && lastPlan.end ? fmtTime(lastPlan.end) : 'Suggest');
+    }
+    function wheelCol(items, sel) {
+      return `<div class="wh-col">` + '<div class="pad"></div><div class="pad"></div>' +
+        items.map(([v, t]) => `<div data-v="${v}">${t}</div>`).join('') + '<div class="pad"></div><div class="pad"></div></div>';
+    }
+    function buildWheels(mins) {
+      const h = Math.floor(mins / 60), m = mins % 60, box = document.getElementById('wheels');
+      const cols = is24()
+        ? [Array.from({ length: 24 }, (_, i) => [i, pad2(i)]), [[0, '00'], [30, '30']]]
+        : [Array.from({ length: 12 }, (_, i) => [i + 1, String(i + 1)]), [[0, '00'], [30, '30']], [['AM', 'AM'], ['PM', 'PM']]];
+      const sel = is24() ? [h, m] : [h12(h), m, apOf(h)];
+      wheelBuiltAt = performance.now();
+      box.innerHTML = '<div class="wh-band"></div>' + cols.map((c, i) => wheelCol(c) + (i === 0 ? '<span class="wh-sep">:</span>' : '')).join('');
+      box.querySelectorAll('.wh-col').forEach((col, i) => {
+        const idx = cols[i].findIndex(([v]) => v === sel[i]);
+        col.scrollTop = Math.max(0, idx) * 40;
+        col.addEventListener('scroll', () => { if (performance.now() - wheelBuiltAt < 300) return; clearTimeout(wheelTimer); wheelTimer = setTimeout(wheelRead, 140); }, { passive: true });
+        col.addEventListener('click', e => { const it = e.target.closest('[data-v]'); if (!it) return;
+          const k = [...col.querySelectorAll('[data-v]')].indexOf(it); col.scrollTo({ top: k * 40, behavior: 'smooth' }); });
+      });
+    }
+    function wheelValue() {
+      const vals = [...document.querySelectorAll('#wheels .wh-col')].map(col => {
+        const items = col.querySelectorAll('[data-v]'), k = Math.min(items.length - 1, Math.max(0, Math.round(col.scrollTop / 40)));
+        return items[k].dataset.v;
+      });
+      let h = +vals[0]; const m = +vals[1];
+      if (!is24()) h = (h % 12) + (vals[2] === 'PM' ? 12 : 0);
+      return h * 60 + m;
+    }
+    function wheelRead() {
+      const v = wheelValue();
+      if (wheelFor === 'start') document.getElementById('planStart').value = String(v);
+      else { document.getElementById('planMode').value = 'end'; document.getElementById('planEnd').value = String(v); syncWheelModes(); }
+      fillPlanUntil(); renderPlan();
+    }
+    function syncWheelModes() {
+      const mode = document.getElementById('planMode').value;
+      document.querySelectorAll('#wheelModes button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
+      document.getElementById('wheels').classList.toggle('off', wheelFor === 'end' && mode !== 'end');
+      document.getElementById('wheelNote').textContent = wheelFor === 'start' ? 'Scroll the hour and minutes; the plan updates as you go.'
+        : mode === 'suggest' ? 'The pilot picks the end for you. Scroll to set your own.' : mode === 'two' ? 'Plans the 2 hours from your start. Scroll to set an end.' : 'Scroll the hour and minutes.';
+    }
+    function wheelMode(m) {
+      document.getElementById('planMode').value = m; fillPlanUntil(); renderPlan(); syncWheelModes();
+      if (m !== 'end') closeWheel();
+    }
+    function openWheel(which) {
+      wheelFor = which;
+      const start = +document.getElementById('planStart').value, mode = document.getElementById('planMode').value;
+      let v = start;
+      if (which === 'end') v = mode === 'end' ? +document.getElementById('planEnd').value
+        : lastPlan && lastPlan.end ? lastPlan.end.getHours() * 60 + (lastPlan.end.getMinutes() >= 30 ? 30 : 0) : (start + 120) % 1440;
+      document.getElementById('wheelTitle').textContent = which === 'start' ? '🕘 Start time' : '🏁 Finish time';
+      document.getElementById('wheelModes').hidden = which !== 'end';
+      document.getElementById('wheelSheet').style.display = 'flex';
+      buildWheels(v); syncWheelModes();
+    }
+    function closeWheel() { clearTimeout(wheelTimer); document.getElementById('wheelSheet').style.display = 'none'; wheelFor = null; }
     function onPlanUntil() {
       const v = document.getElementById('planUntil').value;
       if (v[0] === 'h') { document.getElementById('planMode').value = 'end'; document.getElementById('planEnd').value = v.slice(1); }
@@ -3753,6 +3852,7 @@
       if (hol) head += ` <br>📅 ${esc(hol)}: a public holiday, so the usual pattern may differ.`;
       lastPlan = { start: hrs[0], end: endT, zone: top.avg >= OK ? top.z : null, verdict: v.t };
       head += `<div class="cal-add"><button type="button" class="chip" onclick="addPlanToCalendar()">📅 Add to Calendar</button></div>`;
+      syncPlanBtns();
       out.innerHTML = `<div class="wn-head">${head}</div>` + rows.map(r => {
         const vv = VERDICT(r.avg);
         const win = r.best ? `busiest ${winOf(r.best)}` : 'no busy hours';
@@ -5268,7 +5368,7 @@
       insights: ['🗓 Plan a Shift', [
         ['📍 Where to drive', 'The best area now, in 1 hour and in 2 hours; one box per area.'],
         ['📅 Calendar', 'Green dates are mostly recommended days for the area you choose; “9h” = recommended hours. ✈️ airport days, 🏟 events.'],
-        ['🕘 Choose your hours', 'Pick the day, the start and Until (Suggest, 2 hrs or an end time) in 30-minute steps. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
+        ['🕘 Choose your hours', 'Pick the day, then tap From or Until and scroll the hour and minutes (30-minute steps). Until also has Suggest and 2 hrs. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
         ['✈️ Airport runs', 'City → airport and airport → city for that day, and whether you’ll likely get a ride back.'],
         ['⭐ Spots · 🏟 Events', 'Your best pickup suburbs, and events that raise demand (add your own).'],
         ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
@@ -5933,7 +6033,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.30.0';
+    const APP_VERSION = '1.31.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
