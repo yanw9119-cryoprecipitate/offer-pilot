@@ -360,13 +360,14 @@
     .plan-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
     .plan-row select { background: var(--card-2); color: var(--text); border: 1px solid var(--card-border); border-radius: 8px; padding: 7px; font-size: .85rem; }
     .plan-row select:disabled { opacity: .45; }
-    .plan-line { display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .plan-line { display: grid; grid-template-columns: 1.1fr 1fr 1.06fr; gap: 6px; margin-bottom: 8px; }
     .plan-line label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .plan-line span { font-size: .66rem; font-weight: 800; color: var(--muted); padding-left: 4px; }
     .plan-line select { width: 100%; min-width: 0; background-color: var(--card-2); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 12px;
       padding: 9px 22px 9px 9px; font-size: .85rem; font-weight: 700; -webkit-appearance: none; appearance: none; background-image: var(--arrow); background-repeat: no-repeat; background-position: right 6px center; background-size: 13px; text-overflow: ellipsis; }
 .plan-pick { width: 100%; min-width: 0; text-align: left; background: var(--card-2) var(--arrow) no-repeat right 6px center / 13px; color: var(--text); border: var(--bw) solid var(--card-border);
-      border-radius: 12px; padding: 9px 22px 9px 9px; font: inherit; font-size: .85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+      border-radius: 12px; padding: 9px 18px 9px 8px; font: inherit; font-size: .85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
+    .plan-pick .sp { font-size: .7rem; margin-right: 2px; }
     .wheel-card { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
     .wh-done { border: none; background: var(--accent); color: var(--on-accent); font-weight: 800; border-radius: 999px; padding: 8px 18px; font-size: .9rem; }
     .wh-now { display: block; width: 100%; border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);
@@ -486,6 +487,17 @@
     .cal-key b.g { color: var(--green); font-weight: 900; }
     .cal-air { position: absolute; left: 2px; top: 1px; font-size: .55rem; line-height: 1; }
     .cal-air.peak { filter: drop-shadow(0 0 2px #a78bfa); }
+    .ap-out { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .ap-out-h { font-weight: 800; font-size: .9rem; }
+    .ap-day { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 10px; width: 100%; text-align: left; font: inherit; color: var(--text);
+      background: var(--card-2); border: var(--bw) solid var(--card-border); border-radius: 14px; padding: 9px 11px; }
+    .ap-day b { font-size: .85rem; white-space: nowrap; }
+    .ap-day span { font-size: .74rem; color: var(--muted); line-height: 1.35; }
+    .ap-day .pill { margin: 0; font-size: .62rem; }
+    .ap-day.rec { border-color: color-mix(in srgb, var(--green) 55%, transparent); }
+    .ap-day.sel { box-shadow: 0 0 0 2px var(--accent); }
+    .ap-sum { font-size: .76rem; color: var(--muted); line-height: 1.45; }
+    .ap-sum b { color: var(--text); }
     .cal-airlist { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 10px; font-size: .78rem; }
     .cal-airlist b { width: 100%; }
     .cal-airlist .chip { box-shadow: none; background: var(--card-2); color: var(--text); font-size: .68rem; }
@@ -3596,7 +3608,43 @@
         }
         return fmtRange(best[0].h, best[1].h + 1);
       })() : '';
-      return { n: hrs.length, rec: hrs.length >= 4 || !!peak, peak, win };
+      // every run of good hours, with which way the work mostly is
+      const runs = [];
+      hrs.forEach(x => {
+        const r = runs[runs.length - 1];
+        if (r && (x.h - r.e + 24) % 24 === 1) { r.e = x.h; r[x.dir]++; } else runs.push({ s: x.h, e: x.h, to: x.dir === 'to' ? 1 : 0, from: x.dir === 'from' ? 1 : 0 });
+      });
+      return { n: hrs.length, rec: hrs.length >= 4 || !!peak, peak, win, hrs, runs };
+    }
+    // Parts of the day for the 7-day airport summary (hours from Uber's 4am day start)
+    const DAY_PARTS = [['early morning', 4, 7], ['morning', 7, 11], ['around noon', 11, 14], ['afternoon', 14, 17], ['evening', 17, 21], ['late night', 21, 28]];
+    const partOf = h => DAY_PARTS.find(([, a, b]) => { const x = h < 4 ? h + 24 : h; return x >= a && x < b; })[0];
+    function dayList(ds) {   // "Mon–Fri", "Tue, Thu, Sun"
+      const idx = ds.map(d => dayIdx(d)), out = [];
+      for (let i = 0; i < ds.length; i++) {
+        let j = i; while (j + 1 < ds.length && ds[j + 1] - ds[j] === 86400000) j++;
+        out.push(j - i >= 2 ? `${DAYS[idx[i]]}–${DAYS[idx[j]]}` : idx.slice(i, j + 1).map(k => DAYS[k]).join(', '));
+        i = j;
+      }
+      return out.join(', ');
+    }
+    function airportOutlookHTML(today, sel, evs) {
+      const days = Array.from({ length: 7 }, (_, k) => { const d = new Date(today.getTime() + (sel + k) * 86400000); return { d, k: sel + k, ap: airportDay(d, evs) }; });
+      const lbl = d => `${DAYS[dayIdx(d)]} ${d.getDate()}`;
+      // Next 3 days from the chosen date, with every good window
+      const rows = days.slice(0, 3).map(({ d, k, ap }) => {
+        const w = ap.runs.map(r => `<span class="nw">${fmtRange(r.s, r.e + 1)} ${r.to > r.from ? '🏙→✈️' : '✈️→🏙'}</span>`).join(' · ');
+        return `<button type="button" class="ap-day${ap.rec ? ' rec' : ''}${k === sel ? ' sel' : ''}" onclick="pickPlanDay(${k})"><b>${lbl(d)}</b>` +
+          `<span>${w || 'Quiet: no busy airport hours'}${ap.peak ? ' · 🟣 Uber peak' : ''}</span><i class="pill ${ap.rec ? 'yes' : ap.n ? 'maybe' : 'no'}">${ap.rec ? 'Recommended' : ap.n ? 'Some' : 'Quiet'}</i></button>`;
+      }).join('');
+      // 7-day summary: which parts of the day are good, on which days
+      const parts = DAY_PARTS.map(([name]) => ({ name, ds: days.filter(({ ap }) => ap.hrs.filter(x => partOf(x.h) === name).length >= 2).map(x => x.d) }))
+        .filter(p => p.ds.length).sort((a, b) => b.ds.length - a.ds.length);
+      const recN = days.filter(x => x.ap.rec).length;
+      const sum = parts.length
+        ? `<b>Next 7 days:</b> ${recN} of 7 recommended. Best ${parts.slice(0, 3).map((p, i) => `${i === 0 ? '' : i === parts.slice(0, 3).length - 1 ? ' and ' : ', '}<b>${p.name}</b> (${dayList(p.ds)})`).join('')}.`
+        : '<b>Next 7 days:</b> no busy airport times expected.';
+      return `<div class="ap-out"><div class="ap-out-h">✈️ Airport runs from ${lbl(days[0].d)}</div>${rows}<div class="ap-sum">${sum}</div></div>`;
     }
     function renderPlanCal() {
       const box = document.getElementById('planCal');
@@ -3624,8 +3672,7 @@
           `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === myZone() ? '<small>you’re here</small>' : ''}</label>` +
         `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
         `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (${fmtRange(6, 2)}) · ✈️ airport runs recommended · 🏟 event · 📅 holiday</span></div>` +
-        (() => { const a = airDays.filter(Boolean).slice(0, 8);
-          return a.length ? `<div class="cal-airlist"><b>✈️ Airport run days</b>${a.map(x => `<button type="button" class="chip" onclick="pickPlanDay(${Math.round((x.d - today) / 86400000)})">${DAYS[dayIdx(x.d)]} ${x.d.getDate()} · ${x.ap.win}${x.ap.peak ? ' · Uber peak' : ''}</button>`).join('')}</div>` : ''; })();
+        airportOutlookHTML(today, sel, evs);
     }
     function pickPlanDay(k) {
       document.getElementById('planDay').value = String(k);
@@ -3685,7 +3732,8 @@
       a.textContent = fmtMin(+document.getElementById('planStart').value);
       const mode = document.getElementById('planMode').value;
       b.textContent = mode === 'two' ? '2 hrs' : mode === 'end' ? fmtMin(+document.getElementById('planEnd').value)
-        : '✨ ' + (lastPlan && lastPlan.end ? fmtTime(lastPlan.end) : 'Suggest');
+        : null;
+      if (mode === 'suggest') b.innerHTML = '<span class="sp">✨</span>' + (lastPlan && lastPlan.end ? fmtTime(lastPlan.end) : 'Suggest');
     }
     function wheelCol(items, sel) {
       return `<div class="wh-col">` + '<div class="pad"></div><div class="pad"></div>' +
@@ -5391,7 +5439,7 @@
       insights: ['🗓 Plan a Shift', [
         ['📍 Where to drive', 'The best area now, in 1 hour and in 2 hours; one box per area.'],
         ['📅 Calendar', 'Green dates are mostly recommended days for the area you choose; “9h” = recommended hours. ✈️ airport days, 🏟 events.'],
-        ['🕘 Choose your hours', 'Pick the day, then tap From or Until and scroll the hour and minutes (30-minute steps). Until also has Suggest and 2 hrs. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
+        ['🕘 Choose your hours', 'Tap a calendar day (the ✈️ airport list below it follows: next 3 days plus a 7-day summary), then tap From or Until and scroll the hour and minutes (30-minute steps). Until also has Suggest and 2 hrs. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
         ['✈️ Airport runs', 'City → airport and airport → city for that day, and whether you’ll likely get a ride back.'],
         ['⭐ Spots · 🏟 Events', 'Your best pickup suburbs, and events that raise demand (add your own).'],
         ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
@@ -6056,7 +6104,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.31.1';
+    const APP_VERSION = '1.32.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
