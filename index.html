@@ -508,7 +508,7 @@
     .map-wrap.card-open .leaflet-bottom, .map-wrap.card-open .map-note { display: none; }
     .sc-rows b { white-space: nowrap; }
     .chip.on { color: var(--text); border-color: var(--accent); }
-    .chip-go { margin-left: auto; color: #fb923c; border-color: #f97316; }
+    .chip-go { color: #fb923c; border-color: #f97316; }
     .hist-bar { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; }
     .hist-bar select {
       min-width: 0; background: var(--glass); border: 1px solid var(--card-border); color: var(--text);
@@ -931,12 +931,13 @@
 
         <div class="drive-top">
           <div class="map-chips">
+            <!-- Most useful first: surges near you, busy zones, then the layers you check less often -->
+            <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
+            <button class="chip on" id="chipZones" onclick="toggleLayer('zones')">🗺 Zones</button>
             <button class="chip on" id="chipLive" onclick="toggleLayer('live')">🔴 Live</button>
             <button class="chip on" id="chipPred" onclick="toggleLayer('pred')">🔮 Predicted</button>
-            <button class="chip" id="chipHist" onclick="toggleLayer('hist')">🕘 History</button>
-            <button class="chip" id="chipZones" onclick="toggleLayer('zones')">🗺 Zones</button>
             <button class="chip" id="chipSpots" onclick="toggleLayer('spots')">⭐ Spots</button>
-            <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
+            <button class="chip" id="chipHist" onclick="toggleLayer('hist')">🕘 History</button>
           </div>
           <div class="hist-bar" id="histBar" hidden>
             <select id="fDay" onchange="renderMap()" aria-label="Day">
@@ -4414,7 +4415,14 @@
     const LIVE_WINDOW_MIN = 20;
     const LEVEL_AMT = [0, 1, 3, 6];          // $ assumed when no "+$" amount was recorded
     const SURGE_HALF_LIFE_MIN = 7;           // research: surges often end within 5-10 minutes
-    const layers = { live: true, pred: true, hist: false, zones: false, spots: false };
+    // Map layers: Zones on by default; your choices are remembered
+    const layers = Object.assign({ live: true, pred: true, hist: false, zones: true, spots: false },
+      (() => { try { const v = JSON.parse(lsGet('mapLayers')); delete (v || {}).hist; return v || {}; } catch (e) { return {}; } })());
+    function syncLayerChips() {
+      Object.entries({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots' })
+        .forEach(([k, id]) => document.getElementById(id).classList.toggle('on', !!layers[k]));
+      document.getElementById('histBar').hidden = !layers.hist;
+    }
     let surgeLayer = null, routeLayer = null, openSurgeKey = null, suburbRenderer = null;
 
     function amtNumber(a) {
@@ -4427,6 +4435,7 @@
 
     function toggleLayer(k) {
       layers[k] = !layers[k];
+      lsSet('mapLayers', JSON.stringify(layers));
       document.getElementById({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots' }[k]).classList.toggle('on', layers[k]);
       document.getElementById('histBar').hidden = !layers.hist;
       renderMap();
@@ -4960,7 +4969,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.22.5';
+    const APP_VERSION = '1.22.6';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -5331,7 +5340,7 @@
       document.getElementById('evZone').innerHTML = Object.keys(UBER_ZONE_SHAPES).map(z => `<option>${esc(z)}</option>`).join('');
       loadWeather(); setInterval(loadWeather, 3600000);
       renderShiftBar(); setInterval(renderShiftBar, 30000);
-      syncTestUI(); applyTheme(savedTheme());
+      syncTestUI(); applyTheme(savedTheme()); syncLayerChips();
       renderBackupInfo(); weeklyReminders();
       showTab('drive');
       // Keep live-surge ages and predictions current while driving
