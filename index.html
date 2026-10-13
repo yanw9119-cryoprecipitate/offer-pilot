@@ -768,6 +768,25 @@
     .surge-pin.pred.yes, .surge-pin.pred.here { background: #16a34a; }
     .surge-pin.pred.maybe { background: #facc15; color: #1c1917; border-color: #1c1917; }
     .surge-pin.live i { animation: livePulse 1.2s ease-in-out infinite; }
+    /* 🔥 fire on a detected (live) surge */
+    .surge-pin-wrap { position: relative; }
+    .surge-fire { position: absolute; left: -17px; top: -66px; width: 34px; height: 36px; pointer-events: none; z-index: 1; }
+    .surge-fire b { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); font-size: 1.6rem; line-height: 1; transform-origin: 50% 100%;
+      animation: fireFlicker .9s ease-in-out infinite alternate; filter: drop-shadow(0 0 4px rgba(249,115,22,.9)); }
+    .surge-fire .sf-glow { position: absolute; left: 50%; bottom: -6px; width: 44px; height: 22px; margin-left: -22px; border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(249,115,22,.55), rgba(249,115,22,0) 70%); animation: fireGlow 1.1s ease-in-out infinite alternate; }
+    .surge-fire em { position: absolute; bottom: 14px; width: 4px; height: 4px; border-radius: 50%; background: #fb923c; box-shadow: 0 0 4px #f97316; opacity: 0; animation: fireEmber 1.6s ease-out infinite; }
+    .surge-fire em:nth-of-type(1) { left: 9px; } .surge-fire em:nth-of-type(2) { left: 20px; animation-delay: .4s; }
+    .surge-fire em:nth-of-type(3) { left: 14px; animation-delay: .8s; background: #fde047; } .surge-fire em:nth-of-type(4) { left: 24px; animation-delay: 1.2s; }
+    @keyframes fireFlicker { 0% { transform: translateX(-50%) scale(1, 1) rotate(-3deg); } 50% { transform: translateX(-50%) scale(1.08, .94) rotate(2deg); } 100% { transform: translateX(-50%) scale(.95, 1.1) rotate(-1deg); } }
+    @keyframes fireGlow { from { opacity: .55; transform: scale(.85); } to { opacity: 1; transform: scale(1.15); } }
+    @keyframes fireEmber { 0% { transform: translate(0, 0) scale(1); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(3px, -26px) scale(.3); opacity: 0; } }
+    .chip-flame { display: inline-block; }
+    .map-chips #chipNear.burning { animation: chipBurn 1.4s ease-in-out infinite; }
+    .map-chips #chipNear.burning .chip-flame { animation: fireFlickerSmall .8s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+    @keyframes fireFlickerSmall { 0% { transform: scale(1) rotate(-4deg); } 100% { transform: scale(1.15, 1.05) rotate(3deg); } }
+    @keyframes chipBurn { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,.0), var(--shadow); } 50% { box-shadow: 0 0 10px 3px rgba(249,115,22,.55), var(--shadow); } }
+    @media (prefers-reduced-motion: reduce) { .surge-fire b, .surge-fire em, .surge-fire .sf-glow, #chipNear.burning, #chipNear.burning .chip-flame { animation: none; } }
 
     @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 
@@ -5601,6 +5620,7 @@
     const MAP_HELP = {
       zones: ['🗺 Zones', 'The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
+      surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it and the 🔥 button glows. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
@@ -6131,7 +6151,8 @@
       if (sg.kind === 'live') {
         const label = sg.amt != null ? `LIVE +$${fmtAmt(sg.amt)}` : `LIVE ${LEVELS[sg.level]}`;
         return L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
-          html: `<div class="surge-pin live" style="background:${LEVEL_COLORS[sg.level]}"><i></i>${label}</div>` });
+          html: `<div class="surge-fire" aria-hidden="true"><span class="sf-glow"></span><b>🔥</b><em></em><em></em><em></em><em></em></div>` +
+            `<div class="surge-pin live" style="background:${LEVEL_COLORS[sg.level]}"><i></i>${label}</div>` });
       }
       const w = ev.w, amt = w.amt;
       return L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
@@ -6354,7 +6375,8 @@
       // 🔥 count, plus a small badge (like an app's notification badge) with the kind of event that's on nearby
       const evTypes = [...new Set(nearEvents().map(evType))].slice(0, 3);
       const cn = document.getElementById('chipNear');
-      cn.innerHTML = `🔥 ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
+      cn.classList.toggle('burning', nLive > 0);   // a surge was detected: the flame flickers
+      cn.innerHTML = `<span class="chip-flame">🔥</span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
       cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (evTypes.length ? ' including events' : ''));
       syncLayerChips();
       document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
@@ -6383,7 +6405,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.34.5';
+    const APP_VERSION = '1.35.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
