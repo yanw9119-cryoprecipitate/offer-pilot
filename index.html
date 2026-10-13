@@ -5823,7 +5823,7 @@
 
     // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
     const MAP_HELP = {
-      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones (graded from live flights: teal High, orange Medium, slate Low, with ↑ rising or ↓ easing): tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones (graded from live flights: teal High, orange Medium, slate Low, with ↑ rising or ↓ easing; the label shows only while flights are landing or leaving in the next hour): tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
@@ -6735,6 +6735,9 @@
           const pk = ap.pickups[0], q = routeNow(from, pk);
           const sub = (tier ? `<b class="ap-tier" style="background:${tc}">${tier.t}</b> ` + (tier.live ? `${tier.a} landing${TREND_TXT[tier.trend] ? ' · ' + TREND_TXT[tier.trend] : ''} · ` : 'est. · ') : '') +
             `🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min`;
+          // Label only while flights are moving: passengers coming out or departures within the next hour.
+          // Without live flights, Melbourne keeps its estimated label; Essendon (few flights) stays unlabelled.
+          if (!apActive(ap.code)) return;
           const c = L.polygon(ap.ring).getBounds().getCenter();
           L.marker(c, { interactive: false, zIndexOffset: 500, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
             html: `<div class="zone-tag tap airport${busySel === 'airport:' + ap.code ? ' picked' : ''}" data-z="airport:${ap.code}" style="border-color:${tc}">✈️ ${esc(ap.name)} · ${ap.code}<span>${sub}</span></div>` }) }).addTo(markerLayer);
@@ -6814,7 +6817,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.45.1';
+    const APP_VERSION = '1.46.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7270,6 +7273,11 @@
       const v = airportScore('in', new Date(new Date().setMinutes(0, 0, 0)));    // no live data: the usual estimate
       const k = v >= GOOD ? 'high' : v >= OK ? 'med' : 'low';
       return { ...AP_TIERS[k], k, live: false, trend: 'flat' };
+    }
+    function apActive(code) {
+      const now = Date.now(), a = flCount(code, 'in', now, now + 3600000), d = flCount(code, 'out', now, now + 3600000);
+      if (a === null) return code === 'MEL' && !(flights[code] && flights[code].to > now);   // no live data: estimate (MEL only)
+      return a + d > 0;
     }
     const TREND_TXT = { up: '↑ rising', down: '↓ easing', flat: '' };
     function flStatus(f) {
