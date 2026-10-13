@@ -643,6 +643,11 @@
     .mini-stats .net { color: var(--green); }
     .map-chips { display: flex; gap: 5px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
     .map-chips::-webkit-scrollbar { display: none; }
+    /* Icon-only layer buttons: all fit on one row, no cut-off edges */
+    .map-chips { overflow: visible; flex-wrap: wrap; gap: 6px; }
+    .map-chips .chip { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; font-size: 1.05rem; line-height: 1; flex: none; }
+    .map-chips .chip.chip-go { width: auto; min-width: 38px; padding: 0 10px; font-size: .9rem; font-weight: 800; }
+    .map-chips .chip.all { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
     .chip {
       flex: none; background: var(--glass); border: 1px solid var(--card-border); color: var(--muted);
       border-radius: 999px; padding: 6px 9px; font-size: .7rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.35);
@@ -684,7 +689,7 @@
     .fuel-pop .fp-sub { color: #555; font-size: .74rem; }
     .fuel-pop .fp-bits { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; font-size: .76rem; }
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
-    .fuel-pop .nav-btn { font-size: .72rem; padding: 5px 10px; text-decoration: none; white-space: nowrap; }
+    .fuel-pop .nav-row { gap: 8px; }
     .zone-tag {
       transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
       background: var(--glass-strong); border: 2px solid; border-radius: 10px; padding: 4px 8px; text-align: center; box-shadow: var(--shadow);
@@ -740,8 +745,9 @@
     .bp-why { color: var(--muted); margin-top: 3px; line-height: 1.3; }
     .bp-drive { margin-top: 4px; }
     .bp-nav { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
-    .bp-nav { flex-direction: column; }
-    .bp-nav .nav-btn { padding: 6px 8px; font-size: .66rem; }
+    .bp-nav { flex-direction: row; gap: 6px; }
+    .bp-nav .nav-btn.nav-ic { width: 38px; height: 38px; border-radius: 12px; }
+    .bp-nav .nav-btn.nav-ic img { width: 24px; height: 24px; }
     .bp-empty { color: var(--muted); font-size: .74rem; padding: 6px; }
     .tag-event { background: #7c3aed; color: #fff; }
     .sc-sec { font-size: .7rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 12px 0 2px; }
@@ -767,6 +773,8 @@
       background: var(--card-2); color: var(--text); border: 1px solid var(--card-border); min-width: 0;
     }
     .nav-btn.waze { background: #33ccff; color: #05202b; border-color: #33ccff; }
+    .nav-btn.nav-ic { flex: none; width: 46px; height: 46px; padding: 0; display: grid; place-items: center; border-radius: 14px; background: #fff; border: 1px solid var(--card-border); font-size: .6rem; color: #111; }
+    .nav-btn.nav-ic img { width: 28px; height: 28px; border-radius: 7px; display: block; }
     .sc-tip { margin-top: 8px; color: var(--muted); font-size: .7rem; line-height: 1.4; }
     .sc-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
     .sc-item {
@@ -1146,12 +1154,12 @@
           <div class="map-chips">
             <!-- Most useful first: surges near you, busy zones, then the layers you check less often -->
             <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
-            <button class="chip on" id="chipZones" onclick="zonesChipTap()">🗺 Zones</button>
-            <button class="chip on" id="chipLive" onclick="toggleLayer('live')">🔴 Live</button>
-            <button class="chip on" id="chipPred" onclick="toggleLayer('pred')">🔮 Predicted</button>
-            <button class="chip" id="chipSpots" onclick="toggleLayer('spots')">⭐ Spots</button>
-            <button class="chip" id="chipFuel" onclick="toggleLayer('fuel')">⛽ Fuel</button>
-            <button class="chip" id="chipHist" onclick="toggleLayer('hist')">🕘 History</button>
+            <button class="chip on" id="chipZones" onclick="zonesChipTap()" aria-label="Zones" title="Zones">🗺</button>
+            <button class="chip on" id="chipLive" onclick="toggleLayer('live')" aria-label="Live surges" title="Live">🔴</button>
+            <button class="chip on" id="chipPred" onclick="toggleLayer('pred')" aria-label="Predicted surges" title="Predicted">🔮</button>
+            <button class="chip" id="chipSpots" onclick="toggleLayer('spots')" aria-label="Best spots" title="Spots">⭐</button>
+            <button class="chip" id="chipFuel" onclick="toggleLayer('fuel')" aria-label="Fuel stations" title="Fuel">⛽</button>
+            <button class="chip" id="chipHist" onclick="toggleLayer('hist')" aria-label="History" title="History">🕘</button>
           </div>
           <div class="hist-bar" id="histBar" hidden>
             <select id="fDay" onchange="renderMap()" aria-label="Day">
@@ -5364,7 +5372,7 @@
     }
     function syncLayerChips() {
       const zc = document.getElementById('chipZones');
-      if (zc) zc.textContent = layers.zonesAll ? '🗺 All zones' : '🗺 Zones';
+      if (zc) { zc.textContent = '🗺'; zc.classList.toggle('all', !!layers.zonesAll); zc.setAttribute('aria-label', layers.zonesAll ? 'All zones labelled' : 'Zones'); }
       Object.entries({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots', fuel: 'chipFuel' })
         .forEach(([k, id]) => document.getElementById(id).classList.toggle('on', !!layers[k]));
       document.getElementById('histBar').hidden = !layers.hist;
@@ -5726,12 +5734,18 @@
         (sg.amt != null ? ` · avg +$${sg.amt.toFixed(2)}` : '');
     }
 
+    // Navigation buttons show each app's own icon (its site's favicon); the name appears if the icon can't load
+    const NAV_APPS = [
+      ['Waze', 'waze.com', ll => `https://waze.com/ul?ll=${ll}&navigate=yes`],
+      ['Google Maps', 'maps.google.com', ll => `https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving`],
+      ['Apple Maps', 'maps.apple.com', ll => `https://maps.apple.com/?daddr=${ll}&dirflg=d`, true]
+    ];
     function navLinks(lat, lng) {
       const ll = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-      const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
-      return `<a class="nav-btn waze" href="https://waze.com/ul?ll=${ll}&navigate=yes" target="_blank" rel="noopener">Waze</a>` +
-        `<a class="nav-btn" href="https://www.google.com/maps/dir/?api=1&destination=${ll}&travelmode=driving" target="_blank" rel="noopener">Google Maps</a>` +
-        (ios ? `<a class="nav-btn" href="https://maps.apple.com/?daddr=${ll}&dirflg=d" target="_blank" rel="noopener">Apple Maps</a>` : '');
+      const ios = /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent);
+      return NAV_APPS.filter(a => !a[3] || ios).map(([name, dom, url]) =>
+        `<a class="nav-btn nav-ic" href="${url(ll)}" target="_blank" rel="noopener" aria-label="${name}" title="${name}">` +
+        `<img src="https://www.google.com/s2/favicons?domain=${dom}&sz=64" alt="${name}" width="26" height="26" onerror="this.replaceWith(document.createTextNode('${name}'))"></a>`).join('');
     }
 
     function closeSurgeCard() {
@@ -6151,7 +6165,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.33.0';
+    const APP_VERSION = '1.33.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6397,7 +6411,7 @@
       const from = myPos(), km = from ? distM(from.lat, from.lng, f.lat, f.lng) / 1000 * 1.3 : null;   // road ≈ 1.3 × straight line
       const bits = [f.h24 ? '🕐 Open 24/7' : f.hours ? '🕐 ' + esc(f.hours) : '', f.fuels.length ? '⛽ ' + f.fuels.join(' · ') : '',
         km !== null ? `🚗 ~${km.toFixed(1)} km · ${Math.max(1, Math.round(estMin(km)))} min` : ''].filter(Boolean);
-      L.popup({ className: 'fuel-pop', offset: [0, -8], minWidth: 220, maxWidth: 270, autoPanPadding: [16, 60] }).setLatLng([f.lat, f.lng]).setContent(
+      L.popup({ className: 'fuel-pop', offset: [0, -8], minWidth: 200, maxWidth: 270, autoPanPadding: [16, 60] }).setLatLng([f.lat, f.lng]).setContent(
         `<b>${esc(f.name)}</b>${f.brand && f.brand !== f.name ? `<div class="fp-sub">${esc(f.brand)}</div>` : ''}` +
         (f.addr ? `<div class="fp-sub">${esc(f.addr)}</div>` : '') +
         `<div class="fp-bits">${bits.map(x => `<span>${x}</span>`).join('')}</div>` +
