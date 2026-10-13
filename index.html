@@ -754,6 +754,8 @@
     .fuel-pop .fp-bits { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; font-size: .76rem; }
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .fuel-pop .nav-row { gap: 8px; }
+    .zone-tag.tap { cursor: pointer; pointer-events: auto; }
+    .zone-tag.tap:active { transform: scale(.97); }
     .zone-tag {
       transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
       background: var(--glass-strong); border: 2px solid; border-radius: 10px; padding: 4px 8px; text-align: center; box-shadow: var(--shadow);
@@ -5694,7 +5696,7 @@
 
     // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
     const MAP_HELP = {
-      zones: ['🗺 Zones', 'The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zones: ['🗺 Zones', 'Tap a zone’s label for the drive, time and navigation. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
       fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
@@ -6142,6 +6144,15 @@
       renderBusy();
       showMapHelp('busy', true);
     }
+    // Tap a zone's label on the map: the side list opens on that zone with the drive, time and navigation
+    function openZonePanel(z) {
+      const panel = document.getElementById('busyPanel');
+      closeSurgeCard();
+      panel.hidden = false;
+      busySel = 'zone:' + z;
+      renderBusy();
+      const el = panel.querySelector('.bp-row.sel'); if (el) el.scrollIntoView({ block: 'nearest' });
+    }
     function renderBusy() {
       const panel = document.getElementById('busyPanel');
       if (panel.hidden) return;
@@ -6155,6 +6166,12 @@
       let html = `<div class="bp-head"><b>🔥 Busy near you</b><button type="button" class="x-btn" onclick="closeBusy()" aria-label="Close">✕</button></div>`;
       if (surges.length) html += `<div class="bp-sec">Surges</div>` + surges.map(({ sg }) =>
         row('s:' + sg.key, sg.kind === 'live' ? '#dc2626' : '#7c3aed', esc(sg.name), mins(sg, 's:' + sg.key), `closeBusy();openSurgeCard('${esc(sg.key)}')`)).join('');
+      // A zone tapped on the map that isn't busy right now still gets its own row at the top
+      if (busySel && busySel.startsWith('zone:') && !zones.some(x => 'zone:' + x.z === busySel) && UBER_ZONE_SHAPES[busySel.slice(5)]) {
+        const z = busySel.slice(5), ring = UBER_ZONE_SHAPES[z], v = demandAdj(z, now), here = myZone() === z;
+        const col = v === null ? '#8b5cf6' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#2563eb';
+        html += `<div class="bp-sec">Zone</div>` + row(busySel, col, esc(z), here ? '<span class="bp-min">here</span>' : mins(nearestOnRing(from.lat, from.lng, ring), busySel), `selectBusyZone(${esc(JSON.stringify(z))})`);
+      }
       if (zones.length) html += `<div class="bp-sec">Busy zones</div>` + zones.map(x => {
         const col = x.v >= GOOD ? '#16a34a' : '#eab308';
         return row('zone:' + x.z, col, esc(x.z), x.here ? '<span class="bp-min">here</span>' : mins(x.to, 'zone:' + x.z), `selectBusyZone(${esc(JSON.stringify(x.z))})`);
@@ -6425,9 +6442,9 @@
             drive = `🚗 ${q.real && !/rough/.test(q.r.source) ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min`;
           }
           const c = L.polygon(ring).getBounds().getCenter();
-          L.marker(c, { interactive: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
-            html: `<div class="zone-tag${busy ? '' : ' quiet'}" style="border-color:${col}">${esc(z)}<span>${v === null ? 'no trend yet' : demandName(v) + ' now'} · ${drive}</span></div>` }) })
-            .addTo(markerLayer);
+          L.marker(c, { interactive: true, bubblingMouseEvents: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
+            html: `<div class="zone-tag tap${busy ? '' : ' quiet'}" style="border-color:${col}">${esc(z)}<span>${v === null ? 'no trend yet' : demandName(v) + ' now'} · ${drive}</span></div>` }) })
+            .on('click', () => openZonePanel(z)).addTo(markerLayer);
         });
         if (zoneMissing.length && from.gps) fetchMissingRoutes(zoneMissing);
       }
@@ -6497,7 +6514,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.36.3';
+    const APP_VERSION = '1.36.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
