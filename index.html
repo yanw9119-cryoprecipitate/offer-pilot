@@ -801,8 +801,9 @@
     .flh[open] summary::after { transform: rotate(180deg); }
     .flh summary > b { flex-basis: 100%; }
     .flh-n { font-weight: 800; font-variant-numeric: tabular-nums; }
-    .flh-x:empty { display: none; } .flh-x { flex-basis: 100%; }
-    .flh[open] summary > b { flex-basis: auto; margin-right: 6px; } .flh[open] .flh-x { flex-basis: auto; }
+    .flh-x:empty { display: none; } .flh-x { margin-left: auto; gap: 8px; }
+    .flc { font-weight: 800; font-variant-numeric: tabular-nums; } .flc.late { color: #f59e0b; } .flc.canc { color: #ef4444; }
+    .flh[open] summary > b { flex-basis: auto; margin-right: 6px; }
     .flh-x { display: flex; gap: 4px; flex-wrap: wrap; }
     .fls { font-style: normal; font-weight: 800; font-size: .62rem; padding: 1px 6px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
     .fls.ok { background: rgba(34,197,94,.18); color: var(--green); } .fls.late { background: rgba(245,158,11,.2); color: #d97706; }
@@ -6940,7 +6941,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.51.0';
+    const APP_VERSION = '1.51.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7456,13 +7457,13 @@
         const cls = (t < hNow ? ' past' : '') + (t === hNow ? ' now' : '') + (t === h0.getTime() && h0.getTime() !== hNow ? ' start' : '');
         rows.push(`<details class="flh${cls}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
           `<span class="flh-n">🛬 ${arr.filter(f => !flCancelled(f)).length}</span><span class="flh-n">🛫 ${dep.filter(f => !flCancelled(f)).length}</span>` +
-          `<span class="flh-x">${nLate ? `<i class="fls late">${nLate} delayed</i>` : ''}${nCanc ? `<i class="fls canc">${nCanc} cancelled</i>` : ''}</span></summary>` +
+          `<span class="flh-x">${nLate ? `<b class="flc late" title="${nLate} delayed" aria-label="${nLate} delayed">${nLate}</b>` : ''}${nCanc ? `<b class="flc canc" title="${nCanc} cancelled" aria-label="${nCanc} cancelled">${nCanc}</b>` : ''}</span></summary>` +
           (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
             return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${x.dir === 'arr' ? '🛬' : '🛫'}</span>` +
               `<span class="flr-f">${esc(f.n)}${f.ap ? ` · ${x.dir === 'arr' ? 'from' : 'to'} ${esc(f.ap)}` : ''}${f.term ? ` <em>T${esc(f.term)}</em>` : ''}</span><i class="fls ${s2.k}">${s2.t}</i></div>`; }).join('')
             : '<div class="flr none">No passenger flights this hour</div>') + `</details>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · 🛬 arrivals 🛫 departures · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · 🛬 arrivals 🛫 departures · <b class="flc late">delayed</b> <b class="flc canc">cancelled</b> · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
