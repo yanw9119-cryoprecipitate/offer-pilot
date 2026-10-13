@@ -6775,7 +6775,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.43.0';
+    const APP_VERSION = '1.43.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7613,6 +7613,16 @@
       } catch (e) {}
       renderBackupInfo(); weeklyReminders();
       showTab('offer');
+      // One-tap key setup: a link ending in #flightkey=… or #trainkey=… saves the key on this phone, then the
+      // key is wiped from the address bar. The part after # never reaches the web server, and no key is in the code.
+      try {
+        const hp = new URLSearchParams(location.hash.slice(1)), saved = [];
+        const fk = (hp.get('flightkey') || '').trim(), tk = (hp.get('trainkey') || '').trim();
+        if (/^[\w-]{20,}$/.test(fk)) { lsSet('cfgFlightKey', fk); Object.keys(flights).forEach(k => { delete flights[k]; lsDel('flights:' + k); }); saved.push('✈️ Flight'); loadFlights('MEL', true); }
+        if (/^[\w-]{20,}$/.test(tk)) { lsSet('cfgTrainKey', tk); train.at = 0; saved.push('🚆 Train'); loadTrainAlerts(true); }
+        if (fk || tk) history.replaceState(null, '', location.pathname + location.search);
+        if (saved.length) setTimeout(() => toast(`✓ ${saved.join(' and ')} key saved in Settings`), 1500);
+      } catch (e) {}
       // Keep live-surge ages and predictions current while driving
       setInterval(() => {
         if (document.getElementById('view-drive').style.display !== 'none') renderMap();
