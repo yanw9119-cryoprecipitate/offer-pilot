@@ -535,6 +535,11 @@
     .cal-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: .6rem; color: var(--muted); }
     .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
     .cal-key i.yes { background: color-mix(in srgb, var(--green) 45%, var(--card-2)); } .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 40%, var(--card-2)); } .cal-key i.no { background: var(--card-2); border: 1px solid var(--line-strong); }
+    .log-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--card-border); }
+    .log-seg button { border: none; border-radius: 999px; padding: 9px 6px; background: none; color: var(--muted); font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
+    .log-seg button.on { background: var(--accent); color: var(--on-accent); }
+    .ac-setlink { display: block; width: 100%; margin-top: 12px; padding: 10px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; font-weight: 700; font-size: .85rem; text-align: left; cursor: pointer; }
+    #acctSettings.ac-set { margin-top: 0; font-size: .9rem; }
     .ac-chips { display: flex; gap: 5px; flex-wrap: wrap; margin: 6px 0 4px; }
     .ac-chip { border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 6px 9px; font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; }
     .ac-chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -1700,7 +1705,12 @@
 
     <!-- ================= OFFER LOG (its own page, opened from Plan & Roster) ================= -->
     <div id="view-log" style="display:none;">
-      <div class="demand-card acct-card" id="acctCard"></div>
+      <div class="log-seg" role="tablist">
+        <button type="button" data-s="offers" onclick="setLogSide('offers')">📊 Offers</button>
+        <button type="button" data-s="account" onclick="setLogSide('account')">💼 Account</button>
+      </div>
+      <div id="logAccount"><div class="demand-card acct-card" id="acctCard"></div></div>
+      <div id="logOffers">
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Offers Logged</div>
@@ -1745,6 +1755,7 @@
       <div class="btn-row">
         <button class="sec-btn" onclick="exportSnapsCSV()">⬇ Export snapshots</button>
         <button class="sec-btn danger" onclick="clearSnaps()">🚮 Clear snapshots</button>
+      </div>
       </div>
     </div>
 
@@ -1978,6 +1989,8 @@
             <svg class="sx-ic"><use href="#i-fuel"/></svg><span class="sx-rt"><b>Fill-ups &amp; real economy</b><small id="sxsFills"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="offer targets minimum per hour per km goals take-home daily goal shift accept decline" onclick="sxGo('targets')">
             <svg class="sx-ic"><use href="#i-target"/></svg><span class="sx-rt"><b>Offer targets &amp; goals</b><small id="sxsTargets"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
+          <button type="button" class="sx-row" data-k="account tax gst bas income car rental lease loan business use statement reminder" onclick="sxGo('acct')">
+            <svg class="sx-ic" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 7.5h6M9 11h6M9 14.5h3.5"/></svg><span class="sx-rt"><b>Account &amp; tax</b><small id="sxsAcct"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="surge chasing alerts notifications tomtom traffic minutes" onclick="sxGo('chase')">
             <svg class="sx-ic"><use href="#i-flame"/></svg><span class="sx-rt"><b>Surge chasing &amp; alerts</b><small id="sxsChase"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
@@ -2027,6 +2040,14 @@
       </div>
       <div class="sx-empty" id="sxEmpty" hidden>No settings match.</div>
       <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
+    </section>
+
+    <!-- ===== Account & tax ===== -->
+    <section class="sx-page" data-page="acct" hidden>
+      <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
+      <h1 class="sx-big">Account &amp; tax</h1><p class="sx-lead">Your car, business use, other income and the Monday statement reminder</p>
+      <div class="sx-card sx-pad ac-set" id="acctSettings"></div>
+      <button type="button" class="sx-primary" onclick="saveAcctCfg(); sxGo('main')">Save changes</button>
     </section>
 
     <!-- ===== Vehicle ===== -->
@@ -3599,6 +3620,7 @@
     // ---- Settings pages ----
     function sxGo(page) {
       if (page === 'data') renderDataSheet();
+      if (page === 'acct') renderAcctSettings();
       if (page === 'test') { renderTestRuns(); document.getElementById('testRunView').hidden = true; }
       const leavingData = !document.querySelector('#settingsModal [data-page="data"]').hidden && page !== 'data';
       document.querySelectorAll('#settingsModal .sx-page').forEach(s => { s.hidden = s.dataset.page !== page; });
@@ -3624,6 +3646,7 @@
       set('sxsMapStyle', MAPSTYLE_NAMES[mapStylePick || savedMapStyle()] + ((mapStylePick || savedMapStyle()) === 'auto' ? ` (${wantNightMap() ? 'dark' : 'light'} now)` : ''));
       { const n = [chaseCfg.tomtom, lsGet('cfgTrainKey'), lsGet('cfgFlightKey')].filter(Boolean).length;
         set('sxsDev', `${n} of 3 keys added · ${devPass() ? '🔒 passcode on' : 'set a passcode'}`); }
+      { const ac = acctCfg(); set('sxsAcct', `${ac.car && ac.car.type ? CAR_TYPES[ac.car.type] : 'Car not set'} · ${ac.biz}% business use${ac.remind ? ' · reminder Mon ' + ac.remind : ''}`); }
       set('sxsTime', (timePick || (is24() ? '24' : '12')) === '24' ? '24-hour · 15:00–16:00' : '12-hour · 3–4PM, 10AM–2PM');
       set('sxsVersion', `v${APP_VERSION}${newerVersion ? ' · update ready, tap to load' : ' · tap to check'}`);
     }
@@ -4579,6 +4602,15 @@
     function uberWeekStart(t) { const d = new Date(t - 4 * 3600000); d.setHours(0, 0, 0, 0); d.setTime(d.getTime() - dayIdx(d) * 86400000); d.setHours(4); return d.getTime(); }
     const weekOf = t => ymd(new Date(uberWeekStart(t)));
     const acMoney = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(Math.abs(v) >= 1000 ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // Offers | Account switch at the top of the Offer & Account page (remembered)
+    function setLogSide(side) {
+      lsSet('logSide', side);
+      document.getElementById('logOffers').hidden = side !== 'offers';
+      document.getElementById('logAccount').hidden = side !== 'account';
+      document.querySelectorAll('.log-seg button').forEach(b => b.classList.toggle('on', b.dataset.s === side));
+      if (side === 'account') renderAccount();
+      window.scrollTo(0, 0);
+    }
     function renderAccount() {
       const box = document.getElementById('acctCard'); if (!box) return;
       const [a, b, label] = periodRange(acctPeriod), n = acctNumbers(a, b), cfg = acctCfg();
@@ -4615,7 +4647,7 @@
         ${n.car.items.map(x => line(`${CAR_TYPES[n.car.type].split(' ')[0]} ${x.k}`, acMoney(x.amt))).join('')}
         ${n.car.cash ? line('🏦 Loan repayments (cash, not all deductible)', acMoney(n.car.cash), 'muted') : ''}
         ${line(`Other (${n.exN})`, acMoney(n.exPaid))}
-        ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car (rental, lease, loan or own) in ⚙️ Account settings to count its costs.</div>` : ''}
+        ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car (rental, lease, loan or own) in ⚙️ Account &amp; tax settings (below) to count its costs.</div>` : ''}
         <div class="ac-acts one"><button type="button" class="rs-btn" onclick="scanReceipt(true)" title="Take a photo of a fuel receipt">📷 Fuel</button><button type="button" class="rs-btn" onclick="scanReceipt(false)" title="Fuel receipt from your photos">🖼 Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
         <div class="ac-sec">🏛 GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
@@ -4626,19 +4658,7 @@
         ${line('Tax + Medicare on ride profit (year)', acMoney(taxRide), 'tot')}${line('Share for the year so far', acMoney(taxSoFar))}
         <div class="ac-save">Put aside about <b>${acMoney(setAside)}/week</b> for tax and GST.</div>
         <div class="ac-note">Estimates only, not tax advice: 2026–27 resident rates (0 / 15 / 30 / 37 / 45%), 2% Medicare levy, low income tax offset. Check with a registered tax agent or the ATO.</div>
-        <details class="ac-set"><summary>⚙️ Account settings</summary>
-          <label>Business use of the car (%)<input type="number" id="acBiz" min="0" max="100" value="${cfg.biz}" inputmode="numeric"></label>
-          <label>Other taxable income this FY ($)<input type="number" id="acOther" min="0" step="100" value="${cfg.other || ''}" placeholder="0" inputmode="numeric"></label>
-          <label>Uber service fee (% of fare, for estimates)<input type="number" id="acFee" min="0" max="60" value="${cfg.feePct}" inputmode="numeric"></label>
-          <div class="ac-car">
-            <label>🚗 Your car<select id="acCarType" onchange="syncCarFields()"><option value="">Not set</option>${Object.entries(CAR_TYPES).map(([k, t]) => `<option value="${k}"${(cfg.car || {}).type === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-            <div id="acCarFields"></div>
-          </div>
-          <label>Monday reminder to add the statement<input type="time" id="acRemind" value="${cfg.remind || ''}"></label>
-          <div class="ac-note">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
-          ${cfg.remind ? `<button type="button" class="rs-btn" onclick="remindToCalendar()">📅 Add the Monday reminder to my phone calendar</button>` : ''}
-          <button type="button" class="rs-btn go" onclick="saveAcctCfg()">Save</button></details>`;
-      syncCarFields();
+        <button type="button" class="ac-setlink" onclick="toggleSettings(true); sxGo('acct')">⚙️ Account &amp; tax settings ›</button>`;
     }
     // Monday reminder: due once Monday's chosen time has passed and last week's statement isn't in yet
     function statementDue() {
@@ -4662,7 +4682,23 @@
     function checkStatementReminder() {
       const due = statementDue(); if (!due || lsGet('stRemindShown') === due) return;
       lsSet('stRemindShown', due);
-      toast('📄 Last week’s Uber statement should be ready', 'Add it', () => { showTab('log'); openStatement(); });
+      toast('📄 Last week’s Uber statement should be ready', 'Add it', () => { lsSet('logSide', 'account'); showTab('log'); openStatement(); });
+    }
+    // ⚙️ Settings → Account & tax (opened from the main Settings list or the Account page)
+    function renderAcctSettings() {
+      const box = document.getElementById('acctSettings'); if (!box) return;
+      const cfg = acctCfg();
+      box.innerHTML = `<label>Business use of the car (%)<input type="number" id="acBiz" min="0" max="100" value="${cfg.biz}" inputmode="numeric"></label>
+          <label>Other taxable income this FY ($)<input type="number" id="acOther" min="0" step="100" value="${cfg.other || ''}" placeholder="0" inputmode="numeric"></label>
+          <label>Uber service fee (% of fare, for estimates)<input type="number" id="acFee" min="0" max="60" value="${cfg.feePct}" inputmode="numeric"></label>
+          <div class="ac-car">
+            <label>🚗 Your car<select id="acCarType" onchange="syncCarFields()"><option value="">Not set</option>${Object.entries(CAR_TYPES).map(([k, t]) => `<option value="${k}"${(cfg.car || {}).type === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+            <div id="acCarFields"></div>
+          </div>
+          <label>Monday reminder to add the statement<input type="time" id="acRemind" value="${cfg.remind || ''}"></label>
+          <div class="ac-note">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
+          ${cfg.remind ? `<button type="button" class="rs-btn" onclick="remindToCalendar()">📅 Add the Monday reminder to my phone calendar</button>` : ''}`;
+      syncCarFields();
     }
     // Fields for the chosen car arrangement
     function syncCarFields() {
@@ -4676,7 +4712,7 @@
         `<label class="ac-chk"><input type="checkbox" id="acCarGst"${c.gst !== false ? ' checked' : ''}> Includes GST</label>` +
         `<label class="ac-chk"><input type="checkbox" id="acCarIncl"${c.incl !== false ? ' checked' : ''}> Includes insurance, rego and servicing</label>`;
       if (t === 'lease') h = money('acCarAmt', 'Lease payment ($)', v('amt'), perSel) + `<label class="ac-chk"><input type="checkbox" id="acCarGst"${c.gst !== false ? ' checked' : ''}> Includes GST</label>`;
-      if (t === 'loan') h = money('acCarAmt', 'Loan repayment ($)', v('amt'), perSel) + money('acCarInt', 'Interest part of it ($)', v('interest')) +
+      if (t === 'loan') h = money('acCarAmt', 'Loan repayment ($)', v('amt'), perSel) + money('acCarInt', 'Interest part of each repayment ($)', v('interest')) +
         money('acCarVal', 'Car price when bought ($)', v('value'));
       if (t === 'own') h = money('acCarVal', 'Car value / price paid ($)', v('value'));
       if (t && !(t === 'rental')) h += money('acCarIns', 'Insurance per year ($)', v('ins')) + money('acCarRego', 'Rego per year ($)', v('rego'));
@@ -4695,8 +4731,7 @@
         since: g('acCarSince') && g('acCarSince').value ? new Date(g('acCarSince').value + 'T00:00').getTime() : 0 } : null;
       lsSet('acctCfg', JSON.stringify({ biz: Math.min(100, Math.max(0, v('acBiz') || 0)), other: Math.max(0, v('acOther') || 0), feePct: Math.min(60, Math.max(0, isNaN(v('acFee')) ? 27 : v('acFee'))),
         remind: document.getElementById('acRemind').value || '', car }));
-      toast('✓ Saved'); renderAccount();
-      const d = document.querySelector('#acctCard .ac-set'); if (d) d.open = true;
+      toast('✓ Account settings saved'); try { renderAccount(); } catch (e) {}
     }
     // Small form sheets (reuse the app's sheet style)
     function acctSheet(title, fields, onSave, cls = '') {
@@ -7503,7 +7538,7 @@
         if (tb) tb.classList.toggle('active', tab === t);
       });
       if (tab === 'insights' || tab === 'trends' || tab === 'log') renderInsights();
-      if (tab === 'log') renderAccount();
+      if (tab === 'log') setLogSide(lsGet('logSide') === 'offers' ? 'offers' : 'account');
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else if (tab === 'offer') startTracking();          // offers remember where you were
       else { stopTracking(); refreshZoneFix(); } // no continuous GPS here, just a quick position check
@@ -7512,7 +7547,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.64.0';
+    const APP_VERSION = '1.65.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
