@@ -523,6 +523,9 @@
     #testDiscard[hidden], .tr-view[hidden] { display: none; }
     .del { font-size: 1.05rem; line-height: 1; }
     .del.armed { font-size: .68rem; font-weight: 800; color: #fff; background: var(--red); border-radius: 999px; padding: 5px 8px; white-space: nowrap; }
+    .sx .dm-dl { background: var(--card-2); color: var(--sx-ink); border: var(--bw) solid var(--card-border); border-radius: 999px; font-weight: 800; margin-top: 8px; }
+    .dm-zip { margin: 0 0 10px; }
+    #testRunsDl[hidden] { display: none; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1520,8 +1523,8 @@
         <div class="sx-card">
           <button type="button" class="sx-row" data-k="backup restore google drive file export" onclick="sxGo('backup')">
             <svg class="sx-ic"><use href="#i-cloud"/></svg><span class="sx-rt"><b>Backup &amp; restore</b><small id="sxsBackup"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
-          <button type="button" class="sx-row" data-k="manage data delete remove offers trends snapshots shifts events clear reset" onclick="sxGo('data')">
-            <svg class="sx-ic"><use href="#i-folder"/></svg><span class="sx-rt"><b>Manage data</b><small id="sxsData"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
+          <button type="button" class="sx-row" data-k="manage data delete remove download export csv zip offers trends snapshots shifts events clear reset" onclick="sxGo('data')">
+            <svg class="sx-ic"><use href="#i-folder"/></svg><span class="sx-rt"><b>Manage &amp; download data</b><small id="sxsData"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="test run trial practice sandbox" onclick="sxGo('test')">
             <svg class="sx-ic"><use href="#i-flask"/></svg><span class="sx-rt"><b>Test run</b><small id="sxsTest"></small></span><i class="sx-badge" id="sxbTest">Off</i><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
@@ -1644,7 +1647,7 @@
     <!-- ===== Manage data ===== -->
     <section class="sx-page" data-page="data" hidden>
       <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
-      <h1 class="sx-big">Your data</h1><p class="sx-lead">View and remove what the pilot has stored. Tap 🚮 to remove an item. Removals happen straight away.</p>
+      <h1 class="sx-big">Your data</h1><p class="sx-lead">View, download or remove what the pilot has stored. Tap 🚮 to remove an item; removals happen straight away.</p>
       <div class="sx-card sx-pad" id="dataList"></div>
     </section>
 
@@ -1679,6 +1682,7 @@
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">Saved test runs</h3>
         <div id="testRuns"></div>
+        <button type="button" class="sx-add" id="testRunsDl" onclick="downloadCSV('testruns')"><svg><use href="#i-plus"/></svg>⬇️ Download all test runs (CSV)</button>
       </div>
     </section>
   </div>
@@ -2886,11 +2890,12 @@
       const box = document.getElementById('testRuns');
       if (!box) return;
       const runs = testRuns().slice().reverse();
+      document.getElementById('testRunsDl').hidden = !runs.length;
       box.innerHTML = runs.length ? runs.map(r => {
         const st = runStats(r), dur = Math.max(1, Math.round((r.ended - r.started) / 60000));
         return `<div class="tr-row"><div class="tr-main"><b>${new Date(r.started).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</b>` +
           `<small>${dur} min · ${st.n} offer${st.n === 1 ? '' : 's'} · ${st.took} taken · ${(r.shifts || []).length} shift${(r.shifts || []).length === 1 ? '' : 's'} · ${(r.snaps || []).length} snap${(r.snaps || []).length === 1 ? '' : 's'}</small></div>` +
-          `<div class="tr-btns"><button type="button" class="chip" onclick="viewTestRun(${r.id})">View</button><button type="button" class="chip" onclick="exportTestRun(${r.id})">Export</button>` +
+          `<div class="tr-btns"><button type="button" class="chip" onclick="viewTestRun(${r.id})">View</button><button type="button" class="chip" onclick="exportTestRun(${r.id})">⬇️</button>` +
           `<button type="button" class="del" onclick="armed(this, () => deleteTestRun(${r.id}))" aria-label="Delete test run">🚮</button></div></div>`;
       }).join('') : '<div class="sx-hint">No saved test runs yet. When you end a test run, what you did is kept here.</div>';
     }
@@ -2918,8 +2923,8 @@
         ((r.snaps || []).length ? `<div class="sx-hint">Surge snapshots: ${r.snaps.length} (${r.snaps.map(x => LEVELS[x.level]).join(', ')})</div>` : '') +
         ((r.events || []).length ? `<div class="sx-hint">Events added: ${r.events.map(e => esc(e.name)).join(', ')}</div>` : '') +
         (set ? `<div class="sx-hint">Settings tried: ${esc(set)}</div>` : '') +
-        `<div class="tr-btns2"><button type="button" class="chip" onclick="exportTestRun(${r.id})">Export CSV</button>` +
-        `<button type="button" class="chip" onclick="exportTestRun(${r.id}, true)">Export all (JSON)</button></div>`;
+        `<div class="tr-btns2"><button type="button" class="chip" onclick="exportTestRun(${r.id})">⬇️ Download CSV</button>` +
+        `<button type="button" class="chip" onclick="exportTestRun(${r.id}, true)">⬇️ Download all (JSON)</button></div>`;
       v.hidden = false;
       v.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -2936,12 +2941,8 @@
           st.good(e) ? 'accept' : 'decline', e.took ? 'took' : 'passed'].join(','))).join('\n');
         name = `test-run-${day}.csv`; type = 'text/csv';
       }
-      const blob = new Blob([text], { type }), file = new File([blob], name, { type });
-      try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Offer Pilot test run' }); return; } }
-      catch (e) { if (e && e.name === 'AbortError') return; }
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      toast('📤 Test run exported');
+      saveFile(name, json ? text : '\ufeff' + text, type);
+      toast('⬇️ Test run downloaded');
     }
     function deleteTestRun(id) {
       saveTestRuns(testRuns().filter(x => x.id !== id));
@@ -3033,7 +3034,9 @@
     function renderDataSheet() {
       const open = new Set([...document.querySelectorAll('#dataList details[open]')].map(d => d.dataset.k));
       const sec = (k, title, n, body, all) => `<details data-k="${k}"${open.has(k) ? ' open' : ''}><summary>${title} <span class="dm-n">${n}</span></summary>` +
-        `<div class="dm-body">${body || '<div class="autoread-hint">Nothing here.</div>'}${all && n ? `<button type="button" class="pip-btn dm-all" onclick="armed(this, ${all})">Delete all</button>` : ''}</div></details>`;
+        `<div class="dm-body">${body || '<div class="autoread-hint">Nothing here.</div>'}` +
+        (n && DATA_CSV[k] ? `<button type="button" class="pip-btn dm-dl" onclick="downloadCSV('${k}')">⬇️ Download ${title.replace(/^\S+\s/, '')} (CSV)</button>` : '') +
+        `${all && n ? `<button type="button" class="pip-btn dm-all" onclick="armed(this, ${all})">Delete all</button>` : ''}</div></details>`;
       const log = loadLog();
       const offers = log.slice().reverse().slice(0, 60).map(e =>
         `<div class="fl-row"><span>${e.took ? '✓' : '✗'} ${dShort(e.t)} · $${(+e.fare).toFixed(2)} · ${e.mins} min${e.kms ? ' · ' + e.kms + ' km' : ''}</span>${delBtn(`delOffer(${e.t})`)}</div>`).join('');
@@ -3059,6 +3062,8 @@
       const other = `<div class="fl-row"><span>📡 Live readings: ${Object.keys(live).length} · 🔁 week-on-week changes · 🛣 GPS km ${trackedKm().toFixed(0)}</span></div>
         <button type="button" class="pip-btn dm-all" onclick="armed(this, clearOther)">Clear these</button>`;
       document.getElementById('dataList').innerHTML =
+        `<button type="button" class="sx-primary dm-zip" onclick="downloadAll()">⬇️ Download all data (.zip)</button>
+         <div class="sx-hint" style="margin:-4px 0 12px">One file with a spreadsheet (CSV) for offers, shifts, fill-ups, snapshots, trends, events and test runs, plus a full backup (JSON).</div>` +
         sec('offers', '💵 Offers', log.length, offers + (log.length > 60 ? `<div class="autoread-hint">Showing the latest 60.</div>` : ''), 'clearOffers') +
         sec('trends', '📈 Uber trends', Object.keys(tr).length, trends) +
         sec('snaps', '📸 Surge snapshots', snaps.length, snapRows, 'clearAllSnaps') +
@@ -3066,6 +3071,81 @@
         sec('shifts', '⏱ Shifts', hist.length + (cur ? 1 : 0), shiftRows, 'clearShifts') +
         sec('events', '🏟 Your & Discover events', mine.length, evRows, 'clearMyEvents') +
         sec('other', '🧹 Other', '', other);
+    }
+    // ---- Downloads: CSV per kind of data, or everything in one .zip ----
+    const csvQ = v => v == null ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+    const csv = (head, rows) => [head.join(',')].concat(rows.map(r => r.map(csvQ).join(','))).join('\n');
+    const tIso = t => t ? new Date(t).toLocaleString('en-AU', { hour12: false }) : '';
+    const DATA_CSV = {
+      offers: () => csv(['time', 'fare', 'minutes', 'km', 'gross_per_hr', 'per_km', 'net_per_hr', 'pilot_said', 'you', 'suburb', 'zone', 'lat', 'lng', 'source'],
+        loadLog().map(e => { const a = e.lat != null ? areaOf(e.lat, e.lng) : null;
+          return [tIso(e.t), e.fare, e.mins, e.kms || '', (e.fare / e.mins * 60).toFixed(2), e.kms ? (e.fare / e.kms).toFixed(2) : '',
+            ((e.fare - (e.kms || 0) * config.costPerKm) / e.mins * 60).toFixed(2), isGoodOffer(e) ? 'accept' : 'decline', e.took ? 'took' : 'passed',
+            a ? a.name : '', e.lat != null ? zoneAt(e.lat, e.lng) || '' : '', e.lat ?? '', e.lng ?? '', e.src || '']; })),
+      shifts: () => { let h = []; try { h = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
+        return csv(['start', 'end', 'hours', 'trips', 'fares', 'km', 'take_home', 'goal', 'net_per_hr'],
+          h.map(x => [tIso(x.start), tIso(x.end), x.hrs.toFixed(2), x.trips, x.earn.toFixed(2), x.km.toFixed(1), x.net.toFixed(2), x.goal, (x.net / x.hrs).toFixed(2)])); },
+      fills: () => csv(['time', 'type', 'quantity', 'unit', 'paid', 'odometer', 'full', 'station'],
+        loadFills().map(f => [tIso(f.t), f.type, f.qty, f.type === 'ev' ? 'kWh' : 'L', f.paid ?? '', f.odo ?? '', f.full ? 'yes' : 'no', f.station || ''])),
+      snaps: () => csv(['time', 'level', 'amount', 'suburb', 'zone', 'lat', 'lng'],
+        loadSnaps().map(x => { const a = x.lat != null ? areaOf(x.lat, x.lng) : null;
+          return [tIso(x.t), LEVELS[x.level], x.amt || '', a ? a.name : '', x.lat != null ? zoneAt(x.lat, x.lng) || '' : '', x.lat ?? '', x.lng ?? '']; })),
+      trends: () => { const rows = [];
+        Object.entries(loadTrends()).forEach(([z, d]) => Object.entries(d.h).forEach(([k, v]) => { const [day, hour] = k.split('-').map(Number);
+          rows.push([z, DAYS[day], hour, fmtHour(hour), demandName(v.v), v.v.toFixed(3), v.n]); }));
+        rows.sort((a, b) => a[0].localeCompare(b[0]) || DAYS.indexOf(a[1]) - DAYS.indexOf(b[1]) || a[2] - b[2]);
+        return csv(['zone', 'day', 'hour', 'hour_label', 'demand', 'value_0_to_1', 'screenshots'], rows); },
+      events: () => csv(['name', 'place', 'zone', 'start', 'end', 'earnings_level', 'source'],
+        allEvents().map(e => [e.name, e.place, e.zone, tIso(e.s), tIso(e.e), e.level || '', e.src === 'uber' ? 'Uber Discover' : myEvents().some(m => m.name === e.name && m.start === e.start) ? 'you' : 'built-in'])),
+      testruns: () => { const rows = [];
+        testRuns().forEach(r => { const st = runStats(r); (r.offers || []).forEach(e => rows.push([tIso(r.started), tIso(r.ended), tIso(e.t), e.fare, e.mins, e.kms || '',
+          (e.fare / e.mins * 60).toFixed(2), st.good(e) ? 'accept' : 'decline', e.took ? 'took' : 'passed'])); });
+        return csv(['run_started', 'run_ended', 'time', 'fare', 'minutes', 'km', 'gross_per_hr', 'pilot_said', 'you'], rows); }
+    };
+    function saveFile(name, data, type) {
+      const blob = data instanceof Blob ? data : new Blob([data], { type });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+    function downloadCSV(k) {
+      saveFile(`offer-pilot-${k}-${ymd(new Date())}.csv`, '\ufeff' + DATA_CSV[k](), 'text/csv');
+      toast('⬇️ Downloaded ' + k);
+    }
+    // Minimal .zip writer (stored, no compression): enough for a handful of text files
+    function makeZip(files) {
+      const enc = new TextEncoder(), crcT = makeZip.t || (makeZip.t = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; }));
+      const crc = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = crcT[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+      const parts = [], central = []; let off = 0;
+      const d = new Date(), dt = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)), dd = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate());
+      files.forEach(f => {
+        const name = enc.encode(f.name), data = enc.encode(f.text), c = crc(data);
+        const h = new DataView(new ArrayBuffer(30));
+        h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+        h.setUint16(10, dt, true); h.setUint16(12, dd, true); h.setUint32(14, c, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true);
+        h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+        parts.push(h.buffer, name, data);
+        const cd = new DataView(new ArrayBuffer(46));
+        cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true); cd.setUint16(8, 0x0800, true); cd.setUint16(10, 0, true);
+        cd.setUint16(12, dt, true); cd.setUint16(14, dd, true); cd.setUint32(16, c, true); cd.setUint32(20, data.length, true); cd.setUint32(24, data.length, true);
+        cd.setUint16(28, name.length, true); cd.setUint32(42, off, true);
+        central.push(cd.buffer, name);
+        off += 30 + name.length + data.length;
+      });
+      const cdSize = central.reduce((a, b) => a + (b.byteLength || b.length), 0);
+      const end = new DataView(new ArrayBuffer(22));
+      end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+      end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+      return new Blob([...parts, ...central, end.buffer], { type: 'application/zip' });
+    }
+    function downloadAll() {
+      const day = ymd(new Date()), files = Object.keys(DATA_CSV).map(k => ({ name: `${k}.csv`, text: '\ufeff' + DATA_CSV[k]() }));
+      files.push({ name: 'backup-all.json', text: JSON.stringify(backupData(), null, 1) });
+      files.push({ name: 'test-runs.json', text: JSON.stringify(testRuns(), null, 1) });
+      files.push({ name: 'README.txt', text: `Offer Pilot data, downloaded ${new Date().toLocaleString('en-AU')}.\r\nCSV files open in Numbers, Excel or Google Sheets.\r\nbackup-all.json can be restored in Settings → Backup & restore.\r\n` });
+      saveFile(`offer-pilot-data-${day}.zip`, makeZip(files));
+      toast('⬇️ All data downloaded (.zip)');
     }
     function delOffer(t) { saveLog(loadLog().filter(e => e.t !== t)); renderDataSheet(); }
     function clearOffers() { saveLog([]); renderDataSheet(); toast('Offers deleted'); }
@@ -3274,9 +3354,14 @@
     }
     // Which Uber zone a point is in. Points in the thin gaps between zones (or under the map's
     // labels) go to the nearest zone within 4 km; near a shared edge, a zone named after the suburb wins.
+    // The inner city (CBD, Docklands, Southbank, Carlton, Fitzroy, North Melbourne) was hidden under the
+    // "Melbourne" label and the location dot when the zones were traced, so it's added back to Melbourne City here.
+    const ZONE_PATCHES = { 'Melbourne City': [[-37.770, 144.905], [-37.770, 145.000], [-37.800, 145.002], [-37.842, 145.000], [-37.842, 144.935], [-37.825, 144.912], [-37.800, 144.905]] };
     function zoneAt(lat, lng) {
       const inside = Object.keys(UBER_ZONE_SHAPES).find(z => inRing(lat, lng, UBER_ZONE_SHAPES[z]));
       if (inside) return inside;
+      const patched = Object.keys(ZONE_PATCHES).find(z => inRing(lat, lng, ZONE_PATCHES[z]));
+      if (patched) return patched;
       const ds = Object.entries(UBER_ZONE_SHAPES).map(([z, r]) => ({ z, d: edgeKm(lat, lng, r) })).sort((a, b) => a.d - b.d);
       if (!ds.length || ds[0].d > 4) return null;
       const sub = (areaOf(lat, lng) || {}).name;
@@ -5638,6 +5723,7 @@
           const col = v === null ? '#8b5cf6' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#2563eb';   // quiet = blue, stands out on the grey map
           L.polygon(ring, { renderer: suburbRenderer, color: col, weight: busy ? 3 : 2, opacity: busy ? 0.95 : hot ? 0.85 : 0.6, dashArray: busy ? '10 6' : '5 6',
             fillColor: col, fillOpacity: busy ? 0.08 : 0, interactive: false }).addTo(markerLayer);
+          if (ZONE_PATCHES[z] && busy) L.polygon(ZONE_PATCHES[z], { renderer: suburbRenderer, stroke: false, fillColor: col, fillOpacity: 0.08, interactive: false }).addTo(markerLayer);
           if (!hot) return;
           // Drive time to the nearest edge of the zone
           let drive;
@@ -5714,7 +5800,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.26.1';
+    const APP_VERSION = '1.27.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
