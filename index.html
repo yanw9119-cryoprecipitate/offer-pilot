@@ -540,7 +540,7 @@
     .ac-chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
     .ac-sec { margin: 12px 0 4px; font-weight: 800; font-size: .88rem; }
     .ac-line { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: .84rem; border-bottom: 1px dashed var(--line); }
-    .ac-line span { color: var(--muted); } .ac-line b { font-variant-numeric: tabular-nums; } .ac-line.tot { border-bottom: none; } .ac-line.tot span { color: var(--text); font-weight: 700; }
+    .ac-line span { color: var(--muted); } .ac-line b { font-variant-numeric: tabular-nums; white-space: nowrap; } .ac-line.tot { border-bottom: none; } .ac-line.tot span { color: var(--text); font-weight: 700; }
     .ac-note { font-size: .7rem; color: var(--muted); margin-top: 4px; line-height: 1.35; }
     .ac-hrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
     .ac-hrs div { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; }
@@ -555,6 +555,12 @@
     .ac-set label { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
     .ac-set input { width: 90px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; text-align: right; }
     .ac-set .rs-btn { margin-top: 8px; }
+    .ac-car { margin-top: 8px; padding: 8px 10px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-2); }
+    .ac-set select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); font: inherit; max-width: 60%; }
+    .ac-set input[type="date"] { width: 140px; text-align: left; }
+    .ac-in { display: inline-flex; gap: 4px; align-items: center; } .ac-in select { max-width: none; }
+    .ac-chk { justify-content: flex-start !important; gap: 8px !important; font-weight: 600; } .ac-chk input { width: auto !important; }
+    .ac-line.muted span, .ac-line.muted b { color: var(--muted); font-weight: 600; }
     .ex-photo { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
     .ex-photo .ok { font-weight: 800; color: var(--green); font-size: .82rem; margin-right: 4px; }
     /* Account forms: the date box spans the row and stays inside it on iPhone */
@@ -4518,6 +4524,27 @@
       if (p === 'qtr') { const q = Math.floor(d.getMonth() / 3) * 3; return [new Date(d.getFullYear(), q, 1).getTime(), new Date(d.getFullYear(), q + 3, 1).getTime(), 'This quarter (BAS)']; }
       const f = fyStart(d); return [f, new Date(new Date(f).getFullYear() + 1, 6, 1).getTime(), `FY ${new Date(f).getFullYear()}–${String(new Date(f).getFullYear() + 1).slice(2)}`];
     }
+    // 🚗 Car arrangement: rideshare rental, lease, loan or own car. Running costs are spread per day and counted in the
+    // period (up to today). Deductible parts: rental and lease payments; for a loan the interest plus depreciation; for an
+    // owned car depreciation (25% a year, diminishing value). Insurance and rego are added for every type except a rental
+    // that already includes them.
+    const CAR_TYPES = { rental: '🔑 Rideshare rental', lease: '📝 Lease', loan: '🏦 Car loan', own: '🚗 Own car (paid off)' };
+    const PER_DAYS = { week: 7, fortnight: 14, month: 365.25 / 12, year: 365.25 };
+    function carCosts(a, b) {
+      const c = (acctCfg().car) || {}, from = Math.max(a, c.since || a), to = Math.min(b, Date.now());
+      const days = Math.max(0, (to - from) / 86400000); if (!c.type || !days) return { items: [], total: 0, gst: 0, cash: 0 };
+      const per = v => (+v || 0) / (PER_DAYS[c.per] || 7) * days, items = [];
+      if (c.type === 'rental') items.push({ k: 'Rental', amt: per(c.amt), gst: c.gst !== false });
+      if (c.type === 'lease') items.push({ k: 'Lease payments', amt: per(c.amt), gst: c.gst !== false });
+      if (c.type === 'loan') { items.push({ k: 'Loan interest', amt: per(c.interest), gst: false }); }
+      if ((c.type === 'loan' || c.type === 'own') && c.value > 0) items.push({ k: 'Depreciation (25%/yr)', amt: c.value * 0.25 / 365.25 * days, gst: false });
+      if (!(c.type === 'rental' && c.incl)) {
+        if (c.ins > 0) items.push({ k: 'Insurance', amt: c.ins / 365.25 * days, gst: true });
+        if (c.rego > 0) items.push({ k: 'Rego', amt: c.rego / 365.25 * days, gst: false });
+      }
+      const cash = c.type === 'loan' ? per(c.amt) : 0;                    // full repayments, for the cash picture only
+      return { items, total: items.reduce((s, x) => s + x.amt, 0), gst: items.reduce((s, x) => s + (x.gst ? x.amt / 11 : 0), 0), cash, type: c.type };
+    }
     function acctNumbers(a, b) {
       const cfg = acctCfg(), biz = cfg.biz / 100;
       // Pay: Uber weekly statements where entered; otherwise accepted offers as an estimate of gross fares
@@ -4539,12 +4566,13 @@
       const fuelPaid = fuel.reduce((s, f) => s + f.paid, 0), fuelGst = fuel.reduce((s, f) => s + (f.gst != null ? f.gst : f.paid / 11), 0);
       const ex = loadExpenses().filter(x => x.t >= a && x.t < b);
       const exPaid = ex.reduce((s, x) => s + x.amt, 0), exGst = ex.reduce((s, x) => s + (x.gst ? (x.gstAmt || x.amt / 11) : 0), 0);
+      const car = carCosts(a, b);
       // GST (BAS): on full fares, less credits on the business share of costs
-      const gstOnFares = gross / 11, gstCredits = fee / 11 + (fuelGst + exGst) * biz, gstNet = gstOnFares - gstCredits;
+      const gstOnFares = gross / 11, gstCredits = fee / 11 + (fuelGst + exGst + car.gst) * biz, gstNet = gstOnFares - gstCredits;
       // Profit (ex GST) for income tax
-      const profit = (gross - gstOnFares) - (fee - fee / 11) - ((fuelPaid - fuelGst) + (exPaid - exGst)) * biz + tips;
-      const grossIncome = gross - gstOnFares + tips, costsEx = (fee - fee / 11) + ((fuelPaid - fuelGst) + (exPaid - exGst)) * biz;
-      return { gross, fee, tips, payout: gross - fee + tips, grossIncome, costsEx, offers: offers.length, sts: sts.length, planned, actual, km, shifts: worked.length,
+      const profit = (gross - gstOnFares) - (fee - fee / 11) - ((fuelPaid - fuelGst) + (exPaid - exGst) + (car.total - car.gst)) * biz + tips;
+      const grossIncome = gross - gstOnFares + tips, costsEx = (fee - fee / 11) + ((fuelPaid - fuelGst) + (exPaid - exGst) + (car.total - car.gst)) * biz;
+      return { gross, fee, tips, payout: gross - fee + tips, grossIncome, costsEx, car, offers: offers.length, sts: sts.length, planned, actual, km, shifts: worked.length,
         fuelPaid, fuelN: fuel.length, exPaid, exN: ex.length, gstOnFares, gstCredits, gstNet, profit, biz: cfg.biz };
     }
     // Uber's pay week runs Monday 4am → Monday 4am; a trip at 2am Monday belongs to the week before
@@ -4575,7 +4603,7 @@
         ${line('Paid to you', acMoney(n.payout), 'tot')}
         <div class="ac-note">${n.sts ? `${n.sts} Uber statement${n.sts === 1 ? '' : 's'}` : ''}${n.sts && n.offers ? ' + ' : ''}${n.offers ? `${n.offers} accepted offer${n.offers === 1 ? '' : 's'} (estimate: fee taken as ${cfg.feePct}%)` : ''}${!n.sts && !n.offers ? 'No trips logged in this period.' : ''}</div>
         <div class="ac-sec">📊 Income · ${label}</div>
-        ${line('Gross income (fares ex GST + tips)', acMoney(n.grossIncome))}${line(`Costs ex GST (fee + ${n.biz}% of fuel & other)`, '−' + acMoney(n.costsEx))}
+        ${line('Gross income (fares ex GST + tips)', acMoney(n.grossIncome))}${line(`Costs ex GST (fee + ${n.biz}% of fuel, car & other)`, '−' + acMoney(n.costsEx))}
         ${line('Net income (before tax)', acMoney(n.profit), 'tot')}
         ${line(`Net after tax (est. ${Math.round(effRate * 100)}% of profit)`, acMoney(n.profit - Math.max(0, n.profit) * effRate))}
         <div class="ac-sec">⏱ Hours</div>
@@ -4583,7 +4611,11 @@
           <div><small>Difference</small><b class="${hrDiff >= 0 ? 'pos' : 'neg'}">${hrDiff >= 0 ? '+' : '−'}${Math.abs(Math.round(hrDiff * 10) / 10)} h</b></div>
           <div><small>Per hour</small><b>${n.actual > 0.2 ? acMoney(n.payout / n.actual) : '—'}</b></div></div>
         <div class="ac-sec">🧾 Costs</div>
-        ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}${line(`Other (${n.exN})`, acMoney(n.exPaid))}
+        ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}
+        ${n.car.items.map(x => line(`${CAR_TYPES[n.car.type].split(' ')[0]} ${x.k}`, acMoney(x.amt))).join('')}
+        ${n.car.cash ? line('🏦 Loan repayments (cash, not all deductible)', acMoney(n.car.cash), 'muted') : ''}
+        ${line(`Other (${n.exN})`, acMoney(n.exPaid))}
+        ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car (rental, lease, loan or own) in ⚙️ Account settings to count its costs.</div>` : ''}
         <div class="ac-acts one"><button type="button" class="rs-btn" onclick="scanReceipt(true)" title="Take a photo of a fuel receipt">📷 Fuel</button><button type="button" class="rs-btn" onclick="scanReceipt(false)" title="Fuel receipt from your photos">🖼 Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
         <div class="ac-sec">🏛 GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
@@ -4598,10 +4630,15 @@
           <label>Business use of the car (%)<input type="number" id="acBiz" min="0" max="100" value="${cfg.biz}" inputmode="numeric"></label>
           <label>Other taxable income this FY ($)<input type="number" id="acOther" min="0" step="100" value="${cfg.other || ''}" placeholder="0" inputmode="numeric"></label>
           <label>Uber service fee (% of fare, for estimates)<input type="number" id="acFee" min="0" max="60" value="${cfg.feePct}" inputmode="numeric"></label>
+          <div class="ac-car">
+            <label>🚗 Your car<select id="acCarType" onchange="syncCarFields()"><option value="">Not set</option>${Object.entries(CAR_TYPES).map(([k, t]) => `<option value="${k}"${(cfg.car || {}).type === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
+            <div id="acCarFields"></div>
+          </div>
           <label>Monday reminder to add the statement<input type="time" id="acRemind" value="${cfg.remind || ''}"></label>
           <div class="ac-note">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
           ${cfg.remind ? `<button type="button" class="rs-btn" onclick="remindToCalendar()">📅 Add the Monday reminder to my phone calendar</button>` : ''}
           <button type="button" class="rs-btn go" onclick="saveAcctCfg()">Save</button></details>`;
+      syncCarFields();
     }
     // Monday reminder: due once Monday's chosen time has passed and last week's statement isn't in yet
     function statementDue() {
@@ -4627,11 +4664,39 @@
       lsSet('stRemindShown', due);
       toast('📄 Last week’s Uber statement should be ready', 'Add it', () => { showTab('log'); openStatement(); });
     }
+    // Fields for the chosen car arrangement
+    function syncCarFields() {
+      const box = document.getElementById('acCarFields'); if (!box) return;
+      const t = document.getElementById('acCarType').value, c = (acctCfg().car || {});
+      const v = k => c[k] != null && c[k] !== '' ? c[k] : '';
+      const perSel = `<select id="acCarPer">${['week', 'fortnight', 'month'].map(p => `<option value="${p}"${(c.per || 'week') === p ? ' selected' : ''}>per ${p}</option>`).join('')}</select>`;
+      const money = (id, label, val, extra = '') => `<label>${label}<span class="ac-in"><input type="number" id="${id}" min="0" step="1" inputmode="decimal" value="${val}" placeholder="0">${extra}</span></label>`;
+      let h = '';
+      if (t === 'rental') h = money('acCarAmt', 'Rental payment ($)', v('amt'), perSel) +
+        `<label class="ac-chk"><input type="checkbox" id="acCarGst"${c.gst !== false ? ' checked' : ''}> Includes GST</label>` +
+        `<label class="ac-chk"><input type="checkbox" id="acCarIncl"${c.incl !== false ? ' checked' : ''}> Includes insurance, rego and servicing</label>`;
+      if (t === 'lease') h = money('acCarAmt', 'Lease payment ($)', v('amt'), perSel) + `<label class="ac-chk"><input type="checkbox" id="acCarGst"${c.gst !== false ? ' checked' : ''}> Includes GST</label>`;
+      if (t === 'loan') h = money('acCarAmt', 'Loan repayment ($)', v('amt'), perSel) + money('acCarInt', 'Interest part of it ($)', v('interest')) +
+        money('acCarVal', 'Car price when bought ($)', v('value'));
+      if (t === 'own') h = money('acCarVal', 'Car value / price paid ($)', v('value'));
+      if (t && !(t === 'rental')) h += money('acCarIns', 'Insurance per year ($)', v('ins')) + money('acCarRego', 'Rego per year ($)', v('rego'));
+      if (t === 'rental') h += `<div id="acRentExtra"></div>`;
+      if (t) h += `<label>Since<input type="date" id="acCarSince" value="${c.since ? ymd(new Date(c.since)) : ''}"></label><div class="ac-note">Costs count from this date (empty = all periods).${t === 'loan' ? ' The interest part is on your loan statement; only interest and depreciation are deductible, not the whole repayment.' : ''}${t === 'loan' || t === 'own' ? ' Depreciation is an estimate (25% a year).' : ''}</div>`;
+      box.innerHTML = h;
+    }
     function saveAcctCfg() {
       const v = id => parseFloat(document.getElementById(id).value);
+      const g = id => { const el = document.getElementById(id); return el ? el : null; };
+      const carType = document.getElementById('acCarType').value;
+      const car = carType ? { type: carType, amt: g('acCarAmt') ? +g('acCarAmt').value || 0 : 0, per: g('acCarPer') ? g('acCarPer').value : 'week',
+        gst: g('acCarGst') ? g('acCarGst').checked : false, incl: g('acCarIncl') ? g('acCarIncl').checked : false,
+        interest: g('acCarInt') ? +g('acCarInt').value || 0 : 0, value: g('acCarVal') ? +g('acCarVal').value || 0 : 0,
+        ins: g('acCarIns') ? +g('acCarIns').value || 0 : 0, rego: g('acCarRego') ? +g('acCarRego').value || 0 : 0,
+        since: g('acCarSince') && g('acCarSince').value ? new Date(g('acCarSince').value + 'T00:00').getTime() : 0 } : null;
       lsSet('acctCfg', JSON.stringify({ biz: Math.min(100, Math.max(0, v('acBiz') || 0)), other: Math.max(0, v('acOther') || 0), feePct: Math.min(60, Math.max(0, isNaN(v('acFee')) ? 27 : v('acFee'))),
-        remind: document.getElementById('acRemind').value || '' }));
+        remind: document.getElementById('acRemind').value || '', car }));
       toast('✓ Saved'); renderAccount();
+      const d = document.querySelector('#acctCard .ac-set'); if (d) d.open = true;
     }
     // Small form sheets (reuse the app's sheet style)
     function acctSheet(title, fields, onSave, cls = '') {
@@ -7447,7 +7512,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.63.2';
+    const APP_VERSION = '1.64.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
