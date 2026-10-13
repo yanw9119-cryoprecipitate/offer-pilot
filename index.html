@@ -503,6 +503,24 @@
     .bh-row b { flex: none; width: 96px; font-size: .76rem; }
     :root[data-theme="contrast"] .bar-help { background: var(--accent); color: #000; }
     .side-stack .side-btn { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+    .tr-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--sx-line); }
+    .tr-row:first-child { border-top: none; padding-top: 0; }
+    .tr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .tr-main small { color: var(--sx-muted); font-size: .74rem; }
+    .tr-btns { display: flex; gap: 4px; align-items: center; flex: none; }
+    .tr-btns .chip, .tr-btns2 .chip { box-shadow: none; }
+    .tr-head { display: flex; justify-content: space-between; align-items: center; }
+    .tr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0 8px; }
+    .tr-grid div { background: var(--card-2); border: var(--bw) solid var(--card-border); border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; }
+    .tr-grid span { font-size: .62rem; color: var(--sx-muted); }
+    .tr-grid b { font-size: .95rem; }
+    .tr-table { overflow-x: auto; margin-top: 8px; }
+    .tr-table table { width: 100%; border-collapse: collapse; font-size: .72rem; }
+    .tr-table th, .tr-table td { text-align: left; padding: 5px 4px; border-bottom: 1px solid var(--sx-line); white-space: nowrap; }
+    .tr-table th { color: var(--sx-muted); font-weight: 700; }
+    .tr-table .pos { color: var(--green); font-weight: 800; } .tr-table .neg { color: var(--red); font-weight: 800; }
+    .tr-btns2 { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    #testDiscard[hidden], .tr-view[hidden] { display: none; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1654,6 +1672,12 @@
         <div class="sx-hint" id="testNote"></div>
       </div>
       <button type="button" class="sx-primary" id="testBtn" onclick="TEST ? endTest() : startTest()">Start test run</button>
+      <button type="button" class="sx-add" id="testDiscard" hidden onclick="armed(this, () => endTest(true))">End without saving</button>
+      <div class="sx-card sx-pad tr-view" id="testRunView" hidden></div>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">Saved test runs</h3>
+        <div id="testRuns"></div>
+      </div>
     </section>
   </div>
 
@@ -2794,11 +2818,44 @@
         const keys = [];
         for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
         keys.filter(k => !k.startsWith('test:') && k !== 'testMode').forEach(k => localStorage.setItem('test:' + k, localStorage.getItem(k)));
+        localStorage.setItem('test:testStartedAt', String(Date.now()));
         localStorage.setItem('testMode', '1');
       } catch (e) { toast('Storage is full or blocked: can’t start a test run'); return; }
       location.reload();
     }
-    async function endTest() {
+    // ---- Saved test runs: what you did during a test, kept separately from your real data ----
+    function testRuns() { try { return JSON.parse(localStorage.getItem('testRuns')) || []; } catch (e) { return []; } }
+    function saveTestRuns(r) { try { localStorage.setItem('testRuns', JSON.stringify(r.slice(-30))); } catch (e) {} }
+    function captureTestRun() {
+      const raw = k => { try { return JSON.parse(localStorage.getItem('test:' + k)); } catch (e) { return null; } };
+      const real = k => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
+      const started = +localStorage.getItem('test:testStartedAt') || Date.now();
+      const after = a => (a || []).filter(x => (x.t || x.start || 0) >= started);
+      const realEv = new Set((real('myEvents') || []).map(e => e.name + e.start));
+      const cur = raw('shift');
+      const settings = {};
+      ['cfgMinHr', 'cfgMinKm', 'cfgCostKm', 'vehModel', 'vehL100', 'vehFuel', 'goalHr', 'shiftGoal', 'theme', 'cfgMaxChase', 'cfgAlerts'].forEach(k => {
+        const a = localStorage.getItem('test:' + k), b = localStorage.getItem(k);
+        if (a !== null && a !== b) settings[k] = { from: b, to: a };
+      });
+      return {
+        id: Date.now(), started, ended: Date.now(),
+        offers: after(raw('offerLog')),
+        shifts: after(raw('shiftHistory')).concat(cur && cur.start >= started ? [{ ...cur, open: true }] : []),
+        snaps: after(raw('surgeSnaps')).map(x => ({ t: x.t, level: x.level, amt: x.amt, lat: x.lat, lng: x.lng })),
+        fills: after(raw('fillUps')),
+        events: (raw('myEvents') || []).filter(e => !realEv.has(e.name + e.start)),
+        settings,
+        cfg: { minHr: +(localStorage.getItem('test:cfgMinHr') || config.minGrossHr), minKm: +(localStorage.getItem('test:cfgMinKm') || config.minRateKm),
+          costKm: +(localStorage.getItem('test:cfgCostKm') || config.costPerKm) }
+      };
+    }
+    async function endTest(discard) {
+      if (!discard) {
+        const run = captureTestRun(), runs = testRuns();
+        runs.push(run); saveTestRuns(runs);
+        try { localStorage.setItem('testRunJustSaved', String(run.id)); } catch (e) {}
+      }
       let imgs = [];
       try { imgs = JSON.parse(localStorage.getItem('test:testImgs')) || []; } catch (e) {}
       try {
@@ -2814,14 +2871,90 @@
       } catch (e) {}
       location.reload();
     }
+    function runStats(r) {
+      const o = r.offers || [], good = e => e.fare / e.mins * 60 >= r.cfg.minHr && (!(e.kms > 0) || e.fare / e.kms >= r.cfg.minKm);
+      const took = o.filter(e => e.took), mins = took.reduce((a, e) => a + e.mins, 0), fare = took.reduce((a, e) => a + e.fare, 0), km = took.reduce((a, e) => a + (e.kms || 0), 0);
+      const allMins = o.reduce((a, e) => a + e.mins, 0), allFare = o.reduce((a, e) => a + e.fare, 0);
+      const agree = o.filter(e => !!e.took === good(e)).length;
+      return { n: o.length, took: took.length, fare, km, gph: allMins ? allFare / allMins * 60 : 0, tookGph: mins ? fare / mins * 60 : 0,
+        net: fare - km * r.cfg.costKm, saidAccept: o.filter(good).length, agree: o.length ? agree / o.length : null, good,
+        best: o.slice().sort((a, b) => b.fare / b.mins - a.fare / a.mins)[0] };
+    }
+    function renderTestRuns() {
+      const box = document.getElementById('testRuns');
+      if (!box) return;
+      const runs = testRuns().slice().reverse();
+      box.innerHTML = runs.length ? runs.map(r => {
+        const st = runStats(r), dur = Math.max(1, Math.round((r.ended - r.started) / 60000));
+        return `<div class="tr-row"><div class="tr-main"><b>${new Date(r.started).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</b>` +
+          `<small>${dur} min · ${st.n} offer${st.n === 1 ? '' : 's'} · ${st.took} taken · ${(r.shifts || []).length} shift${(r.shifts || []).length === 1 ? '' : 's'} · ${(r.snaps || []).length} snap${(r.snaps || []).length === 1 ? '' : 's'}</small></div>` +
+          `<div class="tr-btns"><button type="button" class="chip" onclick="viewTestRun(${r.id})">View</button><button type="button" class="chip" onclick="exportTestRun(${r.id})">Export</button>` +
+          `<button type="button" class="del" onclick="armed(this, () => deleteTestRun(${r.id}))" aria-label="Delete test run">✕</button></div></div>`;
+      }).join('') : '<div class="sx-hint">No saved test runs yet. When you end a test run, what you did is kept here.</div>';
+    }
+    function viewTestRun(id) {
+      const r = testRuns().find(x => x.id === id), v = document.getElementById('testRunView');
+      if (!r || !v) return;
+      const st = runStats(r), money = n => '$' + n.toFixed(2);
+      const rows = (r.offers || []).map(e => {
+        const g = st.good(e);
+        return `<tr><td>${new Date(e.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</td><td>${money(e.fare)}</td><td>${e.mins}m${e.kms ? ' · ' + e.kms + 'km' : ''}</td>` +
+          `<td>$${(e.fare / e.mins * 60).toFixed(0)}/h</td><td class="${g ? 'pos' : 'neg'}">${g ? 'Accept' : 'Decline'}</td><td>${e.took ? '✓ took' : '✗ passed'}</td></tr>`;
+      }).join('');
+      const NAMES = { cfgMinHr: 'Min $/hr', cfgMinKm: 'Min $/km', cfgCostKm: 'Cost per km', vehModel: 'Car', vehL100: 'L/100 km', vehFuel: 'Fuel $/L',
+        goalHr: 'Goal $/hr', shiftGoal: 'Daily goal', theme: 'Theme', cfgMaxChase: 'Max chase (min)', cfgAlerts: 'Chase alerts' };
+      const set = Object.entries(r.settings || {}).map(([k, x]) => `${NAMES[k] || k}: ${x.from ?? 'default'} → ${x.to}`).join(' · ');
+      v.innerHTML = `<div class="tr-head"><h3 class="sx-ch">Test run · ${new Date(r.started).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</h3>` +
+        `<button type="button" class="x-btn" onclick="document.getElementById('testRunView').hidden = true" aria-label="Close">✕</button></div>` +
+        `<div class="tr-grid">` +
+        `<div><span>Offers</span><b>${st.n}</b></div><div><span>Taken</span><b>${st.took}</b></div><div><span>Avg offer</span><b>$${st.gph.toFixed(0)}/h</b></div>` +
+        `<div><span>Fares taken</span><b>${money(st.fare)}</b></div><div><span>Take-home</span><b>${money(st.net)}</b></div><div><span>Taken $/h</span><b>$${st.tookGph.toFixed(0)}</b></div></div>` +
+        `<div class="sx-hint">Pilot said accept ${st.saidAccept} of ${st.n}${st.agree !== null ? ` · you agreed with it ${Math.round(st.agree * 100)}% of the time` : ''}` +
+        `${st.best ? ` · best offer ${money(st.best.fare)} for ${st.best.mins} min` : ''}. Targets used: $${r.cfg.minHr}/h, $${r.cfg.minKm}/km.</div>` +
+        (rows ? `<div class="tr-table"><table><thead><tr><th>Time</th><th>Fare</th><th>Trip</th><th>Gross</th><th>Pilot</th><th>You</th></tr></thead><tbody>${rows}</tbody></table></div>` : '<div class="sx-hint">No offers were logged in this test.</div>') +
+        ((r.shifts || []).length ? `<div class="sx-hint">Shifts: ${r.shifts.map(h => h.open ? 'one still running at the end' : `${fmtDur(h.hrs)}, ${h.trips} trips, $${h.net.toFixed(0)} take-home`).join(' · ')}</div>` : '') +
+        ((r.snaps || []).length ? `<div class="sx-hint">Surge snapshots: ${r.snaps.length} (${r.snaps.map(x => LEVELS[x.level]).join(', ')})</div>` : '') +
+        ((r.events || []).length ? `<div class="sx-hint">Events added: ${r.events.map(e => esc(e.name)).join(', ')}</div>` : '') +
+        (set ? `<div class="sx-hint">Settings tried: ${esc(set)}</div>` : '') +
+        `<div class="tr-btns2"><button type="button" class="chip" onclick="exportTestRun(${r.id})">Export CSV</button>` +
+        `<button type="button" class="chip" onclick="exportTestRun(${r.id}, true)">Export all (JSON)</button></div>`;
+      v.hidden = false;
+      v.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    async function exportTestRun(id, json) {
+      const r = testRuns().find(x => x.id === id);
+      if (!r) return;
+      const st = runStats(r), day = ymd(new Date(r.started));
+      let text, name, type;
+      if (json) { text = JSON.stringify(r, null, 2); name = `test-run-${day}.json`; type = 'application/json'; }
+      else {
+        const q = v => `"${String(v).replace(/"/g, '""')}"`;
+        text = ['time,fare,minutes,km,gross_per_hr,per_km,pilot_said,you'].concat((r.offers || []).map(e => [
+          q(new Date(e.t).toLocaleString()), e.fare, e.mins, e.kms || '', (e.fare / e.mins * 60).toFixed(2), e.kms ? (e.fare / e.kms).toFixed(2) : '',
+          st.good(e) ? 'accept' : 'decline', e.took ? 'took' : 'passed'].join(','))).join('\n');
+        name = `test-run-${day}.csv`; type = 'text/csv';
+      }
+      const blob = new Blob([text], { type }), file = new File([blob], name, { type });
+      try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: 'Offer Pilot test run' }); return; } }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      toast('📤 Test run exported');
+    }
+    function deleteTestRun(id) {
+      saveTestRuns(testRuns().filter(x => x.id !== id));
+      document.getElementById('testRunView').hidden = true;
+      renderTestRuns(); toast('Test run deleted');
+    }
     function syncTestUI() {
       document.getElementById('testBanner').hidden = !TEST;
       document.body.classList.toggle('testing', TEST);
-      document.getElementById('testBtn').textContent = TEST ? 'End test run and discard test data' : 'Start test run';
+      document.getElementById('testBtn').textContent = TEST ? 'End test run and save the results' : 'Start test run';
+      document.getElementById('testDiscard').hidden = !TEST;
       document.getElementById('sxTestState').textContent = TEST ? 'On' : 'Off';
       document.getElementById('testBtn').classList.toggle('stop', TEST);
       document.getElementById('testNote').textContent = TEST
-        ? 'Test run is on. Everything you log or change now is thrown away when you end it.'
+        ? 'Test run is on. Your real data isn’t touched. When you end it, what you did is saved below to view, export or delete.'
         : 'Try features without touching your real offers, trends, shifts or settings. The pilot uses a copy until you end the test run.';
     }
 
@@ -2853,6 +2986,7 @@
     // ---- Settings pages ----
     function sxGo(page) {
       if (page === 'data') renderDataSheet();
+      if (page === 'test') { renderTestRuns(); document.getElementById('testRunView').hidden = true; }
       const leavingData = !document.querySelector('#settingsModal [data-page="data"]').hidden && page !== 'data';
       document.querySelectorAll('#settingsModal .sx-page').forEach(s => { s.hidden = s.dataset.page !== page; });
       document.getElementById('settingsModal').scrollTop = 0;
@@ -5576,7 +5710,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.9';
+    const APP_VERSION = '1.26.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -5948,6 +6082,10 @@
       loadWeather(); setInterval(loadWeather, 3600000);
       renderShiftBar(); setInterval(renderShiftBar, 30000);
       syncTestUI(); applyTheme(savedTheme()); syncLayerChips(); wireBarHelp();
+      try {
+        const just = localStorage.getItem('testRunJustSaved');
+        if (just) { localStorage.removeItem('testRunJustSaved'); toggleSettings(true); sxGo('test'); viewTestRun(+just); toast('🧪 Test run saved: results below'); }
+      } catch (e) {}
       renderBackupInfo(); weeklyReminders();
       showTab('offer');
       // Keep live-surge ages and predictions current while driving
