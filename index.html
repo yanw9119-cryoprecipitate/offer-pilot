@@ -546,6 +546,7 @@
     .ac-hrs div { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; }
     .ac-hrs small { font-size: .62rem; color: var(--muted); font-weight: 700; } .ac-hrs b { font-size: .92rem; } .ac-hrs .pos { color: var(--green); } .ac-hrs .neg { color: #ef4444; }
     .ac-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ac-acts.one { flex-wrap: nowrap; gap: 4px; } .ac-acts.one .rs-btn { flex: 1 1 auto; min-width: 0; padding: 7px 4px; font-size: .74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .ac-due { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin: 6px 0; padding: 9px 11px; border-radius: 12px; border: 1.5px solid #f59e0b;
       background: color-mix(in srgb, #f59e0b 12%, var(--card-2)); color: var(--text); font: inherit; font-size: .82rem; text-align: left; cursor: pointer; }
     .ac-due b { color: #d97706; white-space: nowrap; }
@@ -558,6 +559,13 @@
     .ex-photo .ok { font-weight: 800; color: var(--green); font-size: .82rem; margin-right: 4px; }
     /* Account forms: the date box spans the row and stays inside it on iPhone */
     #acctSheet .setting-item:has(input[type="date"]) { grid-column: 1 / -1; }
+    /* Other cost: What, Amount and Date side by side on one line */
+    #acctSheet .ex-one .veh-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, .8fr) minmax(0, 1.15fr); gap: 6px; }
+    #acctSheet .ex-one .setting-item:has(input[type="date"]) { grid-column: auto; }
+    #acctSheet .ex-one .setting-item label { font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #acctSheet .ex-one input { padding-left: 8px; padding-right: 6px; font-size: .9rem; }
+    #acctSheet .ex-one input[type="date"] { font-size: .8rem; padding-left: 6px; }
+    #acctSheet .ex-one .tgl { grid-column: 1 / -1; }
     #acctSheet input { min-width: 0; max-width: 100%; box-sizing: border-box; }
     #acctSheet input[type="date"] { display: block; width: 100%; -webkit-appearance: none; appearance: none; text-align: left; min-height: 2.6em; }
     #acctSheet input[type="date"]::-webkit-date-and-time-value { text-align: left; }
@@ -4576,8 +4584,7 @@
           <div><small>Per hour</small><b>${n.actual > 0.2 ? acMoney(n.payout / n.actual) : '—'}</b></div></div>
         <div class="ac-sec">🧾 Costs</div>
         ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}${line(`Other (${n.exN})`, acMoney(n.exPaid))}
-        <div class="ac-acts"><button type="button" class="rs-btn" onclick="scanReceipt(true)">📷 Fuel receipt</button><button type="button" class="rs-btn" onclick="scanReceipt(false)">🖼 From photos</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other cost</button>
-          <button type="button" class="rs-btn" onclick="openStatement()">＋ Uber weekly statement</button></div>
+        <div class="ac-acts one"><button type="button" class="rs-btn" onclick="scanReceipt(true)" title="Take a photo of a fuel receipt">📷 Fuel</button><button type="button" class="rs-btn" onclick="scanReceipt(false)" title="Fuel receipt from your photos">🖼 Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
         <div class="ac-sec">🏛 GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
         ${line(n.gstNet >= 0 ? 'GST to pay (BAS)' : 'GST refund (BAS)', acMoney(Math.abs(n.gstNet)), 'tot')}
@@ -4627,10 +4634,10 @@
       toast('✓ Saved'); renderAccount();
     }
     // Small form sheets (reuse the app's sheet style)
-    function acctSheet(title, fields, onSave) {
+    function acctSheet(title, fields, onSave, cls = '') {
       let sh = document.getElementById('acctSheet');
       if (!sh) { sh = document.createElement('div'); sh.id = 'acctSheet'; sh.className = 'sheet'; sh.onclick = e => { if (e.target === sh) sh.style.display = 'none'; }; document.body.appendChild(sh); }
-      sh.innerHTML = `<div class="sheet-content"><div class="sheet-head"><h3 style="color: var(--accent);">${title}</h3><button class="x-btn" onclick="document.getElementById('acctSheet').style.display='none'" aria-label="Close">✕</button></div>
+      sh.innerHTML = `<div class="sheet-content ${cls}"><div class="sheet-head"><h3 style="color: var(--accent);">${title}</h3><button class="x-btn" onclick="document.getElementById('acctSheet').style.display='none'" aria-label="Close">✕</button></div>
         <div class="veh-grid">${fields}</div><button class="pip-btn" id="acctSave">Save</button></div>`;
       sh.querySelector('#acctSave').onclick = () => { if (onSave() !== false) { sh.style.display = 'none'; renderAccount(); } };
       sh.style.display = 'flex';
@@ -4702,14 +4709,14 @@
     function openExpense() {
       exPhoto = null;
       acctSheet('🧾 Other cost', `<div class="ex-photo" id="exPhotoBtn"><button type="button" class="rs-btn" onclick="exAddPhoto(true)">📷 Take photo</button><button type="button" class="rs-btn" onclick="exAddPhoto(false)">🖼 Choose photo</button></div>` +
-        fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount paid ($)', 'type="number" inputmode="decimal" step="0.01"') +
+        fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
         const amt = num('exAmt'); if (!(amt > 0)) { toast('Enter the amount'); return false; }
         const list = loadExpenses(); list.push({ t: new Date(document.getElementById('exDate').value + 'T12:00').getTime() || Date.now(), what: document.getElementById('exWhat').value.trim(), amt, gst: document.getElementById('exGst').checked,
           ...(exPhoto ? { imgId: exPhoto.imgId, gstAmt: exPhoto.gst || null } : {}) });
         exPhoto = null;
         lsSet('expenses', JSON.stringify(list)); toast('✓ Cost saved');
-      });
+      }, 'ex-one');
     }
     // ⛽ Fuel receipt: photo → read on the phone (Tesseract) → the fill-up form opens with litres, total, GST and date filled in
     function scanReceipt(camera = true) {
@@ -7440,7 +7447,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.63.1';
+    const APP_VERSION = '1.63.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
