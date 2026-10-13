@@ -368,25 +368,30 @@
 .plan-pick { width: 100%; min-width: 0; text-align: left; background: var(--card-2) var(--arrow) no-repeat right 6px center / 13px; color: var(--text); border: var(--bw) solid var(--card-border);
       border-radius: 12px; padding: 9px 18px 9px 8px; font: inherit; font-size: .85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; letter-spacing: -.2px; }
     .plan-pick .sp { font-size: .7rem; margin-right: 2px; }
-    .wheel-card { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
-    .wh-done { border: none; background: var(--accent); color: var(--on-accent); font-weight: 800; border-radius: 999px; padding: 8px 18px; font-size: .9rem; }
+    /* Time wheel: small pop-up next to the box you tapped, no blur behind it */
+    .wheel-pop { display: none; position: fixed; inset: 0; z-index: 1000; background: transparent; }
+    .wheel-card { position: absolute; width: min(260px, calc(100vw - 24px)); background: var(--card-2); color: var(--text);
+      border: var(--bw) solid var(--card-border); border-radius: 18px; padding: 10px; box-shadow: 0 12px 34px rgba(0,0,0,.28), 0 0 0 1px var(--line); }
+    .wh-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .wh-top b { font-size: .9rem; }
+    .wh-done { border: none; background: var(--accent); color: var(--on-accent); font-weight: 800; border-radius: 999px; padding: 6px 14px; font-size: .8rem; }
     .wh-now { display: block; width: 100%; border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);
-      border-radius: 999px; padding: 9px; font-weight: 800; font-size: .9rem; margin: 4px 0 10px; }
+      border-radius: 999px; padding: 7px; font-weight: 800; font-size: .82rem; margin-bottom: 8px; touch-action: manipulation; }
     .wh-now[hidden] { display: none; }
-    .wh-modes { display: flex; gap: 6px; margin: 4px 0 10px; }
+    .wh-modes { display: flex; gap: 4px; margin-bottom: 8px; }
     .wh-modes[hidden] { display: none; }
-    .wh-modes button { flex: 1; border: var(--bw) solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 8px 4px; font-weight: 800; font-size: .82rem; }
+    .wh-modes button { flex: 1; border: var(--bw) solid var(--card-border); background: var(--card); color: var(--text); border-radius: 999px; padding: 6px 2px; font-weight: 800; font-size: .74rem; touch-action: manipulation; }
     .wh-modes button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-    .wheels { position: relative; display: flex; justify-content: center; gap: 4px; height: 200px; overflow: hidden;
-      -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+    .wheels { position: relative; display: flex; height: 160px; overflow: hidden; border-radius: 12px;
+      -webkit-mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent); }
     .wheels.off { opacity: .35; }
-    .wh-band { position: absolute; left: 8px; right: 8px; top: 80px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, transparent); pointer-events: none; }
-    .wh-col { position: relative; width: 76px; height: 200px; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .wh-band { position: absolute; left: 0; right: 0; top: 64px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 16%, transparent); pointer-events: none; }
+    .wh-col { position: relative; flex: 1 1 50%; height: 160px; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .wh-col + .wh-col { border-left: 1px dashed var(--line); }
     .wh-col::-webkit-scrollbar { display: none; }
-    .wh-col div { height: 40px; line-height: 40px; text-align: center; font-size: 1.45rem; font-weight: 800; color: var(--text); scroll-snap-align: center; font-variant-numeric: tabular-nums; }
+    .wh-col div { height: 32px; line-height: 32px; text-align: center; font-size: 1.2rem; font-weight: 800; color: var(--text); scroll-snap-align: center; font-variant-numeric: tabular-nums; }
     .wh-col div.pad { scroll-snap-align: none; }
-    .wh-sep { align-self: center; font-size: 1.45rem; font-weight: 800; color: var(--muted); z-index: 1; }
-    .wh-note { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 8px; min-height: 1em; }
+    .wh-note { text-align: center; color: var(--muted); font-size: .7rem; margin-top: 6px; }
     .plan-lbl { font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: 6px; }
     .plan-end input { width: 18px; height: 18px; accent-color: var(--accent); }
     #planEndWrap[hidden] { display: none; }
@@ -1252,8 +1257,8 @@
           <div class="plan-title">🕘 Choose your hours</div>
           <div class="plan-line">
             <label><span>Day</span><select id="planDay" onchange="renderPlan(); renderPlanCal()" aria-label="Day"></select></label>
-            <label><span>From</span><button type="button" class="plan-pick" id="planStartBtn" onclick="openWheel('start')" aria-label="Start time"></button></label>
-            <label><span>Until</span><button type="button" class="plan-pick" id="planUntilBtn" onclick="openWheel('end')" aria-label="End time"></button></label>
+            <label><span>From</span><button type="button" class="plan-pick" id="planStartBtn" onclick="openWheel('start', this)" aria-label="Start time"></button></label>
+            <label><span>Until</span><button type="button" class="plan-pick" id="planUntilBtn" onclick="openWheel('end', this)" aria-label="End time"></button></label>
           </div>
           <div hidden><select id="planStart"></select><select id="planUntil" onchange="onPlanUntil()"></select><select id="planMode"><option value="suggest"></option><option value="end"></option><option value="two"></option></select>
             <span id="planEndWrap"><select id="planEnd"></select></span></div>
@@ -1340,17 +1345,17 @@
 
   <!-- Fill-up sheet -->
   <!-- Time wheel (Plan a Shift: From / Until) -->
-  <div class="sheet" id="wheelSheet" onclick="if (event.target === this) closeWheel()">
-    <div class="sheet-content wheel-card">
-      <div class="sheet-head"><h3 id="wheelTitle">Start time</h3><button type="button" class="wh-done" onclick="closeWheel()">Done</button></div>
+  <div class="wheel-pop" id="wheelSheet" onclick="if (event.target === this) closeWheel()">
+    <div class="wheel-card" id="wheelCard">
+      <div class="wh-top"><b id="wheelTitle">Start time</b><button type="button" class="wh-done" onclick="closeWheel()">Done</button></div>
       <div class="wh-modes" id="wheelModes">
         <button type="button" data-m="suggest" onclick="wheelMode('suggest')">✨ Suggest</button>
         <button type="button" data-m="two" onclick="wheelMode('two')">2 hrs</button>
         <button type="button" data-m="end" onclick="wheelMode('end')">Set time</button>
       </div>
-      <button type="button" class="wh-now" id="wheelNow" onclick="wheelNow()"></button>
+      <button type="button" class="wh-now" id="wheelNow" onpointerup="wheelNow(event)" onclick="wheelNow(event)"></button>
       <div class="wheels" id="wheels"><div class="wh-band"></div></div>
-      <div class="wh-note" id="wheelNote"></div>
+      <div class="wh-note" id="wheelNote">Left: hour · Right: minutes</div>
     </div>
   </div>
 
@@ -3735,37 +3740,41 @@
         : null;
       if (mode === 'suggest') b.innerHTML = '<span class="sp">✨</span>' + (lastPlan && lastPlan.end ? fmtTime(lastPlan.end) : 'Suggest');
     }
-    function wheelCol(items, sel) {
+    // Two halves: the whole left half scrolls the hour, the right half the minutes
+    const WH_ROW = 32;
+    let wheelTouched = false;
+    function wheelCol(items) {
       return `<div class="wh-col">` + '<div class="pad"></div><div class="pad"></div>' +
         items.map(([v, t]) => `<div data-v="${v}">${t}</div>`).join('') + '<div class="pad"></div><div class="pad"></div></div>';
     }
     function buildWheels(mins) {
       const h = Math.floor(mins / 60), m = mins % 60, box = document.getElementById('wheels');
-      const cols = is24()
-        ? [Array.from({ length: 24 }, (_, i) => [i, pad2(i)]), [[0, '00'], [30, '30']]]
-        : [Array.from({ length: 12 }, (_, i) => [i + 1, String(i + 1)]), [[0, '00'], [30, '30']], [['AM', 'AM'], ['PM', 'PM']]];
-      const sel = is24() ? [h, m] : [h12(h), m, apOf(h)];
-      wheelBuiltAt = performance.now();
-      box.innerHTML = '<div class="wh-band"></div>' + cols.map((c, i) => wheelCol(c) + (i === 0 ? '<span class="wh-sep">:</span>' : '')).join('');
+      const cols = [Array.from({ length: 24 }, (_, i) => [i, is24() ? pad2(i) : fmtHour(i)]),
+        [[0, is24() ? ':00' : ':00'], [30, ':30']]];
+      const sel = [h, m];
+      wheelTouched = false;
+      box.innerHTML = '<div class="wh-band"></div>' + cols.map(c => wheelCol(c)).join('');
       box.querySelectorAll('.wh-col').forEach((col, i) => {
         const idx = cols[i].findIndex(([v]) => v === sel[i]);
-        col.scrollTop = Math.max(0, idx) * 40;
-        col.addEventListener('scroll', () => { if (performance.now() - wheelBuiltAt < 300) return; clearTimeout(wheelTimer); wheelTimer = setTimeout(wheelRead, 140); }, { passive: true });
+        col.scrollTop = Math.max(0, idx) * WH_ROW;
+        // only react to scrolling the person does, never to the wheel being set
+        ['touchstart', 'pointerdown', 'wheel'].forEach(ev => col.addEventListener(ev, () => { wheelTouched = true; }, { passive: true }));
+        col.addEventListener('scroll', () => { if (!wheelTouched) return; clearTimeout(wheelTimer); wheelTimer = setTimeout(wheelRead, 140); }, { passive: true });
         col.addEventListener('click', e => { const it = e.target.closest('[data-v]'); if (!it) return;
-          const k = [...col.querySelectorAll('[data-v]')].indexOf(it); col.scrollTo({ top: k * 40, behavior: 'smooth' }); });
+          wheelTouched = true; const k = [...col.querySelectorAll('[data-v]')].indexOf(it); col.scrollTo({ top: k * WH_ROW, behavior: 'smooth' }); });
       });
     }
     function wheelValue() {
-      const vals = [...document.querySelectorAll('#wheels .wh-col')].map(col => {
-        const items = col.querySelectorAll('[data-v]'), k = Math.min(items.length - 1, Math.max(0, Math.round(col.scrollTop / 40)));
-        return items[k].dataset.v;
+      const [h, m] = [...document.querySelectorAll('#wheels .wh-col')].map(col => {
+        const items = col.querySelectorAll('[data-v]'), k = Math.min(items.length - 1, Math.max(0, Math.round(col.scrollTop / WH_ROW)));
+        return +items[k].dataset.v;
       });
-      let h = +vals[0]; const m = +vals[1];
-      if (!is24()) h = (h % 12) + (vals[2] === 'PM' ? 12 : 0);
       return h * 60 + m;
     }
     function wheelRead() {
+      if (!wheelFor) return;
       const v = wheelValue();
+      if (!wheelFor) return;                             // a late scroll after the pop-up closed
       if (wheelFor === 'start') document.getElementById('planStart').value = String(v);
       else { document.getElementById('planMode').value = 'end'; document.getElementById('planEnd').value = String(v); syncWheelModes(); }
       fillPlanUntil(); renderPlan();
@@ -3774,8 +3783,7 @@
       const mode = document.getElementById('planMode').value;
       document.querySelectorAll('#wheelModes button').forEach(b => b.classList.toggle('on', b.dataset.m === mode));
       document.getElementById('wheels').classList.toggle('off', wheelFor === 'end' && mode !== 'end');
-      document.getElementById('wheelNote').textContent = wheelFor === 'start' ? 'Scroll the hour and minutes; the plan updates as you go.'
-        : mode === 'suggest' ? 'The pilot picks the end for you. Scroll to set your own.' : mode === 'two' ? 'Plans the 2 hours from your start. Scroll to set an end.' : 'Scroll the hour and minutes.';
+      document.getElementById('wheelNote').textContent = wheelFor === 'end' && mode !== 'end' ? 'Scroll to set your own end' : 'Left: hour · Right: minutes';
     }
     function wheelMode(m) {
       document.getElementById('planMode').value = m; fillPlanUntil(); renderPlan(); syncWheelModes();
@@ -3788,10 +3796,15 @@
       const r = m % SLOT; m -= r; if (r >= 10) m += SLOT;
       return { min: m % 1440, day: m >= 1440 ? 1 : 0 };
     }
-    function wheelNow() {
+    let wheelNowAt = 0;
+    function wheelNow(e) {
+      if (e) e.preventDefault();
+      if (performance.now() - wheelNowAt < 400) return;   // pointerup and click from one tap
+      wheelNowAt = performance.now();
       const n = nowSlot();
       document.getElementById('planDay').value = String(n.day);
       document.getElementById('planStart').value = String(n.min);
+      clearTimeout(wheelTimer);
       buildWheels(n.min); fillPlanUntil(); renderPlan(); renderPlanCal();
       syncWheelNow();
     }
@@ -3800,7 +3813,7 @@
       b.hidden = wheelFor !== 'start';
       b.textContent = `🕘 Now · ${fmtMin(nowSlot().min)}`;
     }
-    function openWheel(which) {
+    function openWheel(which, btn) {
       wheelFor = which;
       const start = +document.getElementById('planStart').value, mode = document.getElementById('planMode').value;
       let v = start;
@@ -3808,8 +3821,13 @@
         : lastPlan && lastPlan.end ? lastPlan.end.getHours() * 60 + (lastPlan.end.getMinutes() >= 30 ? 30 : 0) : (start + 120) % 1440;
       document.getElementById('wheelTitle').textContent = which === 'start' ? '🕘 Start time' : '🏁 Finish time';
       document.getElementById('wheelModes').hidden = which !== 'end';
-      document.getElementById('wheelSheet').style.display = 'flex';
+      document.getElementById('wheelSheet').style.display = 'block';
       buildWheels(v); syncWheelModes(); syncWheelNow();
+      // sit just below the tapped box (or above it when there's no room)
+      const card = document.getElementById('wheelCard'), r = (btn || document.getElementById('planStartBtn')).getBoundingClientRect();
+      const w = card.offsetWidth, hgt = card.offsetHeight, vw = innerWidth, vh = innerHeight;
+      card.style.left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
+      card.style.top = (r.bottom + 8 + hgt < vh - 90 ? r.bottom + 8 : Math.max(12, r.top - hgt - 8)) + 'px';
     }
     function closeWheel() { clearTimeout(wheelTimer); document.getElementById('wheelSheet').style.display = 'none'; wheelFor = null; }
     function onPlanUntil() {
@@ -6104,7 +6122,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.32.0';
+    const APP_VERSION = '1.32.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
