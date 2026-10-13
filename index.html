@@ -409,6 +409,17 @@
     .shift-bar > span, .shift-bar > small { position: relative; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .shift-bar small { color: var(--muted); font-size: .68rem; }
     .shift-bar.idle span { color: var(--accent); font-weight: 800; }
+    .shift-bar.idle, .shift-bar.on { flex-direction: column; align-items: stretch; gap: 3px; padding: 7px 10px; }
+    .sb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; position: relative; }
+    .sb-row span, .sb-row small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sb-row small { color: var(--muted); font-size: .68rem; }
+    .sb-go { font-size: .9rem; }
+    .sb-prog { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; position: relative; }
+    .sb-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
+    .sb-prog.time i { background: var(--accent); } .sb-prog.money i { background: var(--green); }
+    .shift-bar.over .sb-prog.time i { background: #f59e0b; }
+    .sb-area { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sb-area b { color: var(--text); }
+    .sh-end { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-weight: 700; font-size: .85rem; }
+    .sh-end input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; }
     .shift-bar.done { border-color: var(--green); }
     .sh-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
     .sh-grid div { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; padding: 6px; display: flex; flex-direction: column; }
@@ -1765,7 +1776,7 @@
       <div class="setting-item"><label for="shiftGoal">Daily goal (take-home after car costs, $)</label>
         <input type="number" id="shiftGoal" inputmode="decimal" step="10" min="0" oninput="onShiftGoal()" /></div>
       <div id="shiftNow"></div>
-      <button class="pip-btn" id="shiftBtn" onclick="toggleShift()">▶ Start shift</button>
+      <button class="pip-btn" id="shiftBtn" onclick="toggleShift()">⏱ Punch in</button>
       <div class="fl-head"><b>Past shifts</b></div>
       <div id="shiftHist"></div>
     </div>
@@ -7287,7 +7298,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.59.0';
+    const APP_VERSION = '1.60.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7342,23 +7353,53 @@
       return { trips: trips.length, earn, km, cost, net, hrs, netHr, goal, pct: Math.min(1, Math.max(0, net / goal)),
         etaH: left > 0 && netHr > 5 && hrs >= 0.5 ? left / netHr : null };
     }
-    const fmtDur = h => `${Math.floor(h)}h ${String(Math.round((h % 1) * 60)).padStart(2, '0')}m`;
+    const fmtDur = h => { const m = Math.max(0, Math.round(h * 60)); return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`; };
 
+    // ⏱ Punch clock on the Drive page: punch in, see the planned finish (your roster, or Pilot's suggestion),
+    // a bar to the finish time and a bar to your take-home target, and the suggested area with the drive time.
+    function shiftPlanNow() {
+      const now = Date.now(), r = loadRoster().find(x => x.s <= now + 45 * 60000 && x.e > now + 30 * 60000);
+      if (r) return { end: r.e, src: 'roster', zone: r.z };
+      const t = new Date(now), b = bestZoneAt(t);
+      if (b && b.v >= OK) { const sug = suggestShift(t, b.z); return { end: now + Math.max(4, sug.len) * SLOT_MS, src: 'pilot', zone: b.z }; }
+      return { end: now + 4 * 3600000, src: 'default', zone: null };
+    }
+    function suggestedArea() {
+      const b = bestZoneAt(new Date()); if (!b) return null;
+      const from = myPos(), here = myZone() === b.z;
+      if (here) return { z: b.z, v: b.v, txt: 'you’re in it' };
+      const q = routeNow(from, nearestOnRing(from.lat, from.lng, UBER_ZONE_SHAPES[b.z]));
+      return { z: b.z, v: b.v, txt: `🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min · ${q.r.km.toFixed(1)} km` };
+    }
     function renderShiftBar() {
       const bar = document.getElementById('shiftBar');
       if (!bar) return;
-      const s = loadShift();
-      if (!s) { bar.className = 'shift-bar idle'; bar.innerHTML = `<span>▶ Start shift</span><small>Goal $${shiftGoal().toFixed(0)} take-home</small>`; return; }
-      const st = shiftStats(s);
-      bar.className = 'shift-bar' + (st.pct >= 1 ? ' done' : '');
-      bar.innerHTML = `<i style="width:${(st.pct * 100).toFixed(0)}%"></i>` +
-        `<span>${st.pct >= 1 ? '🎯 Goal reached' : '⏱ ' + fmtDur(st.hrs)} · <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}</span>` +
-        `<small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr net` : ''}${st.etaH ? ' · goal in ~' + fmtDur(st.etaH) : ''}</small>`;
+      const s = loadShift(), area = (() => { try { return suggestedArea(); } catch (e) { return null; } })();
+      const areaHtml = area ? `<div class="sb-area">📍 <b>${esc(area.z)}</b> ${demandName(area.v).toLowerCase()} · ${area.txt}</div>` : '';
+      if (!s) {
+        const p = shiftPlanNow();
+        bar.className = 'shift-bar idle';
+        bar.innerHTML = `<div class="sb-row"><span class="sb-go">⏱ Punch in</span><small>${p.src === 'roster' ? `🗓 Rostered until ${fmtTime(p.end)}` : p.src === 'pilot' ? `✨ Pilot suggests until ${fmtTime(p.end)}` : 'No suggestion yet'} · target $${shiftGoal().toFixed(0)}</small></div>` + areaHtml;
+        return;
+      }
+      const st = shiftStats(s), now = Date.now(), end = s.planEnd || (s.start + 4 * 3600000);
+      const tPct = Math.min(1, Math.max(0, (now - s.start) / Math.max(1, end - s.start))), left = (end - now) / 3600000;
+      bar.className = 'shift-bar on' + (st.pct >= 1 ? ' done' : '') + (left < 0 ? ' over' : '');
+      bar.innerHTML = `<div class="sb-row"><span>⏱ <b>${fmtDur(st.hrs)}</b> worked</span><small>${left >= 0 ? `${fmtDur(left)} left · ends ${fmtTime(end)}` : `${fmtDur(-left)} past ${fmtTime(end)}`}${s.planSrc === 'roster' ? ' 🗓' : s.planSrc === 'pilot' ? ' ✨' : ''}</small></div>` +
+        `<div class="sb-prog time"><i style="width:${(tPct * 100).toFixed(0)}%"></i></div>` +
+        `<div class="sb-row"><span>${st.pct >= 1 ? '🎯 Target reached' : '💵'} <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}</span><small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr` : ''}${st.etaH ? ' · target ~' + fmtTime(now + st.etaH * 3600000) : ''}</small></div>` +
+        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>` + areaHtml;
     }
     function openShift() {
       document.getElementById('shiftGoal').value = (loadShift() || {}).goal || shiftGoal();
       renderShiftSheet();
       document.getElementById('shiftSheet').style.display = 'flex';
+    }
+    function setShiftEnd(v) {
+      const s = loadShift(); if (!s || !v) return;
+      const [h, m] = v.split(':').map(Number), d = new Date(); d.setHours(h, m, 0, 0);
+      let t = d.getTime(); if (t < s.start) t += 86400000;              // after midnight
+      s.planEnd = t; s.planSrc = 'own'; lsSet(SHIFT_KEY, JSON.stringify(s)); renderShiftBar(); toast(`🏁 Finish set to ${fmtTime(t)}`);
     }
     function closeShift() { document.getElementById('shiftSheet').style.display = 'none'; }
     function onShiftGoal() {
@@ -7370,7 +7411,7 @@
     }
     function renderShiftSheet(keepInput) {
       const s = loadShift(), box = document.getElementById('shiftNow');
-      document.getElementById('shiftBtn').textContent = s ? '■ End shift' : '▶ Start shift';
+      document.getElementById('shiftBtn').textContent = s ? '⏹ Punch out' : '⏱ Punch in';
       document.getElementById('shiftBtn').classList.toggle('stop', !!s);
       if (s) {
         const st = shiftStats(s);
@@ -7379,6 +7420,7 @@
           <div><span>Fares</span><b>$${st.earn.toFixed(0)}</b></div><div><span>Driven</span><b>${st.km.toFixed(1)} km</b></div>
           <div><span>Car costs</span><b>$${st.cost.toFixed(0)}</b></div><div><span>Take-home</span><b class="net">$${st.net.toFixed(0)}</b></div></div>
           <div class="sh-prog"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>
+          <label class="sh-end">🏁 Finish at <input type="time" value="${pad2(new Date(s.planEnd || s.start + 4 * 3600000).getHours())}:${pad2(new Date(s.planEnd || s.start + 4 * 3600000).getMinutes())}" onchange="setShiftEnd(this.value)"></label>
           <div class="autoread-hint">${st.pct >= 1 ? '🎯 Daily goal reached. Nice work.' : `$${(st.goal - st.net).toFixed(0)} to go at $${st.netHr.toFixed(0)}/hr net` +
             (st.etaH ? `: about ${fmtDur(st.etaH)} more (around ${fmtTime(Date.now() + st.etaH * 3600000)}).` : '.')}
             Started ${fmtTime(s.start)}.</div>`;
@@ -7392,8 +7434,9 @@
     function toggleShift() {
       const s = loadShift();
       if (!s) {
-        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: parseFloat(document.getElementById('shiftGoal').value) || shiftGoal() }));
-        toast('▶ Shift started');
+        const p = shiftPlanNow();
+        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: parseFloat(document.getElementById('shiftGoal').value) || shiftGoal(), planEnd: p.end, planSrc: p.src }));
+        toast(`⏱ Punched in · finish around ${fmtTime(p.end)}${p.src === 'roster' ? ' (your roster)' : p.src === 'pilot' ? ' (Pilot’s suggestion)' : ''}`);
       } else {
         s.end = Date.now(); s.km1 = trackedKm();
         const st = shiftStats(s);
@@ -7401,7 +7444,7 @@
         hist.push({ start: s.start, end: s.end, hrs: st.hrs, trips: st.trips, earn: st.earn, km: st.km, net: st.net, goal: st.goal });
         lsSet(SHIFT_HIST_KEY, JSON.stringify(hist.slice(-100)));
         lsDel(SHIFT_KEY);
-        toast(`■ Shift ended · $${st.net.toFixed(0)} take-home in ${fmtDur(st.hrs)} ($${st.netHr.toFixed(0)}/hr)`);
+        toast(`⏹ Punched out · $${st.net.toFixed(0)} take-home in ${fmtDur(st.hrs)} ($${st.netHr.toFixed(0)}/hr)`);
       }
       renderShiftBar(); renderShiftSheet();
     }
