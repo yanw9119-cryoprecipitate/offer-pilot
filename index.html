@@ -737,9 +737,12 @@
     .wx-h.wet { background: color-mix(in srgb, #3b82f6 12%, var(--card-2)); }
     .fuel-pin-wrap { display: flex; align-items: center; gap: 3px; }
     .fuel-pin { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: #fff; border: 2px solid #ea580c; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-    .fuel-pin.h24 { border-color: #16a34a; }
+    .fuel-pin { border-color: #64748b; }
+    .fuel-pin.open { border-color: #16a34a; }
+    .fuel-pin.shut { border-color: #94a3b8; opacity: .55; filter: grayscale(1); }
     .fuel-pin-wrap span { font-size: .62rem; font-weight: 800; color: #111; background: rgba(255,255,255,.9); border-radius: 6px; padding: 1px 5px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
     .fuel-pop .leaflet-popup-content { margin: 10px 12px; font-size: .8rem; line-height: 1.35; }
+    .fuel-pop .fp-open { color: #16a34a; } .fuel-pop .fp-shut { color: #dc2626; }
     .fuel-pop .fp-sub { color: #555; font-size: .74rem; }
     .fuel-pop .fp-bits { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; font-size: .76rem; }
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -5597,7 +5600,7 @@
     const MAP_HELP = {
       zones: ['🗺 Zones', 'The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
-      fuel: ['⛽ Fuel stations', 'Petrol stations from OpenStreetMap. Tap one for brand, fuels, 24/7 and drive time, then navigate. Zoom in if none show.'],
+      fuel: ['⛽ Fuel stations', 'Green ring: open now. Faded: closed now. Grey ring: opening hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
       pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
@@ -6379,7 +6382,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.34.3';
+    const APP_VERSION = '1.34.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6678,10 +6681,43 @@
       } catch (e) { if (layers.fuel) toast('⛽ Couldn’t load fuel stations right now'); }
       finally { fuelLoading = false; }
     }
+    // Open now? Reads common OpenStreetMap hours ("24/7", "Mo-Fr 06:00-22:00; Sa,Su 07:00-21:00").
+    // Returns true / false, or null when the hours are missing or too complex to read.
+    function openNow(hours, at = new Date()) {
+      if (!hours) return null;
+      const hs = hours.trim();
+      if (hs === '24/7') return true;
+      const DN = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'], today = (at.getDay() + 6) % 7, mins = at.getHours() * 60 + at.getMinutes();
+      const toMin = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t); return m ? +m[1] * 60 + +m[2] : null; };
+      let result = null;
+      for (const rule of hs.split(';').map(r => r.trim()).filter(Boolean)) {
+        const m = /^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?)+)?\s*(.*)$/.exec(rule);
+        if (!m) return null;
+        let days = [0, 1, 2, 3, 4, 5, 6];
+        if (m[1]) { days = []; m[1].split(',').filter(Boolean).forEach(part => {
+          const [a, b] = part.split('-').map(d => DN.indexOf(d));
+          if (b == null || b < 0) days.push(a); else for (let i = a; ; i = (i + 1) % 7) { days.push(i); if (i === b) break; } }); }
+        const times = m[2].trim();
+        // yesterday's late hours can run past midnight
+        const applies = d => days.includes(d);
+        if (/^off$|^closed$/i.test(times)) { if (applies(today)) result = false; continue; }
+        if (/^00:00-24:00$/.test(times)) { if (applies(today)) result = true; continue; }
+        const ranges = times.split(',').map(r => r.trim().split('-').map(toMin));
+        if (!ranges.length || ranges.some(r => r.length !== 2 || r[0] == null || r[1] == null)) return null;
+        for (const [a, b0] of ranges) {
+          const b = b0 <= a ? b0 + 1440 : b0;
+          if (applies(today) && mins >= a && mins < b) return true;
+          if (b > 1440 && applies((today + 6) % 7) && mins < b - 1440) return true;
+        }
+        if (applies(today)) result = false;
+      }
+      return result;
+    }
     function fuelIcon(f, zoom) {
       const label = zoom >= 14 ? `<span>${esc(f.brand || f.name).slice(0, 18)}</span>` : '';
+      const o = openNow(f.hours), cls = o === true ? ' open' : o === false ? ' shut' : '';   // unknown hours: plain pin
       return L.divIcon({ className: 'fuel-pin-wrap', iconSize: null, iconAnchor: [13, 13],
-        html: `<div class="fuel-pin${f.h24 ? ' h24' : ''}">⛽</div>${label}` });
+        html: `<div class="fuel-pin${cls}">⛽</div>${label}` });
     }
     function drawFuel() {
       if (!map) return;
@@ -6699,7 +6735,8 @@
     function openFuelCard(f) {
       setFollow(false);                       // let the map pan so the card fits
       const from = myPos(), km = from ? distM(from.lat, from.lng, f.lat, f.lng) / 1000 * 1.3 : null;   // road ≈ 1.3 × straight line
-      const bits = [f.h24 ? '🕐 Open 24/7' : f.hours ? '🕐 ' + esc(f.hours) : '', f.fuels.length ? '⛽ ' + f.fuels.join(' · ') : '',
+      const on = openNow(f.hours);
+      const bits = [f.h24 ? '🕐 Open 24/7' : f.hours ? `🕐 ${on === true ? '<b class="fp-open">Open now</b> · ' : on === false ? '<b class="fp-shut">Closed now</b> · ' : ''}${esc(f.hours)}` : '🕐 Hours not listed', f.fuels.length ? '⛽ ' + f.fuels.join(' · ') : '',
         km !== null ? `🚗 ~${km.toFixed(1)} km · ${Math.max(1, Math.round(estMin(km)))} min` : ''].filter(Boolean);
       L.popup({ className: 'fuel-pop', offset: [0, -8], minWidth: 200, maxWidth: 270, autoPanPadding: [16, 60] }).setLatLng([f.lat, f.lng]).setContent(
         `<b>${esc(f.name)}</b>${f.brand && f.brand !== f.name ? `<div class="fp-sub">${esc(f.brand)}</div>` : ''}` +
