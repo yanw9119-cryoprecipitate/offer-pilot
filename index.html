@@ -5842,7 +5842,7 @@
     }
     function busyCount() {
       const now = new Date(); now.setMinutes(0, 0, 0);
-      return buildSurges().length + busyZones(now).length + nearEvents().length;
+      return buildSurges().length + busyZones(now).length;   // events show as the badge, not in the number
     }
     const tmFmt = t => fmtTime(t);
 
@@ -6199,7 +6199,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.33.5';
+    const APP_VERSION = '1.33.6';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
