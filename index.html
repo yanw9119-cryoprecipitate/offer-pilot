@@ -791,6 +791,9 @@
     .flh-list { margin-top: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
     @media (min-width: 560px) { .flh-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     .flh[open] { grid-column: 1 / -1; }
+    .flh[style*="--tc"] { border-color: color-mix(in srgb, var(--tc) 55%, transparent); background: color-mix(in srgb, var(--tc) 13%, var(--card-2)); }
+    .flh[style*="--tc"] summary > b:first-child { color: var(--tc); }
+    .flh-g { display: none; } .flh[open] .flh-g { display: inline-flex; gap: 3px; } .flh-g .ap-tier { font-size: .58rem; }
     .flh.past { opacity: .6; } .flh.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; } .flh.start { border-color: #0284c7; }
     .flh summary > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
     .flh { border: 1px solid var(--card-border); border-radius: 10px; background: var(--card-2); overflow: hidden; }
@@ -6941,7 +6944,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.51.1';
+    const APP_VERSION = '1.52.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7403,6 +7406,16 @@
       const k = v >= GOOD ? 'high' : v >= OK ? 'med' : 'low';
       return { ...AP_TIERS[k], k, dir, live: false, trend: 'flat' };
     }
+    // Grade for any loaded hour (same cut-offs as the airport zone): used to colour the hour boxes in Plan a Shift
+    function apTierAt(code, dir, t) {
+      const c = flights[code], cur = apIdx(code, dir, t);
+      if (cur === null || !c) return null;
+      const h0 = Math.floor(c.from / 3600000) * 3600000, peaks = [];
+      for (let x = h0; x < c.to; x += 3600000) { const v = apIdx(code, dir, x); if (v !== null) peaks.push(v); }
+      const peak = Math.max(cur, 1, ...peaks);
+      const k = cur >= Math.max(0.7 * peak, 12) ? 'high' : cur < Math.max(0.35 * peak, 4) ? 'low' : 'med';
+      return { ...AP_TIERS[k], k, dir, n: cur };
+    }
     const TREND_TXT = { up: '↑', down: '↓', flat: '' };
     const DIR_ICON = { in: '✈️→🏙', out: '🏙→✈️' };
     const tierPill = t => `<b class="ap-tier" style="background:${t.c}" title="${t.dir === 'in' ? 'Airport to city' : 'City to airport'}: ${t.t}">${DIR_ICON[t.dir]} ${t.t}${TREND_TXT[t.trend] ? ' ' + TREND_TXT[t.trend] : ''}</b>`;
@@ -7455,15 +7468,19 @@
         const nLate = st.filter(x => x.k === 'late').length, nCanc = st.filter(x => x.k === 'canc').length;
         const key = String(t), open = flOpenHours.has(key);
         const cls = (t < hNow ? ' past' : '') + (t === hNow ? ' now' : '') + (t === h0.getTime() && h0.getTime() !== hNow ? ' start' : '');
-        rows.push(`<details class="flh${cls}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
+        const gi = apTierAt('MEL', 'in', t), go = apTierAt('MEL', 'out', t);     // tile colour follows pick-ups, like the airport zone
+        const tint = gi ? ` style="--tc:${gi.c}"` : '';
+        const gTitle = [gi && `Airport to city ${gi.t}`, go && `City to airport ${go.t}`].filter(Boolean).join(' · ');
+        rows.push(`<details class="flh${cls}${gi ? ' tier-' + gi.k : ''}"${tint} title="${gTitle}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
           `<span class="flh-n">🛬 ${arr.filter(f => !flCancelled(f)).length}</span><span class="flh-n">🛫 ${dep.filter(f => !flCancelled(f)).length}</span>` +
+          (gi ? `<span class="flh-g">${tierPill(gi)}${go ? tierPill(go) : ''}</span>` : '') +
           `<span class="flh-x">${nLate ? `<b class="flc late" title="${nLate} delayed" aria-label="${nLate} delayed">${nLate}</b>` : ''}${nCanc ? `<b class="flc canc" title="${nCanc} cancelled" aria-label="${nCanc} cancelled">${nCanc}</b>` : ''}</span></summary>` +
           (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
             return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${x.dir === 'arr' ? '🛬' : '🛫'}</span>` +
               `<span class="flr-f">${esc(f.n)}${f.ap ? ` · ${x.dir === 'arr' ? 'from' : 'to'} ${esc(f.ap)}` : ''}${f.term ? ` <em>T${esc(f.term)}</em>` : ''}</span><i class="fls ${s2.k}">${s2.t}</i></div>`; }).join('')
             : '<div class="flr none">No passenger flights this hour</div>') + `</details>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · 🛬 arrivals 🛫 departures · <b class="flc late">delayed</b> <b class="flc canc">cancelled</b> · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · 🛬 arrivals 🛫 departures · <b class="flc late">delayed</b> <b class="flc canc">cancelled</b> · boxes coloured by airport pick-ups: <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
