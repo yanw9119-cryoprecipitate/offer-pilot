@@ -755,6 +755,14 @@
     .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
     .fuel-pop .nav-row { gap: 8px; }
     .zone-tag.tap { cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+    .log-link { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: var(--text); margin: 6px 0 12px;
+      background: var(--card); border: var(--bw) solid var(--card-border); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); }
+    .log-link .ll-ic { font-size: 1.4rem; } .log-link .ll-t { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+    .log-link .ll-t b { font-size: 1rem; } .log-link .ll-t small { color: var(--muted); font-size: .76rem; }
+    .log-link .ll-go { font-size: 1.6rem; color: var(--muted); line-height: 1; }
+    .log-head { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; }
+    .log-head b { font-size: 1.15rem; }
+    .log-back { border: none; background: var(--card); color: var(--accent); font: inherit; font-weight: 800; font-size: .85rem; border-radius: 999px; padding: 8px 12px; }
     .zone-tag.airport { border-color: #0284c7; background: color-mix(in srgb, #e0f2fe 85%, var(--glass-strong)); color: #075985; }
     .zone-tag.airport span { color: #0369a1; }
     .ap-pk { margin-top: 6px; font-size: .74rem; line-height: 1.3; }
@@ -1468,6 +1476,14 @@
       <div class="section-title">Best times to drive</div>
       <div class="rank" id="bestDrive"></div>
       <div class="autoread-hint" style="margin-bottom:8px;">Ranked by Uber demand (60%), your offers' $/hr (25%) and surges you've seen (15%).</div>
+      <button type="button" class="log-link" onclick="showTab('log')">
+        <span class="ll-ic">📊</span><span class="ll-t"><b>Offer log</b><small id="logLinkSub">Your offers, $/hr by day &amp; time, recent offers</small></span><span class="ll-go">›</span>
+      </button>
+    </div>
+
+    <!-- ================= OFFER LOG (its own page, opened from Plan a Shift) ================= -->
+    <div id="view-log" style="display:none;">
+      <div class="log-head"><button type="button" class="log-back" onclick="showTab('insights')" aria-label="Back to Plan a Shift">‹ Plan a Shift</button><b>📊 Offer log</b></div>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Offers Logged</div>
@@ -1507,11 +1523,11 @@
 
       <div class="btn-row">
         <button class="sec-btn" onclick="exportCSV()">⬇ Export offers</button>
-        <button class="sec-btn danger" onclick="clearLog()">🗑 Clear offers</button>
+        <button class="sec-btn danger" onclick="clearLog()">🚮 Clear offers</button>
       </div>
       <div class="btn-row">
         <button class="sec-btn" onclick="exportSnapsCSV()">⬇ Export snapshots</button>
-        <button class="sec-btn danger" onclick="clearSnaps()">🗑 Clear snapshots</button>
+        <button class="sec-btn danger" onclick="clearSnaps()">🚮 Clear snapshots</button>
       </div>
     </div>
 
@@ -4285,6 +4301,7 @@
 
       document.getElementById('insCount').textContent = log.length + (all.took ? ` (${all.took} ✓)` : '');
       document.getElementById('insAvg').textContent = log.length ? `$${all.gph.toFixed(0)}/hr` : '—';
+      { const ls = document.getElementById('logLinkSub'); if (ls) ls.textContent = log.length ? `${log.length} offer${log.length === 1 ? '' : 's'} · avg $${all.gph.toFixed(0)}/hr · $/hr by day & time, recent offers` : 'No offers logged yet · $/hr by day & time, recent offers'; }
 
       // Best day / best time (need 3+ offers)
       let bestDay = null, bestTime = null;
@@ -5807,7 +5824,7 @@
         ['⭐ Spots · 🏟 Events', 'Your best pickup suburbs, and events that raise demand (add your own).'],
         ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
     };
-    function currentTab() { return ['offer', 'drive', 'trends', 'insights'].find(t => document.getElementById('view-' + t).style.display !== 'none') || 'offer'; }
+    function currentTab() { const t = ['offer', 'drive', 'trends', 'insights', 'log'].find(t => document.getElementById('view-' + t).style.display !== 'none') || 'offer'; return t === 'log' ? 'insights' : t; }
     function togglePageHelp() {
       const el = document.getElementById('barHelp'), tab = currentTab();
       if (!el.hidden && el.dataset.page === tab) { hideBarHelp(); return; }
@@ -6668,11 +6685,12 @@
     }
 
     function showTab(tab) {
-      ['drive', 'offer', 'insights', 'trends'].forEach(t => {
+      ['drive', 'offer', 'insights', 'trends', 'log'].forEach(t => {
         document.getElementById('view-' + t).style.display = tab === t ? '' : 'none';
-        document.getElementById('tab-' + t).classList.toggle('active', tab === t);
+        const tb = document.getElementById('tab-' + t);
+        if (tb) tb.classList.toggle('active', tab === t || (t === 'insights' && tab === 'log'));   // the log page belongs to Plan a Shift
       });
-      if (tab === 'insights' || tab === 'trends') renderInsights();
+      if (tab === 'insights' || tab === 'trends' || tab === 'log') renderInsights();
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else if (tab === 'offer') startTracking();          // offers remember where you were
       else { stopTracking(); refreshZoneFix(); } // no continuous GPS here, just a quick position check
@@ -6681,7 +6699,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.38.1';
+    const APP_VERSION = '1.39.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
