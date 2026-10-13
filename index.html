@@ -609,7 +609,7 @@
     .rs-cal .cal-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: .64rem; color: var(--muted); }
     .rs-cal .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
     .rs-cal .cal-key i.yes { background: color-mix(in srgb, var(--green) 40%, var(--card-2)); } .rs-cal .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 35%, var(--card-2)); }
-    .rs-pop-sec { padding: 8px 12px 2px; font-weight: 800; font-size: .78rem; color: var(--muted); }
+    .rs-pop-sec { padding: 10px 12px 2px; font-weight: 800; font-size: .78rem; color: var(--muted); } .rs-pop-sec .h-ic { color: var(--accent); }
     .rs-pop-row { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-top: 1px dashed var(--line); }
     .rs-pop-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: .86rem; } .rs-pop-row span { color: var(--muted); font-size: .74rem; }
     .rs-pop-row.mine { background: color-mix(in srgb, var(--accent) 8%, transparent); } .rs-pop-row .rs-btn { padding: 6px 10px; font-size: .76rem; }
@@ -5076,6 +5076,29 @@
     }
     // ---- Roster calendar: 4 weeks from this Monday. Days are coloured by demand in your home area; rostered days
     // show the shift time. Tap a day: a pop-up with that day's shifts and Pilot's suggested shifts to take or adjust.
+    // Suggested shifts on a day, only in the zones given (best first, no overlaps)
+    function zoneDaySugs(base, zones, max = 2) {
+      const now = Date.now(), cands = [];
+      for (let h = 5; h <= 23; h++) {
+        const t = new Date(base + h * 3600000); if (t.getTime() < now) continue;
+        for (const z of zones) {
+          const v0 = demandAdj(z, t); if (v0 === null || v0 < GOOD) continue;
+          const sug = suggestShift(t, z); if (sug.len < 4) continue;
+          const len = Math.min(sug.len, MAX_SLOTS), vals = Array.from({ length: len }, (_, i) => slotVal(z, new Date(t.getTime() + i * SLOT_MS)) ?? 0);
+          const avg = vals.reduce((a, c) => a + c, 0) / len;
+          cands.push({ s: t.getTime(), e: t.getTime() + len * SLOT_MS, z, avg, home: z === homeZone(), score: avg * Math.min(len, 12) });
+        }
+      }
+      const out = [];
+      cands.sort((a, b) => b.score - a.score).forEach(c => { if (out.length < max && !out.some(o => o.s < c.e && o.e > c.s)) out.push(c); });
+      return out.sort((a, b) => a.s - b.s);
+    }
+    // Airport runs on a day as shifts (the busy stretches from the airport outlook)
+    function airportDaySugs(base) {
+      const now = Date.now(), hOff = h => (h < 4 ? h + 24 : h);
+      return airportDay(new Date(base), allEvents()).runs.map(r => ({ s: base + hOff(r.s) * 3600000, e: base + (hOff(r.e) + 1) * 3600000, dir: r.to > r.from ? 'out' : 'in', z: 'Melbourne Airport' }))
+        .filter(x => x.e > now).slice(0, 3);
+    }
     function daySuggestions(base, max = 3) {
       const now = Date.now(), cands = [];
       for (let h = 5; h <= 23; h++) {
@@ -5115,18 +5138,31 @@
     function rosterDayPop(base, cell) {
       if (rsCalSel === base && document.getElementById('rsPop')) { closeRsPop(); return; }
       closeRsPop(); rsCalSel = base; cell.classList.add('sel');
-      const d = new Date(base), r = loadRoster().filter(x => x.s >= base && x.s < base + 86400000), sugs = daySuggestions(base);
+      const d = new Date(base), r = loadRoster().filter(x => x.s >= base && x.s < base + 86400000);
       const lbl = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
       const qs = s => `'${esc(s).replace(/'/g, '&#39;')}'`;
       let h = `<div class="flp-h"><b>${lbl}</b></div>`;
       if (r.length) h += `<div class="rs-pop-sec">Your shift${r.length > 1 ? 's' : ''}</div>` + r.map(x => `<div class="rs-pop-row mine"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${x.z ? esc(x.z) + ' · ' : ''}${shiftLen(x)}</span></div>` +
         `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterOpen('${x.id}')">Change</button></div>`).join('');
-      h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-spark"/></svg>Pilot suggests</div>` + (sugs.length ? sugs.map(x => {
+      // a suggestion row with Take (or "overlaps") and Adjust
+      const sugRow = (x, sub) => {
         const clash = r.some(y => y.s < x.e && y.e > x.s);
-        return `<div class="rs-pop-row"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${x.home ? '🏠 ' : ''}${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}</span></div>` +
+        return `<div class="rs-pop-row"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${sub}</span></div>` +
           (clash ? '<i class="rs-clash">overlaps</i>' : `<button type="button" class="rs-btn go" onclick="rosterPick(${x.s}, ${x.e}, ${qs(x.z)}); closeRsPop(); renderRoster()">Take</button>`) +
-          `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`; }).join('')
-        : `<div class="rs-pop-row"><span class="rs-none">No busy stretch found${Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)'}.</span></div>`);
+          `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`;
+      };
+      const none = t => `<div class="rs-pop-row"><span class="rs-none">${t}</span></div>`;
+      const here = myZone() || homeZone(), mine = zoneDaySugs(base, [here], 2);
+      h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-pin"/></svg>Where you are · ${esc(myZone() ? hereLabel(here) : here + ' (home)')}</div>` +
+        (mine.length ? mine.map(x => sugRow(x, `${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}`)).join('') : none('No busy stretch here that day.'));
+      const ap = airportDaySugs(base);
+      h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-plane"/></svg>Airport runs</div>` +
+        (ap.length ? ap.map(x => sugRow(x, `${dirIcon(x.dir)} ${x.dir === 'in' ? 'airport → city' : 'city → airport'} · ${shiftLen(x)}`)).join('') : none('No busy airport times that day.'));
+      const rec = Object.keys(UBER_ZONE_SHAPES).filter(z => z !== here).map(z => zoneDaySugs(base, [z], 1)[0]).filter(Boolean)   // best stretch per area, top 3 areas
+        .sort((x, y) => y.score - x.score).slice(0, 3).sort((x, y) => x.s - y.s);
+      h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-star"/></svg>Recommended areas</div>` +
+        (rec.length ? rec.map(x => sugRow(x, `${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}`)).join('')
+          : none(`No other busy areas that day${Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)'}.`));
       h += `<div class="rs-pop-foot"><button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${base + 17 * 3600000}, ${base + 21 * 3600000})">✍️ Plan my own for this day</button></div>`;
       const p = document.createElement('div'); p.id = 'rsPop'; p.className = 'fl-pop'; p.innerHTML = h; document.body.appendChild(p);
       const rc = cell.getBoundingClientRect(), vh = innerHeight, below = vh - 92 - rc.bottom - 8, above = rc.top - 70 - 8, useBelow = below >= 240 || below >= above;
@@ -7760,7 +7796,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.68.0';
+    const APP_VERSION = '1.69.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
