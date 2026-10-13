@@ -6962,7 +6962,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.56.0';
+    const APP_VERSION = '1.57.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7350,16 +7350,20 @@
       const base = 'Free key from rapidapi.com (subscribe to AeroDataBox, Basic plan, then copy the X-RapidAPI-Key). Adds real Melbourne Airport arrivals and departures; the key stays on this phone.';
       const c = flights.MEL, used = flCalls();
       n.textContent = !lsGet('cfgFlightKey') ? base : c && c.err ? `⚠️ ${c.err}` :
-        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} of ${flCap()} calls used this month` +
-          (flBudgetOk() ? ' · schedules kept 48 hours ahead; hourly updates while you use the app' : ' · automatic checks paused to save calls (Refresh still works)') :
+        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${DAYS[dayIdx(new Date(c.to))]} ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} of ${flCap()} calls used this month` +
+          (() => { const w = flWeekStatus(); return w.have < w.of ? ` · week ahead: ${w.have} of ${w.of} half-days loaded, catching up every 6 hours` : ' · full week ahead loaded, topped up twice a day'; })() +
+          (flBudgetOk() ? ' · hourly updates while you use the app' : ' · hourly updates paused to save calls (Refresh still works)') :
         'Key saved. Flights load when you open the airport on the map or Plan a Shift.';
     }
-    // ---- Flight schedule stock: 12-hour blocks (midnight–noon, noon–midnight) kept for the next 48 hours ----
+    // ---- Flight schedule stock: 12-hour blocks (midnight–noon, noon–midnight) kept for the next 7 days ----
     // One call fetches one block. The free Basic plan is 400 units a month and each call costs 2, so about 200 calls.
-    //  1. Missing blocks are fetched first, nearest first, one at a time, a few minutes apart, while the app is open.
-    //  2. While you're using the app (on screen and touched in the last 30 minutes), the block you're in is refreshed hourly.
-    //  3. Blocks further ahead are refreshed every 12 hours. Everything stays within the monthly allowance.
-    const FL_BLOCK = 12 * 3600000, FL_AHEAD = 4;                // 4 blocks = now to about 48 hours ahead
+    //  1. The block you're in and the next one are fetched straight away if missing.
+    //  2. Catching up (the week isn't full yet): every 6 hours, a round fetches up to 4 missing blocks, nearest first.
+    //     Once the week is full, a round every 12 hours adds the new block at the end of the week (about 2 calls a day)
+    //     and refreshes tomorrow's block once, for changes.
+    //  3. While you're using the app (on screen, touched in the last 30 minutes) the block you're in is refreshed hourly,
+    //     as far as the monthly allowance allows.
+    const FL_BLOCK = 12 * 3600000, FL_AHEAD = 14;               // 14 blocks = the next 7 days
     const flBlocks = {};                                          // code → { [blockStart]: { at, arr, dep } }
     const flErrs = {};
     const blockStart = t => { const d = new Date(t); d.setHours(d.getHours() < 12 ? 0 : 12, 0, 0, 0); return d.getTime(); };
@@ -7441,20 +7445,39 @@
       const share = flCap() * 0.9 * (d.getDate() - 1 + (d.getHours() + 1) / 24) / days;   // what may be used by now
       return flCalls() < Math.min(share + 6, flCap() * 0.9);                            // +6 lets the first fill happen
     }
-    // Every few minutes while the app is on screen: fill missing blocks first (nearest first, one per check),
-    // then the hourly refresh of the current block (only while in use), then 12-hourly refreshes further ahead
-    function flAutoCheck() {
-      if (document.hidden || !lsGet('cfgFlightKey') || flLoading.MEL) return;
+    // Runs every few minutes while the app is on screen
+    const flHardOk = () => flCalls() < flCap() * 0.95;           // rounds may use the allowance up to 95%
+    let flRoundBusy = false;
+    async function flAutoCheck() {
+      if (document.hidden || !lsGet('cfgFlightKey') || flLoading.MEL || flRoundBusy) return;
       if (flErrs.MEL && Date.now() - (flErrAt.MEL || 0) < 10 * 60000) return;
-      if (!flBudgetOk()) return;
       const B = flBlocks.MEL || {}, now = Date.now(), starts = [blockStart(now)];
       for (let k = 1; k < FL_AHEAD; k++) starts.push(nextBlock(starts[k - 1]));
-      const missing = starts.find(s => !B[s]);
-      if (missing) { fetchBlock('MEL', missing); return; }
+      // 1. now and next: needed straight away
+      const urgent = starts.slice(0, 2).find(s => !B[s]);
+      if (urgent && flHardOk()) { await fetchBlock('MEL', urgent); return; }
+      // 2. rounds: every 6 hours while catching up, every 12 hours once the week is full
+      const missing = starts.filter(s => !B[s]), last = +lsGet('flRoundAt') || 0;
+      const gap = missing.length > 1 ? 6 * 3600000 : 12 * 3600000;
+      if (now - last >= gap && flHardOk()) {
+        flRoundBusy = true;
+        try {
+          const todo = missing.slice(0, 4);
+          if (!missing.length && B[starts[2]] && now - B[starts[2]].at >= 12 * 3600000) todo.push(starts[2]);   // tomorrow, re-checked once
+          for (const s of todo) { if (!flHardOk() || !(await fetchBlock('MEL', s))) break; await new Promise(r => setTimeout(r, 1500)); }
+          lsSet('flRoundAt', String(Date.now()));
+        } finally { flRoundBusy = false; }
+        return;
+      }
+      // 3. hourly live update of the block you're in, only while you're using the app
       const cur = B[starts[0]];
-      if (flActive() && now - cur.at >= FL_TTL) { fetchBlock('MEL', starts[0]); return; }
-      const stale = starts.slice(1).filter(s => now - B[s].at >= 12 * 3600000).sort((a, b) => B[a].at - B[b].at)[0];
-      if (stale) fetchBlock('MEL', stale);
+      if (cur && flActive() && now - cur.at >= FL_TTL && flBudgetOk()) fetchBlock('MEL', starts[0]);
+    }
+    // How full the week is, for the Settings note
+    function flWeekStatus() {
+      const B = flBlocks.MEL || {}, now = Date.now(); let s = blockStart(now), n = 0;
+      for (let k = 0; k < FL_AHEAD; k++) { if (B[s]) n++; s = nextBlock(s); }
+      return { have: n, of: FL_AHEAD };
     }
     setInterval(flAutoCheck, 3 * 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(flAutoCheck, 1500); });
@@ -7501,8 +7524,8 @@
     function apTierAt(code, dir, t) {
       const c = flights[code], cur = apIdx(code, dir, t);
       if (cur === null || !c) return null;
-      const h0 = Math.floor(c.from / 3600000) * 3600000, peaks = [];
-      for (let x = h0; x < c.to; x += 3600000) { const v = apIdx(code, dir, x); if (v !== null) peaks.push(v); }
+      const h0 = Math.floor(Math.max(c.from, t - 6 * 3600000) / 3600000) * 3600000, h1 = Math.min(c.to, t + 12 * 3600000), peaks = [];
+      for (let x = h0; x < h1; x += 3600000) { const v = apIdx(code, dir, x); if (v !== null) peaks.push(v); }
       const peak = Math.max(cur, 1, ...peaks);
       const k = cur >= Math.max(0.7 * peak, 12) ? 'high' : cur < Math.max(0.35 * peak, 4) ? 'low' : 'med';
       return { ...AP_TIERS[k], k, dir, n: cur };
