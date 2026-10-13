@@ -567,6 +567,32 @@
     .tag { font-size: .62rem; font-weight: 800; letter-spacing: .5px; padding: 3px 7px; border-radius: 999px; flex: none; }
     .tag-live { background: #dc2626; color: #fff; }
     .tag-pred { background: #7c3aed; color: #fff; }
+    .tag-zone { background: #f97316; color: #fff; }
+    .busy-panel { position: absolute; left: 8px; top: 48px; z-index: 650; width: min(168px, 52%); max-height: calc(100% - 100px); overflow-y: auto;
+      background: var(--glass-strong); border: var(--bw) solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow-strong); padding: 6px 6px 8px; }
+    .busy-panel[hidden] { display: none; }
+    .bp-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 2px 2px 6px; font-size: .82rem; }
+    .bp-head .x-btn { width: 28px; height: 28px; font-size: .85rem; }
+    .bp-sec { font-size: .6rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 6px 6px 2px; }
+    .bp-row { width: 100%; display: flex; align-items: center; gap: 7px; background: none; border: none; color: var(--text); font: inherit; text-align: left;
+      padding: 7px 6px; border-radius: 10px; font-size: .76rem; font-weight: 700; }
+    .bp-row.sel { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+    .bp-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .bp-name { flex: 1; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2; }
+    .bp-min { flex: none; font-size: .7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .bp-detail { padding: 2px 4px 8px 20px; font-size: .68rem; }
+    .bp-lvs { display: flex; flex-wrap: wrap; gap: 3px 8px; }
+    .bp-lv { font-weight: 800; } .bp-lv.yes { color: var(--green); } .bp-lv.maybe { color: var(--amber); } .bp-lv.no { color: var(--red); }
+    .bp-why { color: var(--muted); margin-top: 3px; line-height: 1.3; }
+    .bp-drive { margin-top: 4px; }
+    .bp-nav { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+    .bp-nav { flex-direction: column; }
+    .bp-nav .nav-btn { padding: 6px 8px; font-size: .66rem; }
+    .bp-empty { color: var(--muted); font-size: .74rem; padding: 6px; }
+    .tag-event { background: #7c3aed; color: #fff; }
+    .sc-sec { font-size: .7rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin: 12px 0 2px; }
+    .sc-iname small { display: block; font-weight: 600; font-size: .7rem; color: var(--muted); }
+    .ev-tip { font-weight: 800; font-size: .72rem; }
     .sc-drive { margin-top: 10px; font-size: .95rem; }
     .sc-drive span { display: block; color: var(--muted); font-size: .7rem; margin-top: 2px; }
     .sc-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-variant-numeric: tabular-nums; }
@@ -953,6 +979,7 @@
         <button type="button" class="loc-pill wait" id="locPill" onclick="locPillTap()">📍 Locating…</button>
         <div class="map-note" id="mapNote"></div>
         <div class="surge-card" id="surgeCard" hidden></div>
+        <div class="busy-panel" id="busyPanel" hidden></div>
       </div>
 
       <div class="drive-bottom offer-panel">
@@ -4555,7 +4582,7 @@
       }
       if (!r) { // offline fallback: straight line × 1.35, ~28 km/h city average
         const km = distM(from.lat, from.lng, to.lat, to.lng) / 1000 * 1.35;
-        r = { min: km / 28 * 60 * trafficFactor(), km, coords: [[from.lat, from.lng], [to.lat, to.lng]], source: 'rough estimate (offline)' };
+        r = { min: estMin(km), km, coords: [[from.lat, from.lng], [to.lat, to.lng]], source: 'rough estimate (offline)' };
       }
       routeCache.set(key, { at: Date.now(), r });
       return r;
@@ -4605,12 +4632,14 @@
     }
 
     // Instant estimate from cache or straight-line; real routes are fetched in the background
+    // Rough drive time when no road route yet: slow in town, faster on longer (freeway) trips
+    function estMin(km) { const kmh = km < 5 ? 25 : Math.min(60, 25 + km * 0.9); return km / kmh * 60 * trafficFactor(); }
     function routeNow(from, to) {
       const key = [from.lat, from.lng, to.lat, to.lng].map(v => v.toFixed(3)).join(',') + '|' + (chaseCfg.tomtom ? 'tt' : 'osrm');
       const hit = routeCache.get(key);
       if (hit && Date.now() - hit.at < 3 * 60000) return { r: hit.r, real: true };
       const km = distM(from.lat, from.lng, to.lat, to.lng) / 1000 * 1.35;
-      return { r: { min: km / 28 * 60 * trafficFactor(), km, coords: [[from.lat, from.lng], [to.lat, to.lng]], source: 'estimate' }, real: false };
+      return { r: { min: estMin(km), km, coords: [[from.lat, from.lng], [to.lat, to.lng]], source: 'estimate' }, real: false };
     }
     let routeFetching = false;
     async function fetchMissingRoutes(list) {
@@ -4704,33 +4733,119 @@
       map.fitBounds(L.latLngBounds(route.coords).pad(0.25), { paddingTopLeft: [0, 150], paddingBottomRight: [0, 220], maxZoom: 15 });
     }
 
-    // List of surges near you, ranked by drive time, each with a verdict
-    async function openSurgeList() {
-      const card = document.getElementById('surgeCard');
-      openSurgeKey = '__list';
+    // ---- What's busy near you: surges, busy Uber zones and events (the 🔥 button) ----
+    function evPos(e) { const v = VENUES[e.venue]; return v ? { lat: v.lat, lng: v.lng } : (e.lat != null ? { lat: e.lat, lng: e.lng } : null); }
+    function busyZones(now) {
+      const here = myZone(), from = myPos();
+      return Object.entries(UBER_ZONE_SHAPES).map(([z, ring]) => ({ z, ring, v: demandAdj(z, now) }))
+        .filter(x => x.v !== null && x.v >= OK)
+        .map(x => ({ ...x, here: x.z === here, to: x.z === here ? { lat: from.lat, lng: from.lng } : nearestOnRing(from.lat, from.lng, x.ring) }))
+        .sort((a, b) => b.v - a.v || distM(from.lat, from.lng, a.to.lat, a.to.lng) - distM(from.lat, from.lng, b.to.lat, b.to.lng));
+    }
+    function nearEvents() {
+      const t = Date.now();
+      return allEvents().filter(e => e.e > t - 1800000 && e.s < t + 3 * 3600000 && evPos(e)).sort((a, b) => a.s - b.s);
+    }
+    function busyCount() {
+      const now = new Date(); now.setMinutes(0, 0, 0);
+      return buildSurges().length + busyZones(now).length + nearEvents().length;
+    }
+    const tmFmt = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+    // The 🔥 button opens a small list at the side of the map, so the map stays visible.
+    // Tapping a zone or event shows it on the map (outline or pin, plus the drive); tapping a surge opens its card.
+    let busySel = null;
+    function closeBusy() {
+      document.getElementById('busyPanel').hidden = true;
+      busySel = null;
       if (routeLayer) routeLayer.clearLayers();
-      const from = myPos();
-      const list = buildSurges()
-        .map(sg => ({ sg, d: distM(from.lat, from.lng, sg.lat, sg.lng) }))
-        .sort((a, b) => a.d - b.d).slice(0, 6);
-      card.hidden = false;
-      document.querySelector('.map-wrap').classList.add('card-open');
-      const head = `<div class="sc-head"><b class="sc-name">🔥 Surges near you</b>
-        <button class="x-btn" onclick="closeSurgeCard()" aria-label="Close">✕</button></div>`;
-      if (!list.length) {
-        card.innerHTML = head + `<div class="sc-sub">No live surges in the last ${LIVE_WINDOW_MIN} min and no predictions for this time yet. Snapshots build both.</div>`;
-        return;
+    }
+    async function openSurgeList() {
+      const panel = document.getElementById('busyPanel');
+      if (!panel.hidden) { closeBusy(); return; }
+      closeSurgeCard();
+      panel.hidden = false;
+      busySel = null;
+      renderBusy();
+    }
+    function renderBusy() {
+      const panel = document.getElementById('busyPanel');
+      if (panel.hidden) return;
+      const from = myPos(), now = new Date(); now.setMinutes(0, 0, 0);
+      const surges = buildSurges().map(sg => ({ sg, d: distM(from.lat, from.lng, sg.lat, sg.lng) })).sort((a, b) => a.d - b.d).slice(0, 5);
+      const zones = busyZones(now), events = nearEvents();
+      const mins = (to, key) => { const q = routeNow(from, to); return `<span class="bp-min" data-r="${esc(key)}">${q.real && !/rough/.test(q.r.source) ? '' : '~'}${Math.max(1, Math.round(q.r.min))}m</span>`; };
+      const row = (key, dot, name, right, onclick) =>
+        `<button type="button" class="bp-row${busySel === key ? ' sel' : ''}" onclick="${onclick}"><i class="bp-dot" style="background:${dot}"></i><span class="bp-name">${name}</span>${right}</button>` +
+        (busySel === key ? `<div class="bp-detail" id="bpDetail"></div>` : '');
+      let html = `<div class="bp-head"><b>🔥 Busy near you</b><button type="button" class="x-btn" onclick="closeBusy()" aria-label="Close">✕</button></div>`;
+      if (surges.length) html += `<div class="bp-sec">Surges</div>` + surges.map(({ sg }) =>
+        row('s:' + sg.key, sg.kind === 'live' ? '#dc2626' : '#7c3aed', esc(sg.name), mins(sg, 's:' + sg.key), `closeBusy();openSurgeCard('${esc(sg.key)}')`)).join('');
+      if (zones.length) html += `<div class="bp-sec">Busy zones</div>` + zones.map(x => {
+        const col = x.v >= GOOD ? '#16a34a' : '#eab308';
+        return row('zone:' + x.z, col, esc(x.z), x.here ? '<span class="bp-min">here</span>' : mins(x.to, 'zone:' + x.z), `selectBusyZone(${esc(JSON.stringify(x.z))})`);
+      }).join('');
+      if (events.length) html += `<div class="bp-sec">Events</div>` + events.map(e =>
+        row('event:' + e.name + e.start, e.zone === AIRPORT_ZONE ? '#0ea5e9' : '#7c3aed', `${e.zone === AIRPORT_ZONE ? '✈️ ' : ''}${esc(e.name)}`,
+          mins(evPos(e), 'event:' + e.name + e.start), `selectBusyEvent(${esc(JSON.stringify(e.name))}, '${e.start}')`)).join('');
+      if (!surges.length && !zones.length && !events.length) html += `<div class="bp-empty">Nothing busy right now.</div>`;
+      panel.innerHTML = html;
+      if (busySel) fillBusyDetail();
+      refineBusyTimes(from, zones, events);
+    }
+    let busyRefining = false;
+    async function refineBusyTimes(from, zones, events) {
+      if (busyRefining) return;
+      busyRefining = true;
+      try {
+        const jobs = zones.filter(x => !x.here).map(x => ['zone:' + x.z, x.to]).concat(events.map(e => ['event:' + e.name + e.start, evPos(e)]));
+        for (const [key, to] of jobs) {
+          if (document.getElementById('busyPanel').hidden) return;
+          const r = await getRoute(from, to), el = document.querySelector(`#busyPanel [data-r="${CSS.escape(key)}"]`);
+          if (el) el.textContent = `${/rough/.test(r.source) ? '~' : ''}${Math.max(1, Math.round(r.min))}m`;
+        }
+      } finally { busyRefining = false; }
+    }
+    // Fit the map to what's selected, keeping it clear of the side list
+    function fitBusy(points) {
+      const panel = document.getElementById('busyPanel');
+      setFollow(false);
+      map.fitBounds(L.latLngBounds(points).pad(0.04), { paddingTopLeft: [panel.offsetWidth + 10, 50], paddingBottomRight: [8, 10], maxZoom: 14 });
+    }
+    function selectBusyZone(z) { busySel = 'zone:' + z; renderBusy(); }
+    function selectBusyEvent(name, start) { busySel = 'event:' + name + start; renderBusy(); }
+    async function fillBusyDetail() {
+      const key = busySel, box = document.getElementById('bpDetail');
+      if (!box || !routeLayer) return;
+      routeLayer.clearLayers();
+      const from = myPos(), now = new Date(); now.setMinutes(0, 0, 0);
+      let to = null, color = '#f97316', html = '';
+      if (key.startsWith('zone:')) {
+        const z = key.slice(5), ring = UBER_ZONE_SHAPES[z], here = myZone() === z;
+        const lv = [0, 1, 2].map(k => { const dt = new Date(now.getTime() + k * 3600000), hv = demandAdj(z, dt), c = VERDICT(hv).c;
+          return `<span class="bp-lv ${c}">${fmtHour(dt.getHours())} ${demandName(hv).toLowerCase()}</span>`; }).join('');
+        const why = boostAt(z, now).why;
+        html = `<div class="bp-lvs">${lv}</div>${why.length ? `<div class="bp-why">${esc(why.join(' · '))}</div>` : ''}`;
+        L.polygon(ring, { color, weight: 4, fillColor: color, fillOpacity: 0.12, interactive: false }).addTo(routeLayer);
+        if (!here) to = nearestOnRing(from.lat, from.lng, ring);
+        fitBusy(ring.concat([[from.lat, from.lng]]));
+        if (here) { box.innerHTML = html + `<div class="bp-drive">You’re in this zone</div>`; return; }
+      } else {
+        const e = allEvents().find(x => 'event:' + x.name + x.start === key);
+        if (!e) return;
+        to = evPos(e); color = '#7c3aed';
+        html = `<div class="bp-why">${esc(e.place)} · ${tmFmt(e.s)}–${tmFmt(e.e)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}</div>`;
+        L.circleMarker([to.lat, to.lng], { radius: 10, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }).addTo(routeLayer)
+          .bindTooltip(esc(e.place), { permanent: true, direction: 'top', offset: [0, -10], className: 'ev-tip' });
+        fitBusy([[from.lat, from.lng], [to.lat, to.lng]]);
       }
-      card.innerHTML = head + '<div class="sc-list" id="scList">' + list.map(({ sg }) =>
-        `<button class="sc-item" onclick="openSurgeCard('${esc(sg.key)}')">${tagHTML(sg)}<span class="sc-iname">${esc(sg.name)}</span>
-          <span class="sc-ival" data-k="${esc(sg.key)}">…</span></button>`).join('') + '</div>';
-      for (const { sg } of list) {               // one route at a time, kind to the free router
-        if (openSurgeKey !== '__list') return;
-        const route = await getRoute(from, sg);
-        const w = worthIt(sg, route);
-        const el = card.querySelector(`.sc-ival[data-k="${CSS.escape(sg.key)}"]`);
-        if (el) el.innerHTML = `${Math.max(1, Math.round(route.min))} min <i class="pill ${w.cls}">${w.verdict}</i>`;
-      }
+      box.innerHTML = html + `<div class="bp-drive">Working out the drive…</div>`;
+      const r = await getRoute(from, to);
+      if (busySel !== key) return;
+      L.polyline(r.coords, { color: '#0b0f19', weight: 8, opacity: 0.4 }).addTo(routeLayer);
+      L.polyline(r.coords, { color, weight: 5, opacity: 0.95 }).addTo(routeLayer);
+      const b2 = document.getElementById('bpDetail');
+      if (b2) b2.innerHTML = html + `<div class="bp-drive"><b>${Math.max(1, Math.round(r.min))} min</b> · ${r.km.toFixed(1)} km</div><div class="bp-nav">${navLinks(to.lat, to.lng)}</div>`;
     }
 
     const fmtAmt = a => a % 1 ? a.toFixed(2) : a.toFixed(0);
@@ -4944,8 +5059,10 @@
 
       // Status line
       const nLive = surges.filter(s => s.kind === 'live').length, nPred = surges.length - nLive;
-      document.getElementById('chipNear').textContent = surges.length ? `🔥 ${surges.length}` : '🔥 0';
-      document.getElementById('chipNear').setAttribute('aria-label', `Surges near you: ${surges.length}`);
+      const nBusy = busyCount();
+      if (!document.getElementById('busyPanel').hidden && !busyRefining && !busySel) renderBusy();
+      document.getElementById('chipNear').textContent = `🔥 ${nBusy}`;
+      document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
       let msg = '', place = false;
       if (placeSnapId) { msg = '👆 Tap the map where the surge is'; place = true; }
       else if (tilesBlocked) { msg = '⚠️ Street map can’t load here. Open the page in Safari or Chrome with internet on.'; place = true; }
@@ -4954,7 +5071,7 @@
       note.hidden = !msg;
 
       // Keep an open card's numbers current
-      if (openSurgeKey && openSurgeKey !== '__list' && !surges.find(s => s.key === openSurgeKey)) closeSurgeCard();
+      if (openSurgeKey && openSurgeKey !== '__list' && !/^(zone|event):/.test(openSurgeKey) && !surges.find(s => s.key === openSurgeKey)) closeSurgeCard();
     }
 
     function showTab(tab) {
@@ -4969,7 +5086,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.22.6';
+    const APP_VERSION = '1.22.7';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
