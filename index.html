@@ -524,6 +524,22 @@
     .cal-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: .6rem; color: var(--muted); }
     .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
     .cal-key i.yes { background: color-mix(in srgb, var(--green) 45%, var(--card-2)); } .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 40%, var(--card-2)); } .cal-key i.no { background: var(--card-2); border: 1px solid var(--line-strong); }
+    .ac-chips { display: flex; gap: 5px; flex-wrap: wrap; margin: 6px 0 4px; }
+    .ac-chip { border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 6px 9px; font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; }
+    .ac-chip.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .ac-sec { margin: 12px 0 4px; font-weight: 800; font-size: .88rem; }
+    .ac-line { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: .84rem; border-bottom: 1px dashed var(--line); }
+    .ac-line span { color: var(--muted); } .ac-line b { font-variant-numeric: tabular-nums; } .ac-line.tot { border-bottom: none; } .ac-line.tot span { color: var(--text); font-weight: 700; }
+    .ac-note { font-size: .7rem; color: var(--muted); margin-top: 4px; line-height: 1.35; }
+    .ac-hrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    .ac-hrs div { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; }
+    .ac-hrs small { font-size: .62rem; color: var(--muted); font-weight: 700; } .ac-hrs b { font-size: .92rem; } .ac-hrs .pos { color: var(--green); } .ac-hrs .neg { color: #ef4444; }
+    .ac-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ac-save { margin-top: 8px; padding: 9px 11px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--card-2)); font-size: .85rem; }
+    .ac-set { margin-top: 10px; font-size: .8rem; } .ac-set summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+    .ac-set label { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
+    .ac-set input { width: 90px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; text-align: right; }
+    .ac-set .rs-btn { margin-top: 8px; }
     .cal-add { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
     .cal-add .rs-main { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 800; }
     .rs-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
@@ -535,6 +551,8 @@
     .rs-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
     .rs-btn { border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
     .rs-btn.on { border-color: #7c3aed; color: #7c3aed; } .rs-btn.go { background: var(--green); border-color: var(--green); color: #fff; }
+    .rs-home { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .78rem; font-weight: 700; }
+    .rs-home select { flex: 1; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; }
     .rs-sub { margin-top: 12px; font-weight: 800; font-size: .85rem; } .rs-sub small { display: block; font-weight: 600; color: var(--muted); font-size: .7rem; }
     .rs-sug { display: flex; align-items: center; gap: 6px; margin-top: 6px; padding: 8px 10px; border-radius: 12px; border: 1.5px dashed #a78bfa;
       background: color-mix(in srgb, #7c3aed 6%, var(--card-2)); }
@@ -1444,7 +1462,7 @@
         <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
         <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4 16l5-5.5 4 3.5 6.5-7"/><path d="M15 7h4.5v4.5"/></symbol>
         <symbol id="i-plan" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.2"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/><path d="M6.6 13.6l1.2 1.2 2-2.2M12 14h5.4M6.6 17.6l1.2 1.2 2-2.2M12 18h3.6"/></symbol>
-        <symbol id="i-log" viewBox="0 0 24 24"><rect x="4.5" y="4" width="15" height="17" rx="2.2"/><path d="M9 4V2.8h6V4M8.3 9.5h7.4M8.3 13.2h7.4M8.3 16.9h4.4"/></symbol>
+        <symbol id="i-log" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 7.5h6M9 11h6M9 14.5h3.5"/><path d="M15.6 14.2v3.4M14.4 15c0-.5.5-.9 1.2-.9s1.2.4 1.2.9-.5.8-1.2.8-1.2.4-1.2.9.5.9 1.2.9 1.2-.4 1.2-.9"/></symbol>
         <symbol id="i-pip" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><rect x="12" y="11.5" width="7" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3M7.5 12h9"/></symbol>
         <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9M12 3C9.4 5.6 8.2 8.6 8.2 12s1.2 6.4 3.8 9"/></symbol>
@@ -1458,7 +1476,7 @@
       <button class="tab" id="tab-drive" onclick="showTab('drive')"><svg class="tab-ic"><use href="#i-map"/></svg><span>Map</span></button>
       <button class="tab" id="tab-trends" onclick="showTab('trends')"><svg class="tab-ic"><use href="#i-trend"/></svg><span>Uber Trends</span></button>
       <button class="tab" id="tab-insights" onclick="showTab('insights')"><svg class="tab-ic"><use href="#i-plan"/></svg><span>Plan &amp; Roster</span></button>
-      <button class="tab" id="tab-log" onclick="showTab('log')"><svg class="tab-ic"><use href="#i-log"/></svg><span>Offer Log</span></button>
+      <button class="tab" id="tab-log" onclick="showTab('log')"><svg class="tab-ic"><use href="#i-log"/></svg><span>Offer &amp; Account</span></button>
     </div>
 
     <!-- ================= DRIVE VIEW: live map + offer in one ================= -->
@@ -1645,6 +1663,7 @@
 
     <!-- ================= OFFER LOG (its own page, opened from Plan & Roster) ================= -->
     <div id="view-log" style="display:none;">
+      <div class="demand-card acct-card" id="acctCard"></div>
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-label">Offers Logged</div>
@@ -4405,6 +4424,179 @@
       return { len, stopV: at(len) };
     }
 
+    // ================= 💼 ACCOUNT: pay summary, planned vs actual hours, expenses, GST and income tax estimate =================
+    // Estimates only, from what's on this phone. Australian rules: ride-sourcing drivers must be registered for GST from the
+    // first fare; GST payable is 1/11 of the full fares, and GST credits are 1/11 of the business share of costs with GST
+    // (fuel, the Uber service fee, other car costs). Income tax uses the 2026–27 resident rates.
+    const TAX_BRACKETS = [[18200, 0], [45000, 0.15], [135000, 0.30], [190000, 0.37], [Infinity, 0.45]];   // 2026–27 residents
+    function incomeTax(x) {
+      if (!(x > 0)) return 0;
+      let tax = 0, lo = 0;
+      for (const [hi, r] of TAX_BRACKETS) { if (x > lo) tax += (Math.min(x, hi) - lo) * r; lo = hi; }
+      const lito = x <= 37500 ? 700 : x <= 45000 ? 700 - (x - 37500) * 0.05 : x <= 66667 ? 325 - (x - 45000) * 0.015 : 0;   // low income tax offset
+      return Math.max(0, tax - Math.max(0, lito)) + x * 0.02;      // + 2% Medicare levy (low-income reduction not included)
+    }
+    const acctCfg = () => { try { return Object.assign({ biz: 90, other: 0, feePct: 27 }, JSON.parse(lsGet('acctCfg')) || {}); } catch (e) { return { biz: 90, other: 0, feePct: 27 }; } };
+    const loadStatements = () => { try { return JSON.parse(lsGet('uberStatements')) || []; } catch (e) { return []; } };
+    const loadExpenses = () => { try { return JSON.parse(lsGet('expenses')) || []; } catch (e) { return []; } };
+    let acctPeriod = 'week';
+    function fyStart(d = new Date()) { return new Date(d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1, 6, 1).getTime(); }
+    function periodRange(p) {
+      const d = new Date(); d.setHours(0, 0, 0, 0);
+      const mon = d.getTime() - dayIdx(d) * 86400000;
+      if (p === 'week') return [mon, mon + 7 * 86400000, 'This week'];
+      if (p === 'last') return [mon - 7 * 86400000, mon, 'Last week'];
+      if (p === 'month') return [new Date(d.getFullYear(), d.getMonth(), 1).getTime(), new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(), 'This month'];
+      if (p === 'qtr') { const q = Math.floor(d.getMonth() / 3) * 3; return [new Date(d.getFullYear(), q, 1).getTime(), new Date(d.getFullYear(), q + 3, 1).getTime(), 'This quarter (BAS)']; }
+      const f = fyStart(d); return [f, new Date(new Date(f).getFullYear() + 1, 6, 1).getTime(), `FY ${new Date(f).getFullYear()}–${String(new Date(f).getFullYear() + 1).slice(2)}`];
+    }
+    function acctNumbers(a, b) {
+      const cfg = acctCfg(), biz = cfg.biz / 100;
+      // Pay: Uber weekly statements where entered; otherwise accepted offers as an estimate of gross fares
+      const sts = loadStatements().filter(x => x.t >= a && x.t < b);
+      const stWeeks = new Set(sts.map(x => x.wk));
+      const offers = loadLog().filter(e => e.took && e.t >= a && e.t < b && !stWeeks.has(weekOf(e.t)));
+      const offerGross = offers.reduce((s, e) => s + e.fare, 0) / (1 - cfg.feePct / 100);   // offers show your share; gross it up for the fee
+      const gross = sts.reduce((s, x) => s + (x.gross || 0), 0) + offerGross;
+      const fee = sts.reduce((s, x) => s + (x.fee || 0), 0) + offerGross * cfg.feePct / 100;
+      const tips = sts.reduce((s, x) => s + (x.tips || 0), 0);
+      // Hours: rostered (planned) and worked (shift timer)
+      const planned = loadRoster().filter(x => x.s >= a && x.s < b).reduce((s, x) => s + (x.e - x.s), 0) / 3600000;
+      let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
+      const cur = loadShift(); if (cur && !cur.end) hist = hist.concat([{ start: cur.start, hrs: (Date.now() - cur.start) / 3600000, km: shiftStats(cur).km }]);
+      const worked = hist.filter(h => h.start >= a && h.start < b);
+      const actual = worked.reduce((s, h) => s + (h.hrs || 0), 0), km = worked.reduce((s, h) => s + (h.km || 0), 0);
+      // Expenses: fuel/charging receipts and other costs (all assumed to include GST unless marked otherwise)
+      const fuel = loadFills().filter(f => f.t >= a && f.t < b && f.paid > 0);
+      const fuelPaid = fuel.reduce((s, f) => s + f.paid, 0), fuelGst = fuel.reduce((s, f) => s + (f.gst != null ? f.gst : f.paid / 11), 0);
+      const ex = loadExpenses().filter(x => x.t >= a && x.t < b);
+      const exPaid = ex.reduce((s, x) => s + x.amt, 0), exGst = ex.reduce((s, x) => s + (x.gst ? x.amt / 11 : 0), 0);
+      // GST (BAS): on full fares, less credits on the business share of costs
+      const gstOnFares = gross / 11, gstCredits = fee / 11 + (fuelGst + exGst) * biz, gstNet = gstOnFares - gstCredits;
+      // Profit (ex GST) for income tax
+      const profit = (gross - gstOnFares) - (fee - fee / 11) - ((fuelPaid - fuelGst) + (exPaid - exGst)) * biz + tips;
+      return { gross, fee, tips, payout: gross - fee + tips, offers: offers.length, sts: sts.length, planned, actual, km, shifts: worked.length,
+        fuelPaid, fuelN: fuel.length, exPaid, exN: ex.length, gstOnFares, gstCredits, gstNet, profit, biz: cfg.biz };
+    }
+    const weekOf = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return ymd(new Date(d.getTime() - dayIdx(d) * 86400000)); };
+    const acMoney = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(Math.abs(v) >= 1000 ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    function renderAccount() {
+      const box = document.getElementById('acctCard'); if (!box) return;
+      const [a, b, label] = periodRange(acctPeriod), n = acctNumbers(a, b), cfg = acctCfg();
+      // Income tax for the financial year so far, projected to a full year at the current pace
+      const [fa, fb] = periodRange('fy'), fy = acctNumbers(fa, fb);
+      // the rest of the year is projected at your pace over the last 4 weeks
+      const elapsed = Math.max(7, (Date.now() - fa) / 86400000), recent = acctNumbers(Date.now() - 28 * 86400000, Date.now());
+      const daysLeft = Math.max(0, (fb - Date.now()) / 86400000), yearProfit = fy.profit + recent.profit / 28 * daysLeft;
+      const taxAll = incomeTax(cfg.other + yearProfit), taxOther = incomeTax(cfg.other), taxRide = Math.max(0, taxAll - taxOther);
+      const weeksLeft = Math.max(1, (fb - Date.now()) / (7 * 86400000)), taxSoFar = taxRide * Math.min(1, elapsed / 365);
+      const setAside = taxRide / 52 + Math.max(0, recent.gstNet) / 4;
+      const chip = (p, t) => `<button type="button" class="ac-chip${acctPeriod === p ? ' on' : ''}" onclick="acctPeriod='${p}'; renderAccount()">${t}</button>`;
+      const line = (k, v, cls = '') => `<div class="ac-line ${cls}"><span>${k}</span><b>${v}</b></div>`;
+      const hrDiff = n.actual - n.planned;
+      box.innerHTML = `<div class="demand-title">💼 Account</div>
+        <div class="ac-chips">${chip('week', 'This week')}${chip('last', 'Last week')}${chip('month', 'Month')}${chip('qtr', 'Quarter')}${chip('fy', 'FY')}</div>
+        <div class="ac-sec">💵 Pay · ${label}</div>
+        ${line('Fares (incl. GST)', acMoney(n.gross))}${line('Uber service fee', '−' + acMoney(n.fee))}${n.tips ? line('Tips', acMoney(n.tips)) : ''}
+        ${line('Paid to you', acMoney(n.payout), 'tot')}
+        <div class="ac-note">${n.sts ? `${n.sts} Uber statement${n.sts === 1 ? '' : 's'}` : ''}${n.sts && n.offers ? ' + ' : ''}${n.offers ? `${n.offers} accepted offer${n.offers === 1 ? '' : 's'} (estimate: fee taken as ${cfg.feePct}%)` : ''}${!n.sts && !n.offers ? 'No trips logged in this period.' : ''}</div>
+        <div class="ac-sec">⏱ Hours</div>
+        <div class="ac-hrs"><div><small>Planned</small><b>${(Math.round(n.planned * 10) / 10)} h</b></div><div><small>Worked</small><b>${(Math.round(n.actual * 10) / 10)} h</b></div>
+          <div><small>Difference</small><b class="${hrDiff >= 0 ? 'pos' : 'neg'}">${hrDiff >= 0 ? '+' : '−'}${Math.abs(Math.round(hrDiff * 10) / 10)} h</b></div>
+          <div><small>Per hour</small><b>${n.actual > 0.2 ? acMoney(n.payout / n.actual) : '—'}</b></div></div>
+        <div class="ac-sec">🧾 Costs</div>
+        ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}${line(`Other (${n.exN})`, acMoney(n.exPaid))}
+        <div class="ac-acts"><button type="button" class="rs-btn" onclick="scanReceipt()">📷 Scan fuel receipt</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other cost</button>
+          <button type="button" class="rs-btn" onclick="openStatement()">＋ Uber weekly statement</button></div>
+        <div class="ac-sec">🏛 GST · ${label}</div>
+        ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
+        ${line(n.gstNet >= 0 ? 'GST to pay (BAS)' : 'GST refund (BAS)', acMoney(Math.abs(n.gstNet)), 'tot')}
+        <div class="ac-sec">🧮 Income tax estimate · ${periodRange('fy')[2]}</div>
+        ${line('Ride profit so far (ex GST)', acMoney(fy.profit))}${line('Projected for the full year (at your last 4 weeks’ pace)', acMoney(yearProfit))}
+        ${cfg.other ? line('Other income (wages etc.)', acMoney(cfg.other)) : ''}
+        ${line('Tax + Medicare on ride profit (year)', acMoney(taxRide), 'tot')}${line('Share for the year so far', acMoney(taxSoFar))}
+        <div class="ac-save">Put aside about <b>${acMoney(setAside)}/week</b> for tax and GST.</div>
+        <div class="ac-note">Estimates only, not tax advice: 2026–27 resident rates (0 / 15 / 30 / 37 / 45%), 2% Medicare levy, low income tax offset. Check with a registered tax agent or the ATO.</div>
+        <details class="ac-set"><summary>⚙️ Account settings</summary>
+          <label>Business use of the car (%)<input type="number" id="acBiz" min="0" max="100" value="${cfg.biz}" inputmode="numeric"></label>
+          <label>Other taxable income this FY ($)<input type="number" id="acOther" min="0" step="100" value="${cfg.other || ''}" placeholder="0" inputmode="numeric"></label>
+          <label>Uber service fee (% of fare, for estimates)<input type="number" id="acFee" min="0" max="60" value="${cfg.feePct}" inputmode="numeric"></label>
+          <button type="button" class="rs-btn go" onclick="saveAcctCfg()">Save</button></details>`;
+    }
+    function saveAcctCfg() {
+      const v = id => parseFloat(document.getElementById(id).value);
+      lsSet('acctCfg', JSON.stringify({ biz: Math.min(100, Math.max(0, v('acBiz') || 0)), other: Math.max(0, v('acOther') || 0), feePct: Math.min(60, Math.max(0, isNaN(v('acFee')) ? 27 : v('acFee'))) }));
+      toast('✓ Saved'); renderAccount();
+    }
+    // Small form sheets (reuse the app's sheet style)
+    function acctSheet(title, fields, onSave) {
+      let sh = document.getElementById('acctSheet');
+      if (!sh) { sh = document.createElement('div'); sh.id = 'acctSheet'; sh.className = 'sheet'; sh.onclick = e => { if (e.target === sh) sh.style.display = 'none'; }; document.body.appendChild(sh); }
+      sh.innerHTML = `<div class="sheet-content"><div class="sheet-head"><h3 style="color: var(--accent);">${title}</h3><button class="x-btn" onclick="document.getElementById('acctSheet').style.display='none'" aria-label="Close">✕</button></div>
+        <div class="veh-grid">${fields}</div><button class="pip-btn" id="acctSave">Save</button></div>`;
+      sh.querySelector('#acctSave').onclick = () => { if (onSave() !== false) { sh.style.display = 'none'; renderAccount(); } };
+      sh.style.display = 'flex';
+    }
+    const fld = (id, label, extra = '') => `<div class="setting-item"><label for="${id}">${label}</label><input id="${id}" ${extra} /></div>`;
+    const num = id => parseFloat(document.getElementById(id).value);
+    function openStatement() {
+      const wk = weekOf(Date.now() - 7 * 86400000);
+      acctSheet('💵 Uber weekly statement', fld('stWeek', 'Week starting (Monday)', `type="date" value="${wk}"`) + fld('stGross', 'Gross fares incl. GST ($)', 'type="number" inputmode="decimal" step="0.01"') +
+        fld('stFee', 'Uber service fee ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTips', 'Tips ($)', 'type="number" inputmode="decimal" step="0.01"'), () => {
+        const w = document.getElementById('stWeek').value, g = num('stGross');
+        if (!w || !(g > 0)) { toast('Enter the week and gross fares'); return false; }
+        const t = new Date(w + 'T12:00').getTime(), list = loadStatements().filter(x => x.wk !== weekOf(t));
+        list.push({ t, wk: weekOf(t), gross: g, fee: num('stFee') || 0, tips: num('stTips') || 0 });
+        lsSet('uberStatements', JSON.stringify(list)); toast('✓ Statement saved');
+      });
+    }
+    function openExpense() {
+      acctSheet('🧾 Other cost', fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount paid ($)', 'type="number" inputmode="decimal" step="0.01"') +
+        fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
+        const amt = num('exAmt'); if (!(amt > 0)) { toast('Enter the amount'); return false; }
+        const list = loadExpenses(); list.push({ t: new Date(document.getElementById('exDate').value + 'T12:00').getTime() || Date.now(), what: document.getElementById('exWhat').value.trim(), amt, gst: document.getElementById('exGst').checked });
+        lsSet('expenses', JSON.stringify(list)); toast('✓ Cost saved');
+      });
+    }
+    // ⛽ Fuel receipt: photo → read on the phone (Tesseract) → the fill-up form opens with litres, total, GST and date filled in
+    function scanReceipt() {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+      inp.onchange = async () => {
+        const file = inp.files && inp.files[0]; if (!file) return;
+        toast('📷 Reading the receipt…');
+        try {
+          const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+          const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+          const text = await importOCR(cropCanvas(img, 0, 0, img.width, img.height), 4);
+          const rc = parseReceipt(text);
+          // keep a small copy of the photo with the fill-up
+          const c = cropCanvas(img, 0, 0, img.width, img.height), small = c.toDataURL('image/jpeg', 0.6), imgId = 'rcpt' + Date.now();
+          putImg(imgId, small);
+          pendingFill = { name: rc.station || 'Fuel receipt', ev: false, receipt: { ...rc, imgId } };
+          openFillSheet(false);
+          if (rc.litres) document.getElementById('fillQty').value = rc.litres;
+          if (rc.total) document.getElementById('fillPaid').value = rc.total;
+          document.getElementById('fillFull').checked = true;
+          toast(rc.total || rc.litres ? `🧾 Read: ${rc.litres ? rc.litres + ' L' : ''}${rc.litres && rc.total ? ' · ' : ''}${rc.total ? '$' + rc.total : ''}${rc.gst ? ' (GST $' + rc.gst + ')' : ''}. Check and save.` : 'Couldn’t read the numbers. Type them in.');
+        } catch (e) { toast('Couldn’t read the receipt. Type the numbers in.'); openFillSheet(false); }
+      };
+      inp.click();
+    }
+    function parseReceipt(text) {
+      const t = text.replace(/[Oo](?=\d)/g, '0').replace(/,(?=\d{2}\b)/g, '.');
+      const lines = t.split(/\n+/).map(s => s.trim()).filter(Boolean);
+      const amt = re => { for (const l of lines) { const m = l.match(re); if (m) { const v = parseFloat(m[m.length - 1]); if (v > 0) return v; } } return null; };
+      const total = amt(/(?:total|amount|eftpos|card|purchase|paid)[^\d$]*\$?\s*(\d{1,4}\.\d{2})/i) ||
+        Math.max(0, ...(t.match(/\$\s*\d{1,4}\.\d{2}/g) || []).map(s => parseFloat(s.replace(/[^\d.]/g, '')))) || null;
+      const gst = amt(/gst[^\d$]*\$?\s*(\d{1,3}\.\d{2})/i);
+      const lm = t.match(/(\d{1,3}\.\d{1,3})\s*(?:l\b|ltr|litre|liter|lt\b)/i) || t.match(/(?:litres|liters|volume|qty|quantity)[^\d]*(\d{1,3}\.\d{1,3})/i);
+      const litres = lm ? parseFloat(lm[1]) : null;
+      const dm = t.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+      const station = (lines.find(l => /shell|bp|ampol|caltex|7-?eleven|united|metro|liberty|costco|coles express|eg |astron|puma|mobil|reddy/i.test(l)) || lines[0] || '').slice(0, 40);
+      return { total: total ? +total.toFixed(2) : null, gst: gst ? +gst.toFixed(2) : null, litres: litres && litres < 200 ? litres : null,
+        date: dm ? `${dm[1]}/${dm[2]}/${dm[3]}` : null, station };
+    }
+
     // ================= 🗓 ROSTER: your planned shifts (manual, picked up from suggestions, or adjusted) =================
     // Stored on the phone. Add one from the planner below ("Add to roster"), or tap ✨ Suggest to see the best
     // shift for each of the next 7 days and Pick it up (or Adjust it in the planner first).
@@ -4451,6 +4643,9 @@
       const x = loadRoster().find(y => y.id === id); if (!x) return;
       rosterEdit = id; rosterLoad(x.s, x.e);
     }
+    // Home area: most shifts start from home, so suggestions start there (another zone only when home is quiet all day)
+    const homeZone = () => { const z = lsGet('homeZone'); return z && UBER_ZONE_SHAPES[z] ? z : 'Melbourne City'; };
+    function setHomeZone(z) { lsSet('homeZone', z); renderRoster(); }
     // Pilot's suggestions: the best stretch of each of the next 7 days (High demand to start, kept while Medium or better)
     function rosterSuggestions() {
       const out = [], r = loadRoster(), now = Date.now(), d0 = new Date(); d0.setHours(0, 0, 0, 0);
@@ -4460,11 +4655,15 @@
         let best = null;
         for (let h = 5; h <= 23; h++) {
           const t = new Date(base + h * 3600000); if (t.getTime() < now) continue;
-          const b = bestZoneAt(t); if (!b || b.v < GOOD) continue;
-          const sug = suggestShift(t, b.z); if (sug.len < 4) continue;          // at least 2 hours
-          const len = Math.min(sug.len, MAX_SLOTS), vals = Array.from({ length: len }, (_, i) => slotVal(b.z, new Date(t.getTime() + i * SLOT_MS)) ?? 0);
-          const avg = vals.reduce((a, c) => a + c, 0) / len, score = avg * Math.min(len, 12);   // up to 6 hours counts fully
-          if (!best || score > best.score) best = { s: t.getTime(), e: t.getTime() + len * SLOT_MS, z: b.z, avg, score };
+          for (const z of [homeZone(), (bestZoneAt(t) || {}).z]) {
+            if (!z) continue;
+            const v0 = demandAdj(z, t); if (v0 === null || v0 < GOOD) continue;
+            const sug = suggestShift(t, z); if (sug.len < 4) continue;          // at least 2 hours
+            const len = Math.min(sug.len, MAX_SLOTS), vals = Array.from({ length: len }, (_, i) => slotVal(z, new Date(t.getTime() + i * SLOT_MS)) ?? 0);
+            const avg = vals.reduce((a, c) => a + c, 0) / len, home = z === homeZone();
+            const score = avg * Math.min(len, 12) * (home ? 1.35 : 1);          // starting from home is preferred
+            if (!best || score > best.score) best = { s: t.getTime(), e: t.getTime() + len * SLOT_MS, z, avg, score, home };
+          }
         }
         if (best) out.push(best);
       }
@@ -4490,8 +4689,9 @@
       let sug = '';
       if (rosterShowSug) {
         const list = rosterSuggestions();
-        sug = `<div class="rs-sub">✨ Pilot suggests <small>best stretch each day for the next 7 days, from your Uber trends</small></div>` +
-          (list.length ? list.map(x => `<div class="rs-sug"><div><b>${shiftLabel(x)}</b><span>${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}</span></div>` +
+        sug = `<div class="rs-sub">✨ Pilot suggests <small>best stretch each day for the next 7 days, from your Uber trends, starting from home where it's busy enough</small></div>` +
+          `<label class="rs-home">🏠 Home area <select onchange="setHomeZone(this.value)">${Object.keys(UBER_ZONE_SHAPES).map(z => `<option${z === homeZone() ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select></label>` +
+          (list.length ? list.map(x => `<div class="rs-sug"><div><b>${shiftLabel(x)}</b><span>${x.home ? '🏠 ' : ''}${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}</span></div>` +
             `<button type="button" class="rs-btn go" onclick="rosterPick(${x.s}, ${x.e}, '${esc(x.z).replace(/'/g, '&#39;')}')">Pick up</button>` +
             `<button type="button" class="rs-btn" onclick="rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`).join('')
             : '<div class="autoread-hint">No busy stretches found in the next 7 days' + (Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)') + '.</div>');
@@ -5760,8 +5960,11 @@
       const odo = parseFloat(document.getElementById('fillOdo').value);
       if (!(qty > 0)) { toast(type === 'ev' ? 'Enter the kWh added' : 'Enter the litres added'); return; }
       const fills = loadFills();
+      const rc = pendingFill && pendingFill.receipt;
       fills.push({ t: Date.now(), station: pendingFill ? pendingFill.name : 'Manual entry', type, qty,
-        paid: paid > 0 ? paid : null, odo: odo > 0 ? odo : null, full: document.getElementById('fillFull').checked, gpsKm: trackedKm() });
+        paid: paid > 0 ? paid : null, odo: odo > 0 ? odo : null, full: document.getElementById('fillFull').checked, gpsKm: trackedKm(),
+        ...(rc ? { gst: rc.gst, imgId: rc.imgId, rcDate: rc.date } : {}) });
+      try { renderAccount(); } catch (e) {}
       saveFills(fills);
       const e = economyFor(fills, fills.length - 1);
       const unit = type === 'ev' ? 'kWh' : 'L';
@@ -6172,7 +6375,7 @@
         ['Import', 'Zone names and the day tab are read from the screenshot. Discover screenshots add events and airport peaks.'],
         ['🔁 Week-on-week', 'What changed from last week after you import new screenshots.'],
         ['Good to know', 'Rain, events and live readings raise the bars for today. Refresh the screenshots weekly.']]],
-      log: ['📊 Offer Log', [
+      log: ['📊 Offer & Account', [
         ['📊 Totals', 'Offers logged (✓ = taken), average $/hr, your best day and best 2-hour slot.'],
         ['🟩 $/hr grid', 'Every day and 2-hour slot, coloured against your target. Tap a square for details.'],
         ['🏆 Top slots · 🕘 Recent', 'Slots with 3+ offers ranked by $/hr, and your latest offers.'],
@@ -7075,6 +7278,7 @@
         if (tb) tb.classList.toggle('active', tab === t);
       });
       if (tab === 'insights' || tab === 'trends' || tab === 'log') renderInsights();
+      if (tab === 'log') renderAccount();
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else if (tab === 'offer') startTracking();          // offers remember where you were
       else { stopTracking(); refreshZoneFix(); } // no continuous GPS here, just a quick position check
@@ -7083,7 +7287,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.58.0';
+    const APP_VERSION = '1.59.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
