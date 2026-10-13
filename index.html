@@ -248,7 +248,7 @@
     .me-icon { background: none; border: none; }
     .me-arrow {
       position: absolute; left: 10px; top: 10px; width: 44px; height: 44px; color: #1a73e8;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); transition: transform .3s linear;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); will-change: transform;
     }
     .me-arrow svg { display: block; }
     .me-arrow.no-heading { color: #4b8ff0; }
@@ -4289,18 +4289,68 @@
           icon: L.divIcon({ className: 'me-icon', iconSize: [64, 64], iconAnchor: [32, 32],
             html: '<div class="me-wrap"><div class="me-pulse"></div><div class="me-arrow" id="meArrow">' + ARROW_SVG + '</div></div>' })
         }).addTo(map);
-      } else {
-        meMarker.setLatLng(ll);
-        meAcc.setLatLng(ll).setRadius(lastFix.acc);
-      }
+        meShown = { lat: ll[0], lng: ll[1] };
+      } else meAcc.setRadius(lastFix.acc);
       const arrow = document.getElementById('meArrow');
       const h = currentHeading();
       if (arrow) {
-        arrow.style.transform = `rotate(${h === null ? 0 : h}deg)`;
         arrow.classList.toggle('stale', !live);
         arrow.classList.toggle('no-heading', h === null);
       }
+      startMeLoop();
     }
+
+    // ---- Smooth movement: the pin glides between GPS fixes instead of jumping ----
+    // Each new fix starts a glide from where the pin is now to the new position, lasting about as long
+    // as the gap between fixes, so it never stops and starts. While moving it keeps going along your
+    // speed and direction for a moment (like Google Maps), and the map follows the pin frame by frame.
+    let meShown = null, meGlide = null, meLoop = null, headShown = null, prevFixT = 0;
+    function glideTo(fix) {
+      const now = performance.now();
+      const gap = prevFixT ? Math.min(2000, Math.max(400, Date.now() - prevFixT)) : 0;
+      prevFixT = Date.now();
+      if (!meShown || !gap) { meShown = { lat: fix.lat, lng: fix.lng }; meGlide = null; return; }
+      // Big jump (GPS fix after a tunnel, or first good fix): move straight there
+      if (distM(meShown.lat, meShown.lng, fix.lat, fix.lng) > 250) { meShown = { lat: fix.lat, lng: fix.lng }; meGlide = null; return; }
+      const v = fix.speed > 2 && fix.heading != null && !isNaN(fix.heading) ? { s: fix.speed, h: fix.heading } : null;
+      meGlide = { from: { ...meShown }, to: { lat: fix.lat, lng: fix.lng }, t0: now, dur: gap * 1.05, v };
+    }
+    function stepMe(now) {
+      if (!meGlide) return meShown;
+      const g = meGlide, t = (now - g.t0) / g.dur;
+      if (t <= 1) {
+        const e = t;                                     // linear: steady speed, no easing stutter
+        meShown = { lat: g.from.lat + (g.to.lat - g.from.lat) * e, lng: g.from.lng + (g.to.lng - g.from.lng) * e };
+      } else if (g.v && t < 2.2) {
+        // Keep rolling along speed and heading until the next fix arrives (max ~1.2 gaps)
+        const sec = (now - g.t0 - g.dur) / 1000, d = g.v.s * sec, r = g.v.h * Math.PI / 180;
+        meShown = { lat: g.to.lat + (d * Math.cos(r)) / 111320, lng: g.to.lng + (d * Math.sin(r)) / (111320 * Math.cos(g.to.lat * Math.PI / 180)) };
+      } else meShown = { ...g.to };
+      return meShown;
+    }
+    function startMeLoop() {
+      if (meLoop || !meMarker) return;
+      const frame = now => {
+        if (!map || document.getElementById('view-drive').style.display === 'none' || document.hidden) { meLoop = null; return; }
+        const p = stepMe(now);
+        if (p) {
+          meMarker.setLatLng([p.lat, p.lng]);
+          meAcc.setLatLng([p.lat, p.lng]);
+          if (followMe) map.setView([p.lat, p.lng], map.getZoom(), { animate: false });
+        }
+        // Heading: turn smoothly the short way round
+        const h = currentHeading(), arrow = document.getElementById('meArrow');
+        if (arrow && h !== null) {
+          if (headShown === null) headShown = h;
+          const diff = ((h - headShown + 540) % 360) - 180;
+          headShown = (headShown + diff * 0.18 + 360) % 360;
+          arrow.style.transform = `rotate(${headShown.toFixed(1)}deg)`;
+        } else if (arrow && h === null) { headShown = null; arrow.style.transform = 'rotate(0deg)'; }
+        meLoop = requestAnimationFrame(frame);
+      };
+      meLoop = requestAnimationFrame(frame);
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) startMeLoop(); });
 
     // Small status pill on the map: is location working?
     function setLocPill(state, text) {
@@ -4498,12 +4548,10 @@
       setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m${compassOn ? ' · 🧭' : ''}`);
       addTrackedKm(lastFix);
       checkFuelStop(lastFix);
+      glideTo(lastFix);
       if (!map) return;
       drawMe();
-      if (followMe) {
-        if (first) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 15), { animate: false });
-        else map.panTo([lastFix.lat, lastFix.lng], { animate: true, duration: 0.6 });
-      }
+      if (followMe && first) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 15), { animate: false });
     }
 
     function onFixError(err) {
@@ -4529,7 +4577,7 @@
       compassHeading = (h + o + 360) % 360;
       if (lastFix && document.getElementById('locPill').classList.contains('on'))
         setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m · 🧭`);
-      drawMe();
+      startMeLoop();
     }
     function enableCompass() {
       if (compassOn || typeof DeviceOrientationEvent === 'undefined') return;
@@ -5293,7 +5341,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.24.4';
+    const APP_VERSION = '1.25.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
