@@ -676,6 +676,15 @@
 
     /* Surge pins on the map */
     .surge-pin-wrap { background: none; border: none; }
+    .fuel-pin-wrap { display: flex; align-items: center; gap: 3px; }
+    .fuel-pin { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: #fff; border: 2px solid #ea580c; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+    .fuel-pin.h24 { border-color: #16a34a; }
+    .fuel-pin-wrap span { font-size: .62rem; font-weight: 800; color: #111; background: rgba(255,255,255,.9); border-radius: 6px; padding: 1px 5px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    .fuel-pop .leaflet-popup-content { margin: 10px 12px; font-size: .8rem; line-height: 1.35; }
+    .fuel-pop .fp-sub { color: #555; font-size: .74rem; }
+    .fuel-pop .fp-bits { display: flex; flex-direction: column; gap: 2px; margin: 6px 0; font-size: .76rem; }
+    .fuel-pop .nav-row { display: flex; flex-wrap: wrap; gap: 4px; }
+    .fuel-pop .nav-btn { font-size: .72rem; padding: 5px 10px; text-decoration: none; white-space: nowrap; }
     .zone-tag {
       transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
       background: var(--glass-strong); border: 2px solid; border-radius: 10px; padding: 4px 8px; text-align: center; box-shadow: var(--shadow);
@@ -1141,6 +1150,7 @@
             <button class="chip on" id="chipLive" onclick="toggleLayer('live')">🔴 Live</button>
             <button class="chip on" id="chipPred" onclick="toggleLayer('pred')">🔮 Predicted</button>
             <button class="chip" id="chipSpots" onclick="toggleLayer('spots')">⭐ Spots</button>
+            <button class="chip" id="chipFuel" onclick="toggleLayer('fuel')">⛽ Fuel</button>
             <button class="chip" id="chipHist" onclick="toggleLayer('hist')">🕘 History</button>
           </div>
           <div class="hist-bar" id="histBar" hidden>
@@ -5313,6 +5323,7 @@
       areaLayer = L.layerGroup().addTo(map);
       routeLayer = L.layerGroup().addTo(map);
       map.on('zoomend', () => renderMap());
+      map.on('moveend', () => { if (!layers.fuel) return; clearTimeout(fuelMoveT); fuelMoveT = setTimeout(drawFuel, 500); });
       markerLayer = L.layerGroup().addTo(map);
       surgeLayer = L.layerGroup().addTo(map);
       map.on('click', e => {
@@ -5333,7 +5344,7 @@
     const LEVEL_AMT = [0, 1, 3, 6];          // $ assumed when no "+$" amount was recorded
     const SURGE_HALF_LIFE_MIN = 7;           // research: surges often end within 5-10 minutes
     // Map layers: Zones on by default; your choices are remembered
-    const layers = Object.assign({ live: true, pred: true, hist: false, zones: true, spots: false },
+    const layers = Object.assign({ live: true, pred: true, hist: false, zones: true, spots: false, fuel: false },
       (() => { try { const v = JSON.parse(lsGet('mapLayers')); delete (v || {}).hist; return v || {}; } catch (e) { return {}; } })());
     // Zones chip: tap = zones on/off; double tap = label every zone (quiet ones too), double tap again = busy ones only
     let zonesTapAt = 0, zonesTapPrev = null;
@@ -5354,7 +5365,7 @@
     function syncLayerChips() {
       const zc = document.getElementById('chipZones');
       if (zc) zc.textContent = layers.zonesAll ? '🗺 All zones' : '🗺 Zones';
-      Object.entries({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots' })
+      Object.entries({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots', fuel: 'chipFuel' })
         .forEach(([k, id]) => document.getElementById(id).classList.toggle('on', !!layers[k]));
       document.getElementById('histBar').hidden = !layers.hist;
     }
@@ -5380,6 +5391,7 @@
     const MAP_HELP = {
       zones: ['🗺 Zones', 'Uber’s trend zones right now: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
+      fuel: ['⛽ Fuel stations', 'Petrol stations from OpenStreetMap. Tap one for brand, fuels, 24/7 and drive time, then navigate. Zoom in if none show.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
       pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
@@ -5459,6 +5471,7 @@
         ['🗺 Zones', 'Uber zones now: 🟩 busy, 🟨 fair, 🟦 quiet, with demand and drive time. Double-tap to label every zone.'],
         ['🔴 Live · 🔮 Predicted', 'Surges you snapped in the last 20 min, and where your snapshots say they usually happen now.'],
         ['⭐ Spots · 🕘 History', 'Suburbs by your offers’ $/hr, and every past snapshot by day and time.'],
+        ['⛽ Fuel', 'Petrol stations on the map with brand, fuels, opening hours and drive time. Tap one to navigate.'],
         ['🧭 Compass', 'Tap to turn the map so your direction is up; tap again for north up. The red needle always points north.'],
         ['🌙 · 🏙 · ➤', 'Night map, zoom out to all of Melbourne, and follow me (arrow turns with the compass).'],
         ['Good to know', 'Drag the map to look around; tap ➤ to follow again. Tap a surge pin for the drive and whether it’s worth it.']]],
@@ -6048,6 +6061,7 @@
       checkChaseAlerts(surges, evals);
 
       if (layers.spots) drawSpots();
+      drawFuel();
 
       // Uber trend zones with demand right now
       if (layers.zones) {
@@ -6137,7 +6151,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.32.2';
+    const APP_VERSION = '1.33.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6326,6 +6340,70 @@
           `${x.best !== null ? ' · best ' + blockLabel(x.best) : ''}</div></div><i class="pill ${c}">$${x.gph.toFixed(0)}/hr</i></div>`;
       }).join('') : '<div class="empty">Spots appear after 2+ offers in the same suburb (with location on).</div>';
     }
+    // ================= ⛽ FUEL STATIONS LAYER (OpenStreetMap, free, no key) =================
+    let fuelLayer = null, fuelBox = null, fuelList = [], fuelLoading = false, fuelMoveT = null;
+    const FUEL_MIN_ZOOM = 12;
+    function fuelBoxOf(b, pad) {
+      const dLat = (b.getNorth() - b.getSouth()) * pad, dLng = (b.getEast() - b.getWest()) * pad;
+      return { s: b.getSouth() - dLat, w: b.getWest() - dLng, n: b.getNorth() + dLat, e: b.getEast() + dLng };
+    }
+    const fuelInside = (o, b) => o && b.getSouth() >= o.s && b.getNorth() <= o.n && b.getWest() >= o.w && b.getEast() <= o.e;
+    async function loadFuel() {
+      if (!map || fuelLoading || map.getZoom() < FUEL_MIN_ZOOM) return;
+      const b = map.getBounds();
+      if (fuelInside(fuelBox, b)) return;
+      const box = fuelBoxOf(b, 0.4), bb = `${box.s.toFixed(4)},${box.w.toFixed(4)},${box.n.toFixed(4)},${box.e.toFixed(4)}`;
+      const q = `[out:json][timeout:20];(node["amenity"="fuel"](${bb});way["amenity"="fuel"](${bb}););out center tags;`;
+      fuelLoading = true;
+      try {
+        const j = await fetchJSON('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 20000);
+        fuelList = (j.elements || []).map(e => {
+          const t = e.tags || {}, fuels = [];
+          if (t['fuel:octane_91'] === 'yes' || t['fuel:e10'] === 'yes') fuels.push(t['fuel:e10'] === 'yes' ? 'E10' : '91');
+          if (t['fuel:octane_95'] === 'yes') fuels.push('95');
+          if (t['fuel:octane_98'] === 'yes') fuels.push('98');
+          if (t['fuel:diesel'] === 'yes') fuels.push('Diesel');
+          if (t['fuel:lpg'] === 'yes') fuels.push('LPG');
+          const addr = [t['addr:housenumber'], t['addr:street'], t['addr:suburb'] || t['addr:city']].filter(Boolean).join(' ');
+          return { id: e.type + e.id, lat: e.lat ?? e.center?.lat, lng: e.lon ?? e.center?.lon,
+            brand: t.brand || t.operator || '', name: t.name || t.brand || 'Service station', addr,
+            h24: t.opening_hours === '24/7', hours: t.opening_hours || '', fuels, shop: t.shop === 'convenience' || !!t['shop'] };
+        }).filter(f => f.lat != null);
+        fuelBox = box;
+        drawFuel();
+      } catch (e) { if (layers.fuel) toast('⛽ Couldn’t load fuel stations right now'); }
+      finally { fuelLoading = false; }
+    }
+    function fuelIcon(f, zoom) {
+      const label = zoom >= 14 ? `<span>${esc(f.brand || f.name).slice(0, 18)}</span>` : '';
+      return L.divIcon({ className: 'fuel-pin-wrap', iconSize: null, iconAnchor: [13, 13],
+        html: `<div class="fuel-pin${f.h24 ? ' h24' : ''}">⛽</div>${label}` });
+    }
+    function drawFuel() {
+      if (!map) return;
+      if (!fuelLayer) fuelLayer = L.layerGroup().addTo(map);
+      fuelLayer.clearLayers();
+      if (!layers.fuel) return;
+      const zoom = map.getZoom();
+      if (zoom < FUEL_MIN_ZOOM) return;
+      if (!fuelInside(fuelBox, map.getBounds())) loadFuel();
+      const b = map.getBounds().pad(0.2);
+      fuelList.filter(f => b.contains([f.lat, f.lng])).forEach(f => {
+        L.marker([f.lat, f.lng], { icon: fuelIcon(f, zoom), zIndexOffset: 200 }).on('click', () => openFuelCard(f)).addTo(fuelLayer);
+      });
+    }
+    function openFuelCard(f) {
+      setFollow(false);                       // let the map pan so the card fits
+      const from = myPos(), km = from ? distM(from.lat, from.lng, f.lat, f.lng) / 1000 * 1.3 : null;   // road ≈ 1.3 × straight line
+      const bits = [f.h24 ? '🕐 Open 24/7' : f.hours ? '🕐 ' + esc(f.hours) : '', f.fuels.length ? '⛽ ' + f.fuels.join(' · ') : '',
+        km !== null ? `🚗 ~${km.toFixed(1)} km · ${Math.max(1, Math.round(estMin(km)))} min` : ''].filter(Boolean);
+      L.popup({ className: 'fuel-pop', offset: [0, -8], minWidth: 220, maxWidth: 270, autoPanPadding: [16, 60] }).setLatLng([f.lat, f.lng]).setContent(
+        `<b>${esc(f.name)}</b>${f.brand && f.brand !== f.name ? `<div class="fp-sub">${esc(f.brand)}</div>` : ''}` +
+        (f.addr ? `<div class="fp-sub">${esc(f.addr)}</div>` : '') +
+        `<div class="fp-bits">${bits.map(x => `<span>${x}</span>`).join('')}</div>` +
+        `<div class="nav-row">${navLinks(f.lat, f.lng)}</div>`).openOn(map);
+    }
+
     function drawSpots() {
       spotStats().forEach(x => {
         const r = x.gph / config.minGrossHr, col = r >= 1 ? '#16a34a' : r >= 0.8 ? '#eab308' : '#dc2626';
