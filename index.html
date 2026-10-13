@@ -551,6 +551,7 @@
     .ac-set label { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
     .ac-set input { width: 90px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; text-align: right; }
     .ac-set .rs-btn { margin-top: 8px; }
+    .ex-photo { grid-column: 1 / -1; justify-self: start; margin-bottom: 4px; }
     .rc-view { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; }
     .rc-view img { max-width: 100%; max-height: 85vh; border-radius: 8px; } .rc-view small { color: #ddd; }
     .cal-add { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3635,7 +3636,7 @@
       const snaps = loadSnaps().slice().reverse();
       const snapRows = snaps.slice(0, 40).map(s => { const a = areaOf(s.lat, s.lng);
         return `<div class="fl-row"><span>📸 ${dShort(s.t)} · ${LEVELS[s.level]}${s.amt ? ' ' + esc(s.amt) : ''}${a ? ' · ' + esc(a.name) : ''}</span>${delBtn(`deleteSnap('${s.id}');renderDataSheet()`)}</div>`; }).join('');
-      const fills = loadFills(), rcpts = receiptFills().slice().reverse();
+      const fills = loadFills(), rcpts = allReceipts().reverse();
       const fillRows = fills.map((f, i) => ({ f, i })).reverse().map(({ f, i }) =>
         `<div class="fl-row"><span>${f.type === 'ev' ? '⚡' : '⛽'} ${dShort(f.t)} · ${f.qty} ${f.type === 'ev' ? 'kWh' : 'L'}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}</span>${delBtn(`delFill(${i})`)}</div>`).join('');
       let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
@@ -3656,8 +3657,8 @@
         sec('trends', '📈 Uber trends', Object.keys(tr).length, trends) +
         sec('snaps', '📸 Surge snapshots', snaps.length, snapRows, 'clearAllSnaps') +
         sec('fills', '⛽ Fill-ups', fills.length, fillRows, 'clearFills') +
-        sec('receipts', '🧾 Fuel receipts', rcpts.length, rcpts.map(f => `<div class="fl-row"><span>🧾 ${dShort(f.t)} · ${esc(f.station || 'Fuel')}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}${f.gst ? ' (GST $' + f.gst.toFixed(2) + ')' : ''}</span><button type="button" class="chip" onclick="viewReceipt('${f.imgId}')">View</button></div>`).join('') +
-          (rcpts.length ? `<button type="button" class="pip-btn dm-dl" onclick="downloadReceipts()">⬇️ Download receipt photos (.zip)</button>` : '')) +
+        sec('receipts', '🧾 Receipts', rcpts.length, rcpts.map(f => `<div class="fl-row"><span>${f.kind === 'other' ? '🧾' : f.kind === 'charge' ? '⚡' : '⛽'} ${dShort(f.t)} · ${esc(f.what)}${f.paid ? ' · $' + (+f.paid).toFixed(2) : ''}${f.gst ? ' (GST $' + (+f.gst).toFixed(2) + ')' : ''}</span><button type="button" class="chip" onclick="viewReceipt('${f.imgId}')">View</button></div>`).join('') +
+          (rcpts.length ? `<button type="button" class="pip-btn dm-dl" onclick="downloadReceipts()">⬇️ Download all receipt photos (.zip)</button>` : '')) +
         sec('shifts', '⏱ Shifts', hist.length + (cur ? 1 : 0), shiftRows, 'clearShifts') +
         sec('events', '🏟 Your & Discover events', mine.length, evRows, 'clearMyEvents') +
         sec('other', '🧹 Other', '', other);
@@ -3731,25 +3732,29 @@
     }
     // 🧾 Fuel receipt photos (kept in the phone's photo store with each fill-up)
     const receiptFills = () => loadFills().filter(f => f.imgId);
+    // all receipt photos: fuel fill-ups and other costs, oldest first
+    const allReceipts = () => receiptFills().map(f => ({ t: f.t, kind: f.type === 'ev' ? 'charge' : 'fuel', what: f.station || 'Fuel', paid: f.paid, gst: f.gst ?? null, qty: f.qty, unit: f.type === 'ev' ? 'kWh' : 'L', date: f.rcDate || '', imgId: f.imgId }))
+      .concat(loadExpenses().filter(x => x.imgId).map(x => ({ t: x.t, kind: 'other', what: x.what || 'Other cost', paid: x.amt, gst: x.gstAmt ?? (x.gst ? +(x.amt / 11).toFixed(2) : 0), qty: '', unit: '', date: '', imgId: x.imgId })))
+      .sort((a, b) => a.t - b.t);
     const dataUrlBytes = u => { const b = atob(u.split(',')[1] || ''), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
-    const receiptName = (f, i) => `${ymd(new Date(f.t))}_${String(i + 1).padStart(2, '0')}_${(f.station || 'fuel').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'fuel'}${f.paid ? '_$' + f.paid.toFixed(2) : ''}.jpg`;
+    const receiptName = (f, i) => `${ymd(new Date(f.t))}_${String(i + 1).padStart(2, '0')}_${f.kind}_${(f.what || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || f.kind}${f.paid ? '_$' + (+f.paid).toFixed(2) : ''}.jpg`;
     async function receiptFiles(folder = '') {
       const out = [], rows = [];
-      const list = receiptFills();
+      const list = allReceipts();
       for (let i = 0; i < list.length; i++) {
         const f = list[i], url = await getImg(f.imgId); if (!url) continue;
         const name = receiptName(f, i);
         out.push({ name: folder + name, data: dataUrlBytes(url) });
-        rows.push([tIso(f.t), f.station || '', f.qty, f.type === 'ev' ? 'kWh' : 'L', f.paid ?? '', f.gst ?? (f.paid ? (f.paid / 11).toFixed(2) : ''), f.rcDate || '', name]);
+        rows.push([tIso(f.t), f.kind, f.what, f.qty, f.unit, f.paid ?? '', f.gst ?? (f.paid && f.kind !== 'other' ? (f.paid / 11).toFixed(2) : ''), f.date, name]);
       }
-      out.push({ name: folder + 'receipts.csv', text: '\ufeff' + csv(['saved', 'station', 'quantity', 'unit', 'total_paid', 'gst', 'date_on_receipt', 'photo'], rows) });
+      out.push({ name: folder + 'receipts.csv', text: '\ufeff' + csv(['saved', 'kind', 'what', 'quantity', 'unit', 'total_paid', 'gst', 'date_on_receipt', 'photo'], rows) });
       return { files: out, n: rows.length };
     }
     async function downloadReceipts() {
       toast('⬇️ Preparing receipts…');
       const r = await receiptFiles();
       if (!r.n) { toast('No receipt photos saved yet'); return; }
-      saveFile(`fuel-receipts-${ymd(new Date())}.zip`, makeZip(r.files));
+      saveFile(`receipts-${ymd(new Date())}.zip`, makeZip(r.files));
       toast(`⬇️ ${r.n} receipt${r.n === 1 ? '' : 's'} downloaded (.zip)`);
     }
     async function viewReceipt(id) {
@@ -4515,7 +4520,7 @@
       const fuel = loadFills().filter(f => f.t >= a && f.t < b && f.paid > 0);
       const fuelPaid = fuel.reduce((s, f) => s + f.paid, 0), fuelGst = fuel.reduce((s, f) => s + (f.gst != null ? f.gst : f.paid / 11), 0);
       const ex = loadExpenses().filter(x => x.t >= a && x.t < b);
-      const exPaid = ex.reduce((s, x) => s + x.amt, 0), exGst = ex.reduce((s, x) => s + (x.gst ? x.amt / 11 : 0), 0);
+      const exPaid = ex.reduce((s, x) => s + x.amt, 0), exGst = ex.reduce((s, x) => s + (x.gst ? (x.gstAmt || x.amt / 11) : 0), 0);
       // GST (BAS): on full fares, less credits on the business share of costs
       const gstOnFares = gross / 11, gstCredits = fee / 11 + (fuelGst + exGst) * biz, gstNet = gstOnFares - gstCredits;
       // Profit (ex GST) for income tax
@@ -4601,11 +4606,45 @@
         lsSet('uberStatements', JSON.stringify(list)); toast('✓ Statement saved');
       });
     }
+    let exPhoto = null;                                   // { imgId } for the cost being added
+    // Photo of a receipt for any cost: saved with it, and the total (and GST) are read to fill the form
+    async function pickReceiptPhoto(onRead) {
+      return new Promise(resolve => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment';
+        inp.onchange = async () => {
+          const file = inp.files && inp.files[0]; if (!file) return resolve(null);
+          toast('📷 Reading the receipt…');
+          try {
+            const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+            const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+            const c = cropCanvas(img, 0, 0, img.width, img.height), imgId = 'rcpt' + Date.now();
+            await putImg(imgId, c.toDataURL('image/jpeg', 0.82));
+            let rc = {}; try { rc = parseReceipt(await importOCR(c, 4)); } catch (e) {}
+            resolve({ imgId, ...rc });
+          } catch (e) { toast('Couldn’t open the photo'); resolve(null); }
+        };
+        inp.click();
+      });
+    }
+    async function exAddPhoto() {
+      const r = await pickReceiptPhoto(); if (!r) return;
+      exPhoto = r;
+      if (r.total && !(num('exAmt') > 0)) document.getElementById('exAmt').value = r.total;
+      if (r.gst) document.getElementById('exGst').checked = true;
+      if (r.station && !document.getElementById('exWhat').value) document.getElementById('exWhat').value = r.station;
+      if (r.date) { const m = r.date.split('/'); if (m.length === 3) { const y = m[2].length === 2 ? '20' + m[2] : m[2]; document.getElementById('exDate').value = `${y}-${m[1].padStart(2, '0')}-${m[0].padStart(2, '0')}`; } }
+      const b = document.getElementById('exPhotoBtn'); if (b) b.textContent = '✓ Receipt photo added (tap to retake)';
+      toast(r.total ? `🧾 Read $${r.total}${r.gst ? ' (GST $' + r.gst + ')' : ''}. Check and save.` : '🧾 Photo saved. Type the amount in.');
+    }
     function openExpense() {
-      acctSheet('🧾 Other cost', fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount paid ($)', 'type="number" inputmode="decimal" step="0.01"') +
+      exPhoto = null;
+      acctSheet('🧾 Other cost', `<button type="button" class="rs-btn ex-photo" id="exPhotoBtn" onclick="exAddPhoto()">📷 Add receipt photo</button>` +
+        fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount paid ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
         const amt = num('exAmt'); if (!(amt > 0)) { toast('Enter the amount'); return false; }
-        const list = loadExpenses(); list.push({ t: new Date(document.getElementById('exDate').value + 'T12:00').getTime() || Date.now(), what: document.getElementById('exWhat').value.trim(), amt, gst: document.getElementById('exGst').checked });
+        const list = loadExpenses(); list.push({ t: new Date(document.getElementById('exDate').value + 'T12:00').getTime() || Date.now(), what: document.getElementById('exWhat').value.trim(), amt, gst: document.getElementById('exGst').checked,
+          ...(exPhoto ? { imgId: exPhoto.imgId, gstAmt: exPhoto.gst || null } : {}) });
+        exPhoto = null;
         lsSet('expenses', JSON.stringify(list)); toast('✓ Cost saved');
       });
     }
@@ -7338,7 +7377,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.61.0';
+    const APP_VERSION = '1.62.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
