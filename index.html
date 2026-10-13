@@ -369,6 +369,9 @@
       border-radius: 12px; padding: 9px 22px 9px 9px; font: inherit; font-size: .85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
     .wheel-card { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
     .wh-done { border: none; background: var(--accent); color: var(--on-accent); font-weight: 800; border-radius: 999px; padding: 8px 18px; font-size: .9rem; }
+    .wh-now { display: block; width: 100%; border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);
+      border-radius: 999px; padding: 9px; font-weight: 800; font-size: .9rem; margin: 4px 0 10px; }
+    .wh-now[hidden] { display: none; }
     .wh-modes { display: flex; gap: 6px; margin: 4px 0 10px; }
     .wh-modes[hidden] { display: none; }
     .wh-modes button { flex: 1; border: var(--bw) solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 8px 4px; font-weight: 800; font-size: .82rem; }
@@ -1333,6 +1336,7 @@
         <button type="button" data-m="two" onclick="wheelMode('two')">2 hrs</button>
         <button type="button" data-m="end" onclick="wheelMode('end')">Set time</button>
       </div>
+      <button type="button" class="wh-now" id="wheelNow" onclick="wheelNow()"></button>
       <div class="wheels" id="wheels"><div class="wh-band"></div></div>
       <div class="wh-note" id="wheelNote"></div>
     </div>
@@ -3660,7 +3664,7 @@
       }).join('');
       document.getElementById('planStart').innerHTML = planSlotOpts();
       document.getElementById('planEnd').innerHTML = planSlotOpts();
-      const next = (Math.ceil((today.getHours() * 60 + today.getMinutes() + 1) / SLOT) * SLOT) % 1440;   // next half hour
+      const next = nowSlot().min;   // now, rounded to the half hour
       document.getElementById('planMode').value = 'suggest';
       document.getElementById('planStart').value = String(next);
       document.getElementById('planEnd').value = String((next + 180) % 1440);
@@ -3729,6 +3733,25 @@
       document.getElementById('planMode').value = m; fillPlanUntil(); renderPlan(); syncWheelModes();
       if (m !== 'end') closeWheel();
     }
+    // "Now" rounded to a half hour: up to :09 stays on the hour or half hour, from :10 it moves on
+    // to the next one (12:05 → 12PM, 12:10 → 12:30PM, 12:40 → 1PM). Returns minutes and the day offset.
+    function nowSlot() {
+      const d = new Date(); let m = d.getHours() * 60 + d.getMinutes();
+      const r = m % SLOT; m -= r; if (r >= 10) m += SLOT;
+      return { min: m % 1440, day: m >= 1440 ? 1 : 0 };
+    }
+    function wheelNow() {
+      const n = nowSlot();
+      document.getElementById('planDay').value = String(n.day);
+      document.getElementById('planStart').value = String(n.min);
+      buildWheels(n.min); fillPlanUntil(); renderPlan(); renderPlanCal();
+      syncWheelNow();
+    }
+    function syncWheelNow() {
+      const b = document.getElementById('wheelNow'); if (!b) return;
+      b.hidden = wheelFor !== 'start';
+      b.textContent = `🕘 Now · ${fmtMin(nowSlot().min)}`;
+    }
     function openWheel(which) {
       wheelFor = which;
       const start = +document.getElementById('planStart').value, mode = document.getElementById('planMode').value;
@@ -3738,7 +3761,7 @@
       document.getElementById('wheelTitle').textContent = which === 'start' ? '🕘 Start time' : '🏁 Finish time';
       document.getElementById('wheelModes').hidden = which !== 'end';
       document.getElementById('wheelSheet').style.display = 'flex';
-      buildWheels(v); syncWheelModes();
+      buildWheels(v); syncWheelModes(); syncWheelNow();
     }
     function closeWheel() { clearTimeout(wheelTimer); document.getElementById('wheelSheet').style.display = 'none'; wheelFor = null; }
     function onPlanUntil() {
@@ -6033,7 +6056,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.31.0';
+    const APP_VERSION = '1.31.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
