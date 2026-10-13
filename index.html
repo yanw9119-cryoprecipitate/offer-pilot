@@ -846,6 +846,18 @@
     @keyframes chipBurn { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,.0), var(--shadow); } 50% { box-shadow: 0 0 10px 3px rgba(249,115,22,.55), var(--shadow); } }
     @media (prefers-reduced-motion: reduce) { .surge-fire b, .surge-fire em, .surge-fire .sf-glow, #chipNear.burning, #chipNear.burning .chip-flame { animation: none; } }
 
+    /* 🔥 button tiers: 3–5 busy zones two flames, 6–7 a shaking bomb with a lit fuse, all 8 a pulsing blast */
+    #chipNear.t-fire2 .chip-flame { letter-spacing: -4px; }
+    #chipNear.t-fire2 .chip-flame .cf-glow { width: 38px; margin-left: -19px; }
+    .map-chips #chipNear.t-bomb .chip-flame { animation: chipBombShake .32s linear infinite; transform-origin: 50% 60%; }
+    #chipNear .cf-spark { position: absolute; right: -1px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: radial-gradient(circle, #fff7a8, #f59e0b 55%, rgba(245,158,11,0) 70%); animation: sparkle .12s linear infinite alternate; }
+    .map-chips #chipNear.t-bomb { animation: chipBurn .7s ease-in-out infinite; }
+    .map-chips #chipNear.t-boom .chip-flame { animation: chipBoom .6s ease-in-out infinite alternate; }
+    .map-chips #chipNear.t-boom { animation: chipBurn .5s ease-in-out infinite; }
+    @keyframes chipBombShake { 0%,100% { transform: translate(0,0) rotate(0); } 20% { transform: translate(-1.5px,.5px) rotate(-9deg); } 40% { transform: translate(1.5px,-.5px) rotate(7deg); } 60% { transform: translate(-1px,0) rotate(-5deg); } 80% { transform: translate(1px,.5px) rotate(4deg); } }
+    @keyframes chipBoom { from { transform: scale(.9) rotate(-6deg); } to { transform: scale(1.25) rotate(6deg); } }
+    @media (prefers-reduced-motion: reduce) { #chipNear.t-bomb, #chipNear.t-boom, #chipNear .chip-flame, #chipNear .cf-spark { animation: none !important; } }
+
     @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: .2; } }
 
     /* Surge card (bottom of the map) */
@@ -5702,11 +5714,11 @@
       zonesTapAt = now;
       toggleLayer('zones');
     }
-    // 💣 Every Uber zone is medium or busier: a bomb drops on the map, shakes and explodes (once per hour)
+    // 💥 All 8 Uber zones are medium or busier: a bomb drops on the map, shakes and explodes (once per hour)
     function checkAllZonesBusy() {
       const now = new Date(); now.setMinutes(0, 0, 0);
-      const vals = Object.keys(UBER_ZONE_SHAPES).map(z => demandAdj(z, now)).filter(v => v !== null);
-      if (vals.length < 3 || vals.some(v => v < OK)) return;
+      const all = Object.keys(UBER_ZONE_SHAPES).map(z => demandAdj(z, now)), vals = all.filter(v => v !== null);
+      if (vals.length < all.length || vals.some(v => v < OK)) return;   // every zone (all 8) medium or busier
       const key = ymd(now) + 'T' + now.getHours();
       if (lsGet('bombAt') === key) return;
       if (document.getElementById('view-drive').style.display === 'none' || document.hidden) return;
@@ -6717,8 +6729,13 @@
       const evTypes = [...new Set(nearEvents().map(evType).concat(trainActive().some(a => (a.stations || []).length) ? ['🚆'] : []))].slice(0, 3);
       const cn = document.getElementById('chipNear');
       cn.classList.toggle('burning', nBusy > 0);   // surges or busy zones: the flame flickers
+      // How many Uber zones are medium or busier sets the icon: 3–5 two flames, 6–7 a shaking bomb, all of them explodes
+      const nZ = busyZones(new Date(new Date().setMinutes(0, 0, 0))).length, nAll = Object.keys(UBER_ZONE_SHAPES).length;
+      const tier = nZ >= nAll ? 'boom' : nZ >= 6 ? 'bomb' : nZ >= 3 ? 'fire2' : 'fire';
+      ['fire2', 'bomb', 'boom'].forEach(t => cn.classList.toggle('t-' + t, tier === t));
       checkAllZonesBusy();
-      cn.innerHTML = `<span class="chip-flame"><span class="cf-glow"></span>🔥<em></em><em></em><em></em></span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
+      const ico = { fire: '🔥', fire2: '🔥🔥', bomb: '<span class="cf-spark"></span>💣', boom: '💥' }[tier];
+      cn.innerHTML = `<span class="chip-flame"><span class="cf-glow"></span>${ico}<em></em><em></em><em></em></span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
       cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (evTypes.length ? ' including events' : ''));
       syncLayerChips();
       document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
@@ -6748,7 +6765,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.40.0';
+    const APP_VERSION = '1.41.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
