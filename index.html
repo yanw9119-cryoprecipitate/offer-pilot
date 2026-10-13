@@ -1298,9 +1298,13 @@
     }
     .ver-badge { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 890; }
     /* Map tab fills the screen between the tabs and the bottom bar */
-    .drive { height: calc(100dvh - 150px - env(safe-area-inset-bottom, 0px)); min-height: 420px; }
+    .drive { height: calc(100dvh - 158px - env(safe-area-inset-bottom, 0px)); min-height: 420px; }
     .tabs { grid-template-columns: repeat(5, 1fr); position: sticky; top: env(safe-area-inset-top); z-index: 800; }
-    .tab { font-size: .72rem; padding: 9px 2px; line-height: 1.15; white-space: normal; }
+    .tab { font-size: .72rem; padding: 6px 2px 5px; line-height: 1.1; white-space: normal; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 18px; }
+    .tabs { border-radius: 22px; }
+    .tab-ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; display: block; flex: none; }
+    .tab span { font-size: .52rem; font-weight: 800; letter-spacing: .3px; text-transform: uppercase; text-align: center; }
+    .tab.active .tab-ic { stroke-width: 2.1; }
     .offer-view .offer-panel { gap: 10px; padding: 12px; }
     .offer-view .decision-banner { font-size: 1.3rem; padding: 16px 10px; }
     .offer-view .mini-stats b { font-size: 1.15rem; }
@@ -1326,7 +1330,7 @@
     /* ================= Wider screens: buttons grow a little with the screen (phone sizes stay as they are) ================= */
     @media (min-width: 700px) {
       .tabs { max-width: 760px; }
-      .tab { font-size: .9rem; padding: 12px 6px; }
+      .tab { padding: 8px 6px 7px; } .tab-ic { width: 26px; height: 26px; } .tab span { font-size: .62rem; }
       .side-stack { width: min(560px, calc(100% - 32px)); padding: 6px; border-radius: 26px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
       .side-stack .side-btn, .side-stack .side-link { min-height: 62px; border-radius: 20px; }
       .side-stack .side-btn span { font-size: .58rem; }
@@ -1345,7 +1349,7 @@
       .ver-badge { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
     }
     @media (min-width: 1200px) {
-      .tab { font-size: 1rem; padding: 13px 8px; }
+      .tab { padding: 9px 8px 8px; } .tab-ic { width: 28px; height: 28px; } .tab span { font-size: .66rem; }
       .side-stack { width: 620px; }
       .side-stack .side-btn, .side-stack .side-link { min-height: 66px; }
       .side-stack .side-btn span { font-size: .62rem; }
@@ -1376,6 +1380,11 @@
         <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
         <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.6"/></symbol>
         <symbol id="i-pad" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="4" height="4" rx="1"/><rect x="10" y="3.5" width="4" height="4" rx="1"/><rect x="16.5" y="3.5" width="4" height="4" rx="1"/><rect x="3.5" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16.5" y="10" width="4" height="4" rx="1"/><rect x="3.5" y="16.5" width="4" height="4" rx="1"/><rect x="10" y="16.5" width="4" height="4" rx="1"/><rect x="16.5" y="16.5" width="4" height="4" rx="1"/></symbol>
+        <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M3.3 10.5c3 .2 5.6-.6 6.5-1.6M20.7 10.5c-3 .2-5.6-.6-6.5-1.6M12 14.4v6.5"/></symbol>
+        <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
+        <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4 16l5-5.5 4 3.5 6.5-7"/><path d="M15 7h4.5v4.5"/></symbol>
+        <symbol id="i-plan" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.2"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/><circle cx="12" cy="15.2" r="2.9"/><path d="M12 13.8v1.5l1 .7"/></symbol>
+        <symbol id="i-log" viewBox="0 0 24 24"><rect x="4.5" y="4" width="15" height="17" rx="2.2"/><path d="M9 4V2.8h6V4M8.3 9.5h7.4M8.3 13.2h7.4M8.3 16.9h4.4"/></symbol>
         <symbol id="i-pip" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><rect x="12" y="11.5" width="7" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3M7.5 12h9"/></symbol>
         <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9M12 3C9.4 5.6 8.2 8.6 8.2 12s1.2 6.4 3.8 9"/></symbol>
@@ -1385,11 +1394,11 @@
 
   <div class="app-container">
     <div class="tabs">
-      <button class="tab active" id="tab-offer" onclick="showTab('offer')">🚗 Drive</button>
-      <button class="tab" id="tab-drive" onclick="showTab('drive')">🗺 Map</button>
-      <button class="tab" id="tab-trends" onclick="showTab('trends')">📈 Uber Trends</button>
-      <button class="tab" id="tab-insights" onclick="showTab('insights')">🗓 Plan a Shift</button>
-      <button class="tab" id="tab-log" onclick="showTab('log')">📊 Offer Log</button>
+      <button class="tab active" id="tab-offer" onclick="showTab('offer')"><svg class="tab-ic"><use href="#i-wheel"/></svg><span>Drive</span></button>
+      <button class="tab" id="tab-drive" onclick="showTab('drive')"><svg class="tab-ic"><use href="#i-map"/></svg><span>Map</span></button>
+      <button class="tab" id="tab-trends" onclick="showTab('trends')"><svg class="tab-ic"><use href="#i-trend"/></svg><span>Uber Trends</span></button>
+      <button class="tab" id="tab-insights" onclick="showTab('insights')"><svg class="tab-ic"><use href="#i-plan"/></svg><span>Plan a Shift</span></button>
+      <button class="tab" id="tab-log" onclick="showTab('log')"><svg class="tab-ic"><use href="#i-log"/></svg><span>Offer Log</span></button>
     </div>
 
     <!-- ================= DRIVE VIEW: live map + offer in one ================= -->
@@ -6905,7 +6914,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.49.1';
+    const APP_VERSION = '1.50.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
