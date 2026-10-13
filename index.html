@@ -451,6 +451,11 @@
     .cal-day.maybe { background: color-mix(in srgb, var(--amber) 12%, var(--card-2)); }
     .cal-day.no { opacity: .7; }
     .cal-key b.g { color: var(--green); font-weight: 900; }
+    .cal-air { position: absolute; left: 2px; top: 1px; font-size: .55rem; line-height: 1; }
+    .cal-air.peak { filter: drop-shadow(0 0 2px #a78bfa); }
+    .cal-airlist { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 10px; font-size: .78rem; }
+    .cal-airlist b { width: 100%; }
+    .cal-airlist .chip { box-shadow: none; background: var(--card-2); color: var(--text); font-size: .68rem; }
     .cal-zone { display: flex; align-items: center; gap: 6px; font-size: .74rem; color: var(--muted); margin-bottom: 8px; }
     .cal-zone select { flex: 1; min-width: 0; background: var(--card-2); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 10px; padding: 6px 8px; font-size: .8rem; font-weight: 700; }
     .cal-zone small { flex: none; }
@@ -3160,30 +3165,54 @@
       if (!known) return null;
       return { good, ok, cls: good >= CAL_HOURS / 2 ? 'yes' : good + ok >= CAL_HOURS / 2 ? 'maybe' : 'no' };
     }
+    // Airport runs worth it on a day: hours (4am–3am) when airport pickups, or a run out with a ride back,
+    // are High or better, or Uber has a "Peak earnings at MEL" window. 4+ such hours = recommended.
+    function airportDay(day0, evs) {
+      const hrs = [];
+      for (let k = 0; k < 24; k++) {
+        const dt = new Date(day0.getTime() + (4 + k) * 3600000);
+        const vin = airportScore('in', dt), run = airportRun(dt).both;
+        if (Math.max(vin, run) >= 0.75) hrs.push({ h: dt.getHours(), dir: vin >= run ? 'from' : 'to' });
+      }
+      const d0 = day0.getTime() + 4 * 3600000, peak = evs.find(e => e.zone === AIRPORT_ZONE && e.s < d0 + 86400000 && e.e > d0);
+      const win = hrs.length ? (() => { // longest run of good hours
+        let best = [hrs[0], hrs[0]], cur = [hrs[0], hrs[0]];
+        for (let i = 1; i < hrs.length; i++) {
+          if ((hrs[i].h - cur[1].h + 24) % 24 === 1) cur[1] = hrs[i]; else cur = [hrs[i], hrs[i]];
+          if ((cur[1].h - cur[0].h + 24) % 24 > (best[1].h - best[0].h + 24) % 24) best = [...cur];
+        }
+        return `${fmtHour(best[0].h)}–${fmtHour((best[1].h + 1) % 24)}`;
+      })() : '';
+      return { n: hrs.length, rec: hrs.length >= 4 || !!peak, peak, win };
+    }
     function renderPlanCal() {
       const box = document.getElementById('planCal');
       if (!box) return;
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const sel = +document.getElementById('planDay').value || 0;
       const lead = dayIdx(today);                       // blank cells before today (weeks start Monday)
-      const evs = allEvents(), hols = PUBLIC_HOLIDAYS, zone = calZone();
+      const evs = allEvents(), hols = PUBLIC_HOLIDAYS, zone = calZone(), airDays = [];
       let cells = Array.from({ length: lead }, () => '<i class="cal-blank"></i>');
       for (let k = 0; k < CAL_DAYS; k++) {
         const d = new Date(today.getTime() + k * 86400000), o = dayOutlook(d, zone);
         const d0 = d.getTime() + 4 * 3600000, d1 = d0 + 24 * 3600000;
         const dayEv = evs.filter(e => e.s < d1 && e.e > d0);
         const c = !o ? 'na' : o.cls;
-        const marks = (dayEv.some(e => e.zone === AIRPORT_ZONE) ? '✈️' : '') + (dayEv.some(e => e.zone !== AIRPORT_ZONE) ? '🏟' : '') + (hols[ymd(d)] ? '📅' : '');
-        const title = `${d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}: ${o ? `${o.good} recommended hours, ${o.ok} fair` : 'no trend data'}${dayEv.length ? ' · ' + dayEv.map(e => e.name).join(', ') : ''}${hols[ymd(d)] ? ' · ' + hols[ymd(d)] : ''}`;
+        const ap = airportDay(d, evs);
+        airDays.push(ap.rec ? { d, ap } : null);
+        const marks = (dayEv.some(e => e.zone !== AIRPORT_ZONE) ? '🏟' : '') + (hols[ymd(d)] ? '📅' : '');
+        const title = `${d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}: ${o ? `${o.good} recommended hours, ${o.ok} fair` : 'no trend data'}${ap.rec ? ` · airport runs recommended ${ap.win}${ap.peak ? ' (Uber peak at MEL)' : ''}` : ''}${dayEv.length ? ' · ' + dayEv.map(e => e.name).join(', ') : ''}${hols[ymd(d)] ? ' · ' + hols[ymd(d)] : ''}`;
         cells.push(`<button type="button" class="cal-day ${c}${k === sel ? ' sel' : ''}${k === 0 ? ' today' : ''}" onclick="pickPlanDay(${k})" title="${esc(title)}" aria-label="${esc(title)}">` +
-          `<b>${d.getDate()}</b><small>${o ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}</button>`);
+          `<b>${d.getDate()}</b><small>${o ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}${ap.rec ? `<span class="cal-air${ap.peak ? ' peak' : ''}">✈️</span>` : ''}</button>`);
       }
       const m0 = today.toLocaleDateString([], { month: 'long' }), m1 = new Date(today.getTime() + (CAL_DAYS - 1) * 86400000).toLocaleDateString([], { month: 'long' });
       box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><span>Tap a day to plan it</span></div>` +
         `<label class="cal-zone">Area <select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
           `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === myZone() ? '<small>you’re here</small>' : ''}</label>` +
         `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
-        `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (6am–2am) · 🏟 event · ✈️ airport peak · 📅 holiday</span></div>`;
+        `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (6am–2am) · ✈️ airport runs recommended · 🏟 event · 📅 holiday</span></div>` +
+        (() => { const a = airDays.filter(Boolean).slice(0, 8);
+          return a.length ? `<div class="cal-airlist"><b>✈️ Airport run days</b>${a.map(x => `<button type="button" class="chip" onclick="pickPlanDay(${Math.round((x.d - today) / 86400000)})">${DAYS[dayIdx(x.d)]} ${x.d.getDate()} · ${x.ap.win}${x.ap.peak ? ' · Uber peak' : ''}</button>`).join('')}</div>` : ''; })();
     }
     function pickPlanDay(k) {
       document.getElementById('planDay').value = String(k);
@@ -5250,7 +5279,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.24.1';
+    const APP_VERSION = '1.24.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
