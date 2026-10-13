@@ -521,6 +521,8 @@
     .tr-table .pos { color: var(--green); font-weight: 800; } .tr-table .neg { color: var(--red); font-weight: 800; }
     .tr-btns2 { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
     #testDiscard[hidden], .tr-view[hidden] { display: none; }
+    .del { font-size: 1.05rem; line-height: 1; }
+    .del.armed { font-size: .68rem; font-weight: 800; color: #fff; background: var(--red); border-radius: 999px; padding: 5px 8px; white-space: nowrap; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1642,7 +1644,7 @@
     <!-- ===== Manage data ===== -->
     <section class="sx-page" data-page="data" hidden>
       <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
-      <h1 class="sx-big">Your data</h1><p class="sx-lead">View and remove what the pilot has stored. Removals happen straight away.</p>
+      <h1 class="sx-big">Your data</h1><p class="sx-lead">View and remove what the pilot has stored. Tap 🚮 to remove an item. Removals happen straight away.</p>
       <div class="sx-card sx-pad" id="dataList"></div>
     </section>
 
@@ -2889,7 +2891,7 @@
         return `<div class="tr-row"><div class="tr-main"><b>${new Date(r.started).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</b>` +
           `<small>${dur} min · ${st.n} offer${st.n === 1 ? '' : 's'} · ${st.took} taken · ${(r.shifts || []).length} shift${(r.shifts || []).length === 1 ? '' : 's'} · ${(r.snaps || []).length} snap${(r.snaps || []).length === 1 ? '' : 's'}</small></div>` +
           `<div class="tr-btns"><button type="button" class="chip" onclick="viewTestRun(${r.id})">View</button><button type="button" class="chip" onclick="exportTestRun(${r.id})">Export</button>` +
-          `<button type="button" class="del" onclick="armed(this, () => deleteTestRun(${r.id}))" aria-label="Delete test run">✕</button></div></div>`;
+          `<button type="button" class="del" onclick="armed(this, () => deleteTestRun(${r.id}))" aria-label="Delete test run">🚮</button></div></div>`;
       }).join('') : '<div class="sx-hint">No saved test runs yet. When you end a test run, what you did is kept here.</div>';
     }
     function viewTestRun(id) {
@@ -2962,7 +2964,9 @@
     function armed(btn, fn) {
       if (btn.dataset.armed) { clearTimeout(+btn.dataset.armed); delete btn.dataset.armed; fn(); return; }
       const label = btn.textContent;
-      btn.textContent = 'Tap again to delete';
+      btn.textContent = btn.classList.contains('del') ? 'Tap again' : 'Tap again to delete';
+      btn.classList.add('armed');
+      setTimeout(() => btn.classList.remove('armed'), 4000);
       btn.dataset.armed = setTimeout(() => { btn.textContent = label; delete btn.dataset.armed; }, 4000);
     }
 
@@ -3024,7 +3028,7 @@
       document.getElementById('sxEmpty').hidden = any;
     }
     const dShort = t => new Date(t).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-    const delBtn = (fn, label = 'Delete') => `<button type="button" class="del" onclick="${fn}" aria-label="${label}">✕</button>`;
+    const delBtn = (fn, label = 'Delete') => `<button type="button" class="del" onclick="${fn}" aria-label="${label}">🚮</button>`;
 
     function renderDataSheet() {
       const open = new Set([...document.querySelectorAll('#dataList details[open]')].map(d => d.dataset.k));
@@ -3216,7 +3220,7 @@
         const idx = mine.findIndex(m => m.name === e.name && m.start === e.start);
         const ic = e.zone === AIRPORT_ZONE ? '✈️' : e.kind === 'peak' ? '🟣' : '🏟';
         return `<div class="fl-row"><span>${ic} <b>${esc(e.name)}</b> · ${esc(e.place)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}<br>${fmt(e.s)} – ${new Date(e.e).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${esc(e.zone)}</span>` +
-          `<button type="button" class="del" onclick="removeEvent(${esc(JSON.stringify(e.name))}, '${e.start}')" aria-label="${idx >= 0 ? 'Delete' : 'Hide'} event">✕</button></div>`;
+          `<button type="button" class="del" onclick="removeEvent(${esc(JSON.stringify(e.name))}, '${e.start}')" aria-label="${idx >= 0 ? 'Delete' : 'Hide'} event">🚮</button></div>`;
       }).join('') + hol.map(([d, n]) => `<div class="fl-row"><span>📅 <b>${esc(n)}</b> · public holiday, patterns may differ<br>${new Date(d + 'T12:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}</span></div>`).join(''))
         || '<div class="autoread-hint">No big events in the next two weeks.</div>';
     }
@@ -3672,7 +3676,7 @@
               <div>${DAYS[(dt.getDay() + 6) % 7]} ${time} · $${e.fare.toFixed(2)} · ${e.mins}m${e.kms ? ' · ' + e.kms + 'km' : ''}<br>
               <span style="color:${isGoodOffer(e) ? 'var(--green)' : 'var(--red)'}">$${gph.toFixed(0)}/hr</span>
               <span style="color:var(--muted)">· ${e.took ? '✓ took' : '✗ passed'}${e.src === 'auto' ? ' · 🔎 auto-read' : ''}</span></div>
-              <button class="del" onclick="deleteEntry(${i})">✕</button>
+              <button class="del" onclick="deleteEntry(${i})">🚮</button>
             </div>`);
         }
         recent.innerHTML = rows.join('');
@@ -5710,7 +5714,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.26.0';
+    const APP_VERSION = '1.26.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
