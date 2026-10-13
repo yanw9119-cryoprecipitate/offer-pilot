@@ -689,6 +689,45 @@
 
     /* Surge pins on the map */
     .surge-pin-wrap { background: none; border: none; }
+    /* 🌦 weather animations on the map */
+    .wx-wrap { pointer-events: none; }
+    .wx-rain, .wx-heat, .wx-soon { position: relative; width: 52px; height: 46px; }
+    .wx-rain b, .wx-heat b, .wx-soon b { position: absolute; left: 50%; top: 0; transform: translateX(-50%); font-size: 1.35rem; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
+    .wx-rain i { position: absolute; top: 18px; width: 2px; height: 8px; border-radius: 2px; background: #3b82f6; opacity: 0; animation: wxDrop 1s linear infinite; }
+    .wx-rain.heavy i { background: #1d4ed8; width: 2.5px; animation-duration: .7s; }
+    .wx-rain u { position: absolute; bottom: 4px; left: 12px; width: 14px; height: 4px; border: 1.5px solid #60a5fa; border-radius: 50%; opacity: 0; animation: wxSplash 1s ease-out infinite; }
+    .wx-rain span, .wx-heat span { position: absolute; right: -6px; top: -4px; font-size: .62rem; font-weight: 800; background: #fff; color: #111; border-radius: 999px; padding: 0 4px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    @keyframes wxDrop { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } 80% { opacity: .9; } 100% { transform: translateY(20px); opacity: 0; } }
+    @keyframes wxSplash { 0%, 60% { transform: scale(.3); opacity: 0; } 70% { opacity: .9; } 100% { transform: scale(1.4); opacity: 0; } }
+    .wx-heat::before { content: ''; position: absolute; left: 50%; top: 10px; width: 46px; height: 46px; margin-left: -23px; margin-top: -12px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(251,146,60,.55), rgba(251,146,60,0) 70%); animation: wxGlow 1.8s ease-in-out infinite; }
+    .wx-heat.hot::before { background: radial-gradient(circle, rgba(239,68,68,.6), rgba(239,68,68,0) 70%); }
+    .wx-heat em { position: absolute; bottom: 4px; width: 16px; height: 6px; border-top: 2px solid rgba(234,88,12,.8); border-radius: 50%; animation: wxShimmer 1.4s ease-in-out infinite; }
+    .wx-heat em:nth-of-type(1) { left: 6px; } .wx-heat em:nth-of-type(2) { left: 19px; animation-delay: .3s; } .wx-heat em:nth-of-type(3) { left: 32px; animation-delay: .6s; }
+    @keyframes wxGlow { 0%, 100% { transform: scale(.85); opacity: .7; } 50% { transform: scale(1.15); opacity: 1; } }
+    @keyframes wxShimmer { 0%, 100% { transform: translateY(0) scaleX(1); opacity: .3; } 50% { transform: translateY(-6px) scaleX(.8); opacity: 1; } }
+    .wx-soon b { animation: wxBob 2s ease-in-out infinite; }
+    .wx-soon span { position: absolute; left: 40px; top: 6px; white-space: nowrap; font-size: .56rem; font-weight: 800; background: rgba(255,255,255,.92); color: #1d4ed8; border-radius: 999px; padding: 0 4px; }
+    @keyframes wxBob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 4px); } }
+    .radar-time { position: absolute; left: 8px; bottom: 30px; z-index: 600; font-size: .66rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--glass); color: var(--text); box-shadow: var(--shadow); pointer-events: none; }
+    .radar-time[hidden] { display: none; }
+    /* 🌦 7-day forecast in Plan a Shift */
+    .cal-wx { position: absolute; right: 2px; bottom: 1px; font-style: normal; font-size: .62rem; line-height: 1; }
+    .wx-out { margin-top: 14px; display: flex; flex-direction: column; gap: 5px; }
+    .wx-day { display: grid; grid-template-columns: 52px 22px 1fr auto; grid-template-areas: "d i n t" "d i p t"; align-items: center; gap: 0 8px; width: 100%; text-align: left; font: inherit; color: var(--text);
+      background: var(--card-2); border: var(--bw) solid var(--card-border); border-radius: 12px; padding: 7px 10px; }
+    .wx-day b { grid-area: d; font-size: .8rem; white-space: nowrap; } .wx-day i { grid-area: i; font-style: normal; font-size: 1.15rem; }
+    .wx-day > span { grid-area: n; font-size: .74rem; } .wx-day .wx-t { grid-area: t; font-weight: 800; font-size: .9rem; } .wx-day .wx-t small { color: var(--muted); font-weight: 700; }
+    .wx-day .wx-p { grid-area: p; font-size: .68rem; color: var(--muted); } .wx-day .wx-p.wet { color: #2563eb; font-weight: 800; }
+    .wx-day.open { border-color: var(--accent); }
+    .wx-day.na { display: flex; gap: 10px; color: var(--muted); font-size: .74rem; }
+    .wx-hours { display: flex; gap: 4px; overflow-x: auto; padding: 4px 2px 6px; scrollbar-width: none; }
+    .wx-hours::-webkit-scrollbar { display: none; }
+    .wx-h { flex: none; width: 42px; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 0; border-radius: 10px; background: var(--card-2); border: var(--bw) solid var(--card-border); }
+    .wx-h small { font-size: .56rem; color: var(--muted); } .wx-h b { font-size: 1rem; font-weight: 400; } .wx-h span { font-size: .72rem; font-weight: 800; }
+    .wx-h em { font-style: normal; font-size: .56rem; color: #2563eb; font-weight: 800; min-height: .8em; }
+    .wx-h.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .wx-h.wet { background: color-mix(in srgb, #3b82f6 12%, var(--card-2)); }
     .fuel-pin-wrap { display: flex; align-items: center; gap: 3px; }
     .fuel-pin { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: #fff; border: 2px solid #ea580c; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
     .fuel-pin.h24 { border-color: #16a34a; }
@@ -1185,6 +1224,7 @@
         <div class="surge-card" id="surgeCard" hidden></div>
         <div class="busy-panel" id="busyPanel" hidden></div>
         <button type="button" class="map-offer" id="mapOffer" hidden onclick="showTab('offer')"></button>
+        <div class="radar-time" id="radarTime" hidden></div>
         <div class="map-help" id="mapHelp" hidden onclick="hideMapHelp()" role="status" aria-live="polite"></div>
       </div>
 
@@ -3392,14 +3432,80 @@
     let weather = null;
     try { weather = JSON.parse(lsGet('weatherCache')); } catch (e) {}
     async function loadWeather() {
-      if (weather && Date.now() - weather.at < 3600000) return;
+      if (weather && weather.temp && Date.now() - weather.at < 3600000) return;
       try {
         const j = await fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=-37.81&longitude=144.96' +
-          '&hourly=precipitation,precipitation_probability&timezone=Australia%2FMelbourne&forecast_days=7', 10000);
-        weather = { at: Date.now(), t: j.hourly.time, mm: j.hourly.precipitation, p: j.hourly.precipitation_probability };
+          '&hourly=precipitation,precipitation_probability,temperature_2m,weather_code,is_day' +
+          '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum' +
+          '&timezone=Australia%2FMelbourne&forecast_days=16', 10000);
+        const h = j.hourly, d = j.daily;
+        weather = { at: Date.now(), t: h.time, mm: h.precipitation, p: h.precipitation_probability, temp: h.temperature_2m, code: h.weather_code, day: h.is_day,
+          d: { t: d.time, code: d.weather_code, hi: d.temperature_2m_max, lo: d.temperature_2m_min, pp: d.precipitation_probability_max, sum: d.precipitation_sum } };
         lsSet('weatherCache', JSON.stringify(weather));
         renderInsights(); if (map) renderMap();
       } catch (e) { /* offline: no rain boost */ }
+    }
+    // ---- Weather icons (WMO weather codes from Open-Meteo) ----
+    function wxIcon(code, isDay = 1) {
+      if (code == null) return '';
+      if (code === 0) return isDay ? '☀️' : '🌙';
+      if (code === 1) return isDay ? '🌤' : '🌙';
+      if (code === 2) return isDay ? '⛅' : '☁️';
+      if (code === 3) return '☁️';
+      if (code === 45 || code === 48) return '🌫';
+      if (code >= 51 && code <= 57) return '🌦';
+      if (code >= 61 && code <= 67) return '🌧';
+      if ((code >= 71 && code <= 77) || code === 85 || code === 86) return '🌨';
+      if (code >= 80 && code <= 82) return isDay ? '🌦' : '🌧';
+      if (code >= 95) return '⛈';
+      return '☁️';
+    }
+    function wxName(code) {
+      if (code == null) return '';
+      if (code === 0) return 'Clear'; if (code <= 2) return 'Partly cloudy'; if (code === 3) return 'Cloudy';
+      if (code === 45 || code === 48) return 'Fog'; if (code <= 57) return 'Drizzle'; if (code <= 67) return code >= 65 ? 'Heavy rain' : 'Rain';
+      if (code <= 77) return 'Snow'; if (code <= 82) return code === 82 ? 'Heavy showers' : 'Showers'; if (code <= 86) return 'Snow showers';
+      return 'Thunderstorm';
+    }
+    function wxHour(dt) {
+      if (!weather || !weather.temp) return null;
+      const i = weather.t.indexOf(`${ymd(dt)}T${String(dt.getHours()).padStart(2, '0')}:00`);
+      return i < 0 ? null : { temp: weather.temp[i], code: weather.code[i], mm: weather.mm[i] || 0, p: weather.p[i] || 0, day: weather.day[i] };
+    }
+    function wxDay(d) {
+      if (!weather || !weather.d) return null;
+      const i = weather.d.t.indexOf(ymd(d));
+      return i < 0 ? null : { code: weather.d.code[i], hi: weather.d.hi[i], lo: weather.d.lo[i], pp: weather.d.pp[i] || 0, sum: weather.d.sum[i] || 0 };
+    }
+
+    // ---- Weather in each Uber zone right now (rain / heat), refreshed every 15 min ----
+    let zoneWx = null;
+    try { zoneWx = JSON.parse(lsGet('zoneWx')); } catch (e) {}
+    let zoneWxLoading = false;
+    async function loadZoneWx() {
+      if (zoneWxLoading || (zoneWx && Date.now() - zoneWx.at < 15 * 60000)) return;
+      zoneWxLoading = true;
+      const names = Object.keys(UBER_ZONE_SHAPES), pts = names.map(z => L.polygon(UBER_ZONE_SHAPES[z]).getBounds().getCenter());
+      try {
+        const j = await fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=' + pts.map(p => p.lat.toFixed(3)).join(',') +
+          '&longitude=' + pts.map(p => p.lng.toFixed(3)).join(',') +
+          '&current=temperature_2m,precipitation,weather_code,is_day&hourly=precipitation,precipitation_probability&forecast_hours=3&timezone=Australia%2FMelbourne', 10000);
+        const arr = Array.isArray(j) ? j : [j], z = {};
+        names.forEach((n, k) => {
+          const r = arr[k]; if (!r || !r.current) return;
+          const c = r.current, nx = (r.hourly && r.hourly.precipitation) || [], np = (r.hourly && r.hourly.precipitation_probability) || [];
+          const code = c.weather_code, wetCode = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+          const rain = (c.precipitation || 0) >= 0.1 || wetCode;
+          const soon = !rain && [1, 2].some(i => (nx[i] || 0) >= 0.3 || ((np[i] || 0) >= 60 && (nx[i] || 0) >= 0.1));
+          z[n] = { lat: pts[k].lat, lng: pts[k].lng, temp: c.temperature_2m, mm: c.precipitation || 0, code, day: c.is_day,
+            rain, heavy: (c.precipitation || 0) >= 2 || code === 65 || code === 82 || code >= 95, storm: code >= 95, soon,
+            heat: c.temperature_2m >= 30, hot: c.temperature_2m >= 35 };
+        });
+        zoneWx = { at: Date.now(), z };
+        lsSet('zoneWx', JSON.stringify(zoneWx));
+        drawWx();
+      } catch (e) { /* offline */ }
+      finally { zoneWxLoading = false; }
     }
     function rainAt(dt) {
       if (!weather) return null;
@@ -3664,6 +3770,31 @@
       }
       return out.join(', ');
     }
+    // 7-day weather from the chosen date; tap a day for its hours (Uber's day: 4am to 3am)
+    let wxOpen = null;
+    function toggleWxDay(key) { wxOpen = wxOpen === key ? '' : key; renderPlanCal(); }
+    function weatherOutlookHTML(today, sel) {
+      const days = Array.from({ length: 7 }, (_, k) => new Date(today.getTime() + (sel + k) * 86400000));
+      const open = wxOpen === null ? ymd(days[0]) : wxOpen;
+      const lbl = d => `${DAYS[dayIdx(d)]} ${d.getDate()}`;
+      const rows = days.map(d => {
+        const w = wxDay(d), key = ymd(d);
+        if (!w) return `<div class="wx-day na"><b>${lbl(d)}</b><span>Forecast not out yet</span></div>`;
+        const hrs = key === open ? (() => {
+          const cells = Array.from({ length: 24 }, (_, k) => new Date(d.getTime() + (4 + k) * 3600000)).map(t => {
+            const h = wxHour(t); if (!h) return '';
+            const isNow = Math.abs(t - Date.now()) < 3600000 && t <= Date.now();
+            return `<div class="wx-h${h.mm >= 0.3 ? ' wet' : ''}${isNow ? ' now' : ''}"><small>${fmtHour(t.getHours())}</small><b>${wxIcon(h.code, h.day)}</b><span>${Math.round(h.temp)}°</span>` +
+              `<em>${h.p >= 20 ? h.p + '%' : ''}</em></div>`;
+          }).join('');
+          return cells ? `<div class="wx-hours">${cells}</div>` : '';
+        })() : '';
+        return `<button type="button" class="wx-day${key === open ? ' open' : ''}" onclick="toggleWxDay('${key}')">` +
+          `<b>${lbl(d)}</b><i>${wxIcon(w.code)}</i><span>${wxName(w.code)}</span><span class="wx-t">${Math.round(w.hi)}° <small>${Math.round(w.lo)}°</small></span>` +
+          `<span class="wx-p${w.pp >= 50 ? ' wet' : ''}">💧 ${w.pp}%${w.sum >= 1 ? ' · ' + w.sum.toFixed(0) + ' mm' : ''}</span></button>` + hrs;
+      }).join('');
+      return `<div class="wx-out"><div class="ap-out-h">🌦 Weather from ${lbl(days[0])}</div>${weather && weather.d ? rows : '<div class="autoread-hint">Loading the forecast…</div>'}</div>`;
+    }
     function airportOutlookHTML(today, sel, evs) {
       const days = Array.from({ length: 7 }, (_, k) => { const d = new Date(today.getTime() + (sel + k) * 86400000); return { d, k: sel + k, ap: airportDay(d, evs) }; });
       const lbl = d => `${DAYS[dayIdx(d)]} ${d.getDate()}`;
@@ -3700,17 +3831,19 @@
         const marks = (dayEv.some(e => e.zone !== AIRPORT_ZONE) ? '🏟' : '') + (hols[ymd(d)] ? '📅' : '');
         const title = `${d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}: ${o ? `${o.good} recommended hours, ${o.ok} fair` : 'no trend data'}${ap.rec ? ` · airport runs recommended ${ap.win}${ap.peak ? ' (Uber peak at MEL)' : ''}` : ''}${dayEv.length ? ' · ' + dayEv.map(e => e.name).join(', ') : ''}${hols[ymd(d)] ? ' · ' + hols[ymd(d)] : ''}`;
         cells.push(`<button type="button" class="cal-day ${c}${k === sel ? ' sel' : ''}${k === 0 ? ' today' : ''}" onclick="pickPlanDay(${k})" title="${esc(title)}" aria-label="${esc(title)}">` +
-          `<b>${d.getDate()}</b><small>${o ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}${ap.rec ? `<span class="cal-air${ap.peak ? ' peak' : ''}">✈️</span>` : ''}</button>`);
+          `<b>${d.getDate()}</b><small>${o ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}${ap.rec ? `<span class="cal-air${ap.peak ? ' peak' : ''}">✈️</span>` : ''}` +
+          (() => { if (k < sel || k > sel + 6) return ''; const w = wxDay(d); return w ? `<i class="cal-wx" title="${wxName(w.code)}">${wxIcon(w.code)}</i>` : ''; })() + `</button>`);
       }
       const m0 = today.toLocaleDateString([], { month: 'long' }), m1 = new Date(today.getTime() + (CAL_DAYS - 1) * 86400000).toLocaleDateString([], { month: 'long' });
       const here = myZone();
+      setTimeout(() => { const n = box.querySelector('.wx-h.now'); if (n) n.parentElement.scrollLeft = n.offsetLeft - n.parentElement.offsetLeft - 6; }, 0);
       box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><button type="button" class="cal-today${sel === 0 ? ' on' : ''}" onclick="calToday()">Today</button></div>` +
         `<div class="cal-zone"><button type="button" class="cal-loc${zone === here ? ' on' : ''}" onclick="calHere()" aria-label="Use the area you're in">📍</button>` +
         `<select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
           `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === here ? '<small>you’re here</small>' : ''}</div>` +
         `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
         `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (${fmtRange(6, 2)}) · ✈️ airport runs recommended · 🏟 event · 📅 holiday</span></div>` +
-        airportOutlookHTML(today, sel, evs);
+        airportOutlookHTML(today, sel, evs) + weatherOutlookHTML(today, sel);
     }
     // 📍 back to the area you're in; Today back to today
     function calHere() {
@@ -3719,10 +3852,12 @@
       toast(myZone() ? `📍 ${myZone()}` : '📍 Finding your location…');
     }
     function calToday() {
+      wxOpen = null;
       document.getElementById('planDay').value = '0';
       renderPlan(); renderPlanCal();
     }
     function pickPlanDay(k) {
+      wxOpen = null;
       document.getElementById('planDay').value = String(k);
       renderPlan(); renderPlanCal();   // stay where you are on the page
     }
@@ -5307,6 +5442,7 @@
           const box = L.DomUtil.create('div', 'map-fabs');
           box.innerHTML =
             '<button type="button" class="map-fab map-compass" id="fabCompass" aria-label="Compass: tap for north up or direction up">' + COMPASS_SVG + '</button>' +
+            '<button type="button" class="map-fab" id="fabWx" aria-label="Weather and rain radar">🌦</button>' +
             '<button type="button" class="map-fab" id="fabNight" aria-label="Night map">🌙</button>' +
             '<button type="button" class="map-fab" id="fabCity" aria-label="Show all of Melbourne">🏙</button>' +
             '<button type="button" class="map-fab' + (followMe ? ' on' : '') + '" id="fabLocate" aria-label="Follow my location">' +
@@ -5315,6 +5451,7 @@
           L.DomEvent.disableScrollPropagation(box);
           box.querySelector('#fabCompass').onclick = () => setHeadUp(!headUp);
           box.querySelector('#fabCity').onclick = () => { if (headUp) setHeadUp(false, true); setFollow(false); map.setView(MELB, 12); showMapHelp('city', true); };
+          box.querySelector('#fabWx').onclick = toggleWx;
           box.querySelector('#fabNight').onclick = () => { setNightMap(!nightMap); showMapHelp('night', nightMap); };
           box.querySelector('#fabLocate').onclick = () => {
             enableCompass();
@@ -5360,7 +5497,7 @@
     const LEVEL_AMT = [0, 1, 3, 6];          // $ assumed when no "+$" amount was recorded
     const SURGE_HALF_LIFE_MIN = 7;           // research: surges often end within 5-10 minutes
     // Map layers: Zones on by default; your choices are remembered
-    const layers = Object.assign({ live: true, pred: true, hist: false, zones: true, spots: false, fuel: false },
+    const layers = Object.assign({ live: true, pred: true, hist: false, zones: true, spots: false, fuel: false, wx: true },
       (() => { try { const v = JSON.parse(lsGet('mapLayers')); delete (v || {}).hist; return v || {}; } catch (e) { return {}; } })());
     // Zones chip: tap = zones on/off; double tap = label every zone (quiet ones too), double tap again = busy ones only
     let zonesTapAt = 0, zonesTapPrev = null;
@@ -5426,6 +5563,7 @@
       spots: ['⭐ Spots', 'Suburbs coloured by the $/hr of offers you got there (2 or more offers): green good, yellow fair, red poor.'],
       hist: ['🕘 History', 'Every past snapshot. Choose a day and time in the bar above, or tap Now.'],
       busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.'],
+      wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 when it’s raining there now, 🌦 when rain is due within 2 hours, and ☀️ when it’s 30° or hotter.'],
       night: ['🌙 Night map', 'Dark streets for night driving, easier on the eyes.'],
       city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
       headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Red needle shows north. Tap again for north up.'],
@@ -5500,6 +5638,7 @@
         ['🔴 Live · 🔮 Predicted', 'Surges you snapped in the last 20 min, and where your snapshots say they usually happen now.'],
         ['⭐ Spots · 🕘 History', 'Suburbs by your offers’ $/hr, and every past snapshot by day and time.'],
         ['⛽ Fuel', 'Petrol stations on the map with brand, fuels, opening hours and drive time. Tap one to navigate.'],
+        ['🌦 Weather', 'Rain radar (last 2 hours, looping) and live rain or heat in each zone. The button shows the weather now.'],
         ['🧭 Compass', 'Tap to turn the map so your direction is up; tap again for north up. The red needle always points north.'],
         ['🌙 · 🏙 · ➤', 'Night map, zoom out to all of Melbourne, and follow me (arrow turns with the compass).'],
         ['Good to know', 'Drag the map to look around; tap ➤ to follow again. Tap a surge pin for the drive and whether it’s worth it.']]],
@@ -6105,6 +6244,7 @@
 
       if (layers.spots) drawSpots();
       drawFuel();
+      drawWx();
 
       // Uber trend zones with demand right now
       if (layers.zones) {
@@ -6199,7 +6339,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.33.6';
+    const APP_VERSION = '1.34.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6388,6 +6528,78 @@
           `${x.best !== null ? ' · best ' + blockLabel(x.best) : ''}</div></div><i class="pill ${c}">$${x.gph.toFixed(0)}/hr</i></div>`;
       }).join('') : '<div class="empty">Spots appear after 2+ offers in the same suburb (with location on).</div>';
     }
+    // ================= 🌦 WEATHER ON THE MAP =================
+    // Each Uber zone gets a small animation when it's raining (drops hitting the ground), rain is due
+    // within 2 hours, or it's hot (30°+). The rain radar from the last 2 hours plays on a loop so you
+    // can see which way the rain is moving (RainViewer, free for personal use).
+    let wxLayer = null;
+    const radar = { host: '', frames: [], layers: [], i: 0, timer: null, at: 0 };
+    function wxBadge(w) {
+      if (w.rain) {
+        const drops = Array.from({ length: w.heavy ? 9 : 6 }, (_, k) => `<i style="left:${8 + (k * 37) % 34}px;animation-delay:${(k * 0.17).toFixed(2)}s"></i>`).join('');
+        return `<div class="wx-rain${w.heavy ? ' heavy' : ''}"><b>${w.storm ? '⛈' : '🌧'}</b>${drops}<u></u><u style="animation-delay:.45s;left:26px"></u><span>${Math.round(w.temp)}°</span></div>`;
+      }
+      if (w.heat) return `<div class="wx-heat${w.hot ? ' hot' : ''}"><b>${w.day ? '☀️' : '🌡'}</b><em></em><em></em><em></em><span>${Math.round(w.temp)}°</span></div>`;
+      if (w.soon) return `<div class="wx-soon"><b>🌦</b><span>rain soon</span></div>`;
+      return '';
+    }
+    function drawWx() {
+      if (!map) return;
+      if (!wxLayer) wxLayer = L.layerGroup().addTo(map);
+      wxLayer.clearLayers();
+      syncWxFab();
+      if (!layers.wx) { stopRadar(); return; }
+      loadZoneWx(); startRadar();
+      if (!zoneWx) return;
+      Object.values(zoneWx.z).forEach(w => {
+        const html = wxBadge(w); if (!html) return;
+        L.marker([w.lat, w.lng], { interactive: false, zIndexOffset: 100, icon: L.divIcon({ className: 'wx-wrap', iconSize: [52, 46], iconAnchor: [30, 60], html }) }).addTo(wxLayer);
+      });
+    }
+    function syncWxFab() {
+      const b = document.getElementById('fabWx'); if (!b) return;
+      b.classList.toggle('on', !!layers.wx);
+      const w = wxHour(new Date());
+      b.textContent = w ? wxIcon(w.code, w.day) : '🌦';
+    }
+    async function startRadar() {
+      if (!map || radar.timer || radar.busy) return;
+      radar.busy = true;
+      try {
+        if (!radar.frames.length || Date.now() - radar.at > 10 * 60000) {
+          const j = await fetchJSON('https://api.rainviewer.com/public/weather-maps.json', 8000);
+          radar.layers.forEach(l => map.removeLayer(l)); radar.layers = [];
+          radar.host = j.host; radar.frames = (j.radar && j.radar.past) || []; radar.at = Date.now();
+        }
+      } catch (e) { radar.busy = false; return; }
+      radar.busy = false;
+      if (!radar.frames.length || !layers.wx || radar.timer) return;
+      if (!map.getPane('radar')) { const pn = map.createPane('radar'); pn.style.zIndex = 350; pn.style.pointerEvents = 'none'; }
+      if (!radar.layers.length) radar.layers = radar.frames.map(f => L.tileLayer(radar.host + f.path + '/256/{z}/{x}/{y}/2/1_1.png',
+        { pane: 'radar', opacity: 0, maxNativeZoom: 7, maxZoom: 19, attribution: 'Radar © RainViewer' }));
+      radar.layers.forEach(l => { if (!map.hasLayer(l)) l.addTo(map); });
+      radar.i = radar.layers.length - 1;
+      const tick = () => {
+        if (document.getElementById('view-drive').style.display !== 'none' && !document.hidden) {
+          radar.i = (radar.i + 1) % radar.layers.length;
+          radar.layers.forEach((l, k) => l.setOpacity(k === radar.i ? 0.55 : 0));
+          const lab = document.getElementById('radarTime'), f = radar.frames[radar.i];
+          if (lab && f) { lab.hidden = false; lab.textContent = `🌧 Radar ${fmtTime(f.time * 1000)}${radar.i === radar.layers.length - 1 ? ' · latest' : ''}`; }
+        }
+        radar.timer = setTimeout(tick, radar.i === radar.layers.length - 1 ? 1600 : 450);   // pause on the newest frame
+      };
+      tick();
+    }
+    function stopRadar() {
+      clearTimeout(radar.timer); radar.timer = null;
+      if (map) radar.layers.forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+      const lab = document.getElementById('radarTime'); if (lab) lab.hidden = true;
+    }
+    function toggleWx() {
+      layers.wx = !layers.wx; lsSet('mapLayers', JSON.stringify(layers));
+      drawWx(); showMapHelp('wx', layers.wx);
+    }
+
     // ================= ⛽ FUEL STATIONS LAYER (OpenStreetMap, free, no key) =================
     let fuelLayer = null, fuelBox = null, fuelList = [], fuelLoading = false, fuelMoveT = null;
     const FUEL_MIN_ZOOM = 12;
