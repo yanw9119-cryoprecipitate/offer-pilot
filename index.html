@@ -1397,11 +1397,11 @@
         <path d="M9.2 19.6h5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg><span>Pilot</span>
     </div>
-    <button class="side-btn side-gear" onclick="toggleSettings(true)" aria-label="Settings"><svg class="sb-ic"><use href="#i-gear"/></svg><span>Settings</span></button>
-    <button class="side-btn side-snap" id="snapSideBtn" onclick="openSnap()" aria-label="Surge snapshot"><svg class="sb-ic"><use href="#i-cam"/></svg><i class="snap-dot"></i><span>Snap</span></button>
-    <button class="side-btn" id="keypadToggle" onclick="toggleKeypad()" aria-label="Number pad"><svg class="sb-ic"><use href="#i-pad"/></svg><span>Keypad</span></button>
     <button class="side-btn" id="pipSideBtn" onclick="togglePiP()" aria-label="Floating overlay"><svg class="sb-ic"><use href="#i-pip"/></svg><span>Overlay</span></button>
+    <button class="side-btn" id="keypadToggle" onclick="toggleKeypad()" aria-label="Number pad"><svg class="sb-ic"><use href="#i-pad"/></svg><span>Keypad</span></button>
     <button class="side-btn" id="autoSideBtn" onclick="openAutoSheet()" aria-label="Auto-Read"><svg class="sb-ic"><use href="#i-scan"/></svg><span>Auto</span><i class="live-dot"></i></button>
+    <button class="side-btn side-snap" id="snapSideBtn" onclick="openSnap()" aria-label="Surge snapshot"><svg class="sb-ic"><use href="#i-cam"/></svg><i class="snap-dot"></i><span>Snap</span></button>
+    <button class="side-btn side-gear" onclick="toggleSettings(true)" aria-label="Settings"><svg class="sb-ic"><use href="#i-gear"/></svg><span>Settings</span></button>
     <a class="side-btn side-link" id="siteSideBtn" href="https://yanw9119-cryoprecipitate.github.io/offer-pilot/"
        target="_blank" rel="noopener" onclick="this.href = freshSiteUrl()" aria-label="Open the latest version of the live site"><svg class="sb-ic"><use href="#i-globe"/></svg><span>Site</span></a>
   </div>
@@ -5576,7 +5576,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.8';
+    const APP_VERSION = '1.25.9';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
