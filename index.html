@@ -2052,6 +2052,7 @@
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">✈️ Live flights</h3>
         <div class="sx-field"><label for="cfgFlightKey">AeroDataBox key from RapidAPI (optional)</label><input type="password" id="cfgFlightKey" placeholder="Paste your X-RapidAPI-Key" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-field"><label for="cfgFlightCap">Calls allowed a month on your plan</label><input type="number" inputmode="numeric" id="cfgFlightCap" min="0" step="10" placeholder="300" /></div>
         <div class="sx-hint" id="flightKeyNote"></div>
       </div>
         <div class="sx-card sx-pad dev-tools">
@@ -2159,7 +2160,7 @@
     // ---------- Safe storage helpers ----------
     // Test run keeps its own copy of everything under "test:" keys
     const TEST = (() => { try { return localStorage.getItem('testMode') === '1'; } catch (e) { return false; } })();
-    const SHARED_KEYS = new Set(['testMode', 'devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'flCalls']);   // same in test runs
+    const SHARED_KEYS = new Set(['testMode', 'devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'cfgFlightCap', 'flCalls']);   // same in test runs
     const tk = k => TEST && !SHARED_KEYS.has(k) ? 'test:' + k : k;
     function lsGet(k) { try { return localStorage.getItem(tk(k)); } catch (e) { return null; } }
     function lsSet(k, v) { try { localStorage.setItem(tk(k), v); } catch (e) {} }
@@ -2564,6 +2565,7 @@
       lsSet('cfgTomTom', chaseCfg.tomtom);
       if (devUnlocked) { const tk = document.getElementById('cfgTrainKey').value.trim(), old = lsGet('cfgTrainKey') || '';
         lsSet('cfgTrainKey', tk); if (tk !== old) { train.at = 0; train.err = ''; if (tk) loadTrainAlerts(true); else { train.alerts = []; drawTrain(); } } }
+      if (devUnlocked) { const cap = parseInt(document.getElementById('cfgFlightCap').value, 10); if (cap >= 0) lsSet('cfgFlightCap', cap); else lsDel('cfgFlightCap'); }
       if (devUnlocked) { const fk = document.getElementById('cfgFlightKey').value.trim(), old = lsGet('cfgFlightKey') || '';
         lsSet('cfgFlightKey', fk); if (fk !== old) { Object.keys(flights).forEach(k => { delete flights[k]; lsDel('flights:' + k); }); if (fk) loadFlights('MEL', true); } }
       routeCache.clear();
@@ -6960,7 +6962,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.54.1';
+    const APP_VERSION = '1.55.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7244,13 +7246,14 @@
       document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
       document.getElementById('cfgTrainKey').value = lsGet('cfgTrainKey') || '';
       document.getElementById('cfgFlightKey').value = lsGet('cfgFlightKey') || '';
+      document.getElementById('cfgFlightCap').value = lsGet('cfgFlightCap') || '';
       ['cfgTomTom', 'cfgTrainKey', 'cfgFlightKey'].forEach(id => { document.getElementById(id).type = 'password'; });
       document.getElementById('devShowBtn').textContent = '👁 Show keys';
       syncTrainNote(); syncFlightNote();
     }
     function devLockNow(quiet) {
       devUnlocked = false;
-      ['cfgTomTom', 'cfgTrainKey', 'cfgFlightKey'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      ['cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'cfgFlightCap'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
       devRenderLock(devPass() ? 'unlock' : 'new');
       if (!quiet) toast('🔒 Keys locked');
     }
@@ -7348,13 +7351,15 @@
       const base = 'Free key from rapidapi.com (subscribe to AeroDataBox, Basic plan, then copy the X-RapidAPI-Key). Adds real Melbourne Airport arrivals and departures; the key stays on this phone.';
       const c = flights.MEL, used = flCalls();
       n.textContent = !lsGet('cfgFlightKey') ? base : c && c.err ? `⚠️ ${c.err}` :
-        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} call${used === 1 ? '' : 's'} this month` :
+        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} of ${flCap()} calls used this month` +
+          (flBudgetOk() ? ' · checking hourly while the app is open' : ' · automatic checks paused to save calls (Refresh still works)') :
         'Key saved. Flights load when you open the airport on the map or Plan a Shift.';
     }
     async function loadFlights(code = 'MEL', force) {
       const key = lsGet('cfgFlightKey'), c = flights[code];
       if (!key || flLoading[code]) return;
       if (!force && c && Date.now() - c.at < (c.err ? 10 * 60000 : FL_TTL)) return;
+      if (!force && !flBudgetOk()) return;                 // automatic checks stay within the monthly allowance
       flLoading[code] = true;
       const prev = c && !c.err ? c : null;
       try {
@@ -7372,7 +7377,13 @@
         if (r.status === 429) throw new Error('The monthly or per-second limit on your flight key was reached. It will try again later.');
         if (!r.ok && r.status !== 204) throw new Error('The flight service answered ' + r.status + '. It will try again later.');
         const j = r.status === 204 ? {} : await r.json(), now = Date.now();
-        flights[code] = { at: now, from: now - 3600000, to: now + 11 * 3600000, arr: flParse(j.arrivals, code), dep: flParse(j.departures, code), err: '' };
+        const nArr = flParse(j.arrivals, code), nDep = flParse(j.departures, code), from = now - 3600000;
+        const keep = (old, fresh) => {            // earlier flights from before this window, up to 6 hours back
+          const seen = new Set(fresh.map(f => f.n + '|' + f.t));
+          return (old || []).filter(f => flEt(f) < from && flEt(f) > now - 6 * 3600000 && !seen.has(f.n + '|' + f.t)).concat(fresh).sort((a, b) => flEt(a) - flEt(b));
+        };
+        flights[code] = { at: now, from: prev && prev.from ? Math.max(prev.from, now - 6 * 3600000) : from, to: now + 11 * 3600000,
+          arr: keep(prev && prev.arr, nArr), dep: keep(prev && prev.dep, nDep), err: '' };
         lsSet('flights:' + code, JSON.stringify(flights[code]));
       } catch (e) {
         const err = e.name === 'AbortError' ? 'The flight service didn’t answer in time.' : e instanceof TypeError ? 'Couldn’t reach the flight service from this browser.' : e.message;
@@ -7384,6 +7395,22 @@
         if (map && document.getElementById('view-drive').style.display !== 'none') { try { renderMap(); } catch (e) {} }
       }
     }
+    // Monthly allowance: automatic checks are spread evenly over the month (a little is kept back for Refresh taps)
+    const flCap = () => Math.max(0, parseInt(lsGet('cfgFlightCap'), 10) || 300);
+    function flBudgetOk() {
+      const d = new Date(), days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const share = flCap() * 0.9 * (d.getDate() - 1 + (d.getHours() + 1) / 24) / days;   // what may be used by now
+      return flCalls() < Math.min(share + 2, flCap() * 0.9);
+    }
+    // While the app is open on any page (or comes back on screen), keep the next 12 hours of flights ready:
+    // check once an hour if the allowance allows, so Plan a Shift and the map are already filled in
+    function flAutoCheck() {
+      if (document.hidden || !lsGet('cfgFlightKey')) return;
+      loadFlights('MEL');                        // returns straight away if not due or over the allowance
+    }
+    setInterval(flAutoCheck, 5 * 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(flAutoCheck, 1500); });
+    setTimeout(flAutoCheck, 4000);
     // Live counts for a time window, or null when there is no live data covering it
     function flCount(code, dir, s, e) {
       const c = flights[code];
@@ -7477,7 +7504,7 @@
       }
       // Hour by hour from your start: 🛬 arrivals and 🛫 departures scheduled that hour; tap an hour for every flight and its status
       // Every hour the last check collected (about 12), in a grid of 2–3 columns; an opened hour spans the full width
-      const rows = [], hStart = Math.floor(c.from / 3600000) * 3600000, hNow = Math.floor(Date.now() / 3600000) * 3600000;
+      const rows = [], hStart = Math.floor(Math.max(c.from, Date.now() - 3600000) / 3600000) * 3600000, hNow = Math.floor(Date.now() / 3600000) * 3600000;
       const inHr = t => f => !flCancelled(f) && flEt(f) >= t && flEt(f) < t + 3600000;
       const hrs = []; for (let t = hStart; t < c.to && hrs.length < 13; t += 3600000) hrs.push(t);
       const pkA = Math.max(1, ...hrs.map(t => c.arr.filter(inHr(t)).length)), pkD = Math.max(1, ...hrs.map(t => c.dep.filter(inHr(t)).length));
