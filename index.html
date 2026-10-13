@@ -422,7 +422,11 @@
     .stale-banner[hidden] { display: none; }
     #airportBox .rank-item, #spotList .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
     .ap-strip { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: .68rem; color: var(--muted); }
-    .ap-strip span { width: 42px; flex: none; }
+    .ap-strip span { width: 42px; flex: none; display: flex; align-items: center; }
+    .dir-ic { display: inline-block; height: 1.05em; width: 2.32em; vertical-align: -.17em; flex: none; color: var(--text); --dir-win: var(--card-2); }
+    .ap-strip .dir-ic { height: 15px; width: 33px; color: var(--muted); }
+    .ap-tier .dir-ic { color: #fff; --dir-plane: #fff; --dir-win: transparent; height: 1.1em; }
+    .flr-d .dir-ic { height: .95em; width: 2.1em; color: var(--muted); }
     .ap-strip div { flex: 1; display: grid; grid-template-columns: repeat(24, 1fr); gap: 1px; }
     .ap-strip i { height: 14px; border-radius: 2px; }
     .ap-strip i.ap-yes { background: var(--green); } .ap-strip i.ap-maybe { background: var(--amber); } .ap-strip i.ap-no { background: var(--line-strong); }
@@ -808,7 +812,11 @@
     .flp-h { position: sticky; top: 0; z-index: 1; background: var(--card-2); border-bottom: 1px solid var(--line); padding: 9px 10px; }
     .flp-h > b { font-size: .95rem; margin-right: 4px; } .flp-h > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
     .flp-h .flh-cs { flex-basis: auto; } .flp-h .flh-c { font-size: .74rem; padding: 2px 6px; gap: 4px; }
-    .flh-s > b { flex-basis: 100%; }
+    .flh-s > b { flex-basis: auto; }
+    .flh-v { display: inline-flex; gap: 3px; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+    .flh-v i { font-style: normal; font-weight: 800; font-size: .56rem; color: #fff; padding: 1px 5px; border-radius: 999px; }
+    .flh-v em { font-style: normal; font-weight: 800; font-size: .56rem; } .flh-v em.yes { color: var(--green); } .flh-v em.no { color: var(--muted); }
+    .flp-h .flh-v { margin-left: 0; } .flp-h .flh-v i, .flp-h .flh-v em { font-size: .66rem; }
     .flh-n { font-weight: 800; font-variant-numeric: tabular-nums; }
     .flh-x:empty { display: none; } .flh-x { margin-left: auto; gap: 8px; }
     .flc { font-weight: 800; font-variant-numeric: tabular-nums; } .flc.late { color: #db2777; } .flc.canc { color: #ef4444; }
@@ -1414,6 +1422,8 @@
         <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
         <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.6"/></symbol>
         <symbol id="i-pad" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="4" height="4" rx="1"/><rect x="10" y="3.5" width="4" height="4" rx="1"/><rect x="16.5" y="3.5" width="4" height="4" rx="1"/><rect x="3.5" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16.5" y="10" width="4" height="4" rx="1"/><rect x="3.5" y="16.5" width="4" height="4" rx="1"/><rect x="10" y="16.5" width="4" height="4" rx="1"/><rect x="16.5" y="16.5" width="4" height="4" rx="1"/></symbol>
+        <symbol id="i-tocity" viewBox="0 0 53 24"><path d="M2.5 19h19v2h-19v-2zm7.18-5.73l4.35 1.16 5.31 1.42c.8.21 1.62-.26 1.84-1.06.21-.8-.26-1.62-1.06-1.84l-5.31-1.42-2.76-9.02L10.12 2v8.28L5.15 8.95l-.93-2.32-1.45-.39v5.17l1.6.43 5.31 1.43z" fill="var(--dir-plane, #0284c7)"/><path d="M23.5 12.5h5.2M26.6 10l2.5 2.5-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(32 0)" fill="currentColor"><path d="M0 21h21v2H0z"/><rect x="1" y="11" width="5" height="10" rx=".6"/><rect x="7.5" y="4" width="6" height="17" rx=".6"/><rect x="15" y="8.5" width="5" height="12.5" rx=".6"/><path d="M9.2 7h1v1.6h-1zM11.3 7h1v1.6h-1zM9.2 10.5h1v1.6h-1zM11.3 10.5h1v1.6h-1zM9.2 14h1v1.6h-1zM11.3 14h1v1.6h-1z" fill="var(--dir-win, #fff)"/></g></symbol>
+        <symbol id="i-toairport" viewBox="0 0 53 24"><g fill="currentColor"><path d="M0 21h21v2H0z"/><rect x="1" y="11" width="5" height="10" rx=".6"/><rect x="7.5" y="4" width="6" height="17" rx=".6"/><rect x="15" y="8.5" width="5" height="12.5" rx=".6"/><path d="M9.2 7h1v1.6h-1zM11.3 7h1v1.6h-1zM9.2 10.5h1v1.6h-1zM11.3 10.5h1v1.6h-1zM9.2 14h1v1.6h-1zM11.3 14h1v1.6h-1z" fill="var(--dir-win, #fff)"/></g><g transform="translate(-2 0)"><path d="M23.5 12.5h5.2M26.6 10l2.5 2.5-2.5 2.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g><path transform="translate(29 0)" d="M2.5 19h19v2h-19v-2zm19.57-9.36c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 2.59 4.49L21 11.49c.81-.23 1.28-1.05 1.07-1.85z" fill="var(--dir-plane, #0284c7)"/></symbol>
         <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M3.3 10.5c3 .2 5.6-.6 6.5-1.6M20.7 10.5c-3 .2-5.6-.6-6.5-1.6M12 14.4v6.5"/></symbol>
         <symbol id="i-map" viewBox="0 0 24 24"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></symbol>
         <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4 16l5-5.5 4 3.5 6.5-7"/><path d="M15 7h4.5v4.5"/></symbol>
@@ -3283,7 +3293,7 @@
         const z = it.airport ? null : (it.lat != null ? zoneAt(it.lat, it.lng) : 'Melbourne City');
         return `<div class="tc-block"><label class="tc-inc"><input type="checkbox" id="dvInc${i}" checked /> ${it.airport ? '✈️' : '🏟'} <b>${esc(it.name)}</b></label>
           <div class="autoread-hint">${esc(it.place)} · ${fmt(it.start)} – ${fmtTime(it.end)}${it.level ? ' · ' + it.level + ' earnings' : it.tag ? ' · ' + esc(it.tag) : ''}</div>` +
-          (it.airport ? '<div class="autoread-hint">Raises airport pickups (✈️ → 🏙) in Plan a Shift during this window.</div>'
+          (it.airport ? '<div class="autoread-hint">Raises airport pickups (' + dirIcon('in') + ') in Plan a Shift during this window.</div>'
             : `<select id="dvZone${i}" class="sel-full" aria-label="Uber zone">${zones.map(n => `<option${n === z ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`) + '</div>';
       }).join('');
       document.getElementById('discoverSheet').style.display = 'flex';
@@ -4135,7 +4145,7 @@
       const lbl = d => `${DAYS[dayIdx(d)]} ${d.getDate()}`;
       // Next 3 days from the chosen date, with every good window
       const rows = days.slice(0, 3).map(({ d, k, ap }) => {
-        const w = ap.runs.map(r => `<span class="nw">${fmtRange(r.s, r.e + 1)} ${r.to > r.from ? '🏙→✈️' : '✈️→🏙'}</span>`).join(' · ');
+        const w = ap.runs.map(r => `<span class="nw">${fmtRange(r.s, r.e + 1)} ${r.to > r.from ? dirIcon('out') : dirIcon('in')}</span>`).join(' · ');
         return `<button type="button" class="ap-day${ap.rec ? ' rec' : ''}${k === sel ? ' sel' : ''}" onclick="pickPlanDay(${k})"><b>${lbl(d)}</b>` +
           `<span>${w || 'Quiet: no busy airport hours'}${ap.peak ? ' · 🟣 Uber peak' : ''}</span><i class="pill ${ap.rec ? 'yes' : ap.n ? 'maybe' : 'no'}">${ap.rec ? 'Recommended' : ap.n ? 'Some' : 'Quiet'}</i></button>`;
       }).join('');
@@ -6949,7 +6959,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.53.0';
+    const APP_VERSION = '1.54.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7422,7 +7432,9 @@
       return { ...AP_TIERS[k], k, dir, n: cur };
     }
     const TREND_TXT = { up: '↑', down: '↓', flat: '' };
-    const DIR_ICON = { in: '✈️→🏙', out: '🏙→✈️' };
+    // Drawn direction icons: ✈ landing → city (airport to city, from arrivals) and city → ✈ taking off (city to airport, for departures)
+    const dirIcon = (d, label) => `<svg class="dir-ic" viewBox="0 0 53 24" role="img" aria-label="${d === 'in' ? 'Airport to city' : 'City to airport'}"><use href="#i-${d === 'in' ? 'tocity' : 'toairport'}"/></svg>${label ? ' ' + label : ''}`;
+    const DIR_ICON = { in: dirIcon('in'), out: dirIcon('out') };
     const tierPill = t => `<b class="ap-tier" style="background:${t.c}" title="${t.dir === 'in' ? 'Airport to city' : 'City to airport'}: ${t.t}">${DIR_ICON[t.dir]} ${t.t}${TREND_TXT[t.trend] ? ' ' + TREND_TXT[t.trend] : ''}</b>`;
     function apActive(code) {
       const now = Date.now(), a = flCount(code, 'in', now, now + 3600000), d = flCount(code, 'out', now, now + 3600000);
@@ -7479,22 +7491,26 @@
         const cls = (t < hNow ? ' past' : '') + (t === hNow ? ' now' : '') + (t === h0.getTime() && h0.getTime() !== hNow ? ' start' : '');
         const nA = arr.filter(f => !flCancelled(f)).length, nD = dep.filter(f => !flCancelled(f)).length, gA = grade(nA, pkA), gD = grade(nD, pkD);
         const lA = all.filter((x, i) => x.dir === 'arr' && st[i].k === 'late').length, lD = all.filter((x, i) => x.dir === 'dep' && st[i].k === 'late').length;
+        // Overall for the hour: the busier direction's grade; recommended when it's High, or Medium both ways (a ride out and one back)
+        const rank = { low: 0, med: 1, high: 2 }, kA = gA === AP_TIERS.high ? 'high' : gA === AP_TIERS.med ? 'med' : 'low', kD = gD === AP_TIERS.high ? 'high' : gD === AP_TIERS.med ? 'med' : 'low';
+        const kO = rank[kA] >= rank[kD] ? kA : kD, rec = kO === 'high' || (kA !== 'low' && kD !== 'low');
         const head = `<b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
-          `<span class="flh-cs"><span class="flh-c" style="--gc:${gA.c}" title="Airport to city: ${nA} arrivals (${gA.t})${lA ? `, ${lA} delayed` : ''}"><i>${nA}</i> 🛬→🏙️${lA ? ` <b>${lA}</b>` : ''}</span>` +
-          `<span class="flh-c" style="--gc:${gD.c}" title="City to airport: ${nD} departures (${gD.t})${lD ? `, ${lD} delayed` : ''}"><i>${nD}</i> 🏙️→🛫${lD ? ` <b>${lD}</b>` : ''}</span></span>`;
+          `<span class="flh-v"><i style="background:${AP_TIERS[kO].c}">${AP_TIERS[kO].t}</i><em class="${rec ? 'yes' : 'no'}">${rec ? 'Recommended' : 'Not recommended'}</em></span>` +
+          `<span class="flh-cs"><span class="flh-c" style="--gc:${gA.c}" title="Airport to city: ${nA} arrivals (${gA.t})${lA ? `, ${lA} delayed` : ''}"><i>${nA}</i> ${dirIcon('in')}${lA ? ` <b>${lA}</b>` : ''}</span>` +
+          `<span class="flh-c" style="--gc:${gD.c}" title="City to airport: ${nD} departures (${gD.t})${lD ? `, ${lD} delayed` : ''}"><i>${nD}</i> ${dirIcon('out')}${lD ? ` <b>${lD}</b>` : ''}</span></span>`;
         // The flights for the hour open in a pop-up (tap outside it, or scroll, to close), so nothing on the page moves
         flHourPop[key] = `<div class="flp-h">${head}</div>` + (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
-            return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${x.dir === 'arr' ? '🛬' : '🛫'}</span>` +
+            return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${dirIcon(x.dir === 'arr' ? 'in' : 'out')}</span>` +
               `<span class="flr-f">${esc(f.n)}${f.ap ? ` · ${x.dir === 'arr' ? 'from' : 'to'} ${esc(f.ap)}` : ''}${f.term ? ` <em>T${esc(f.term)}</em>` : ''}</span><i class="fls ${s2.k}">${s2.t}</i></div>`; }).join('')
             : '<div class="flr none">No passenger flights this hour</div>');
         rows.push(`<div class="flh${cls}${flPopKey === key ? ' sel' : ''}" role="button" tabindex="0" data-k="${key}" onclick="flOpenHour('${key}', this)"><div class="flh-s">${head}</div></div>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · boxes: ⓝ flights, 🛬→🏙️ arrivals or 🏙️→🛫 departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
     const flHourPop = {};
-    let flPopKey = null;
+    let flPopKey = null, flPopY = 0, flPopAt = 0;
     function flCloseHour() {
       const p = document.getElementById('flPop'); if (p) p.remove();
       document.querySelectorAll('.flh.sel').forEach(x => x.classList.remove('sel'));
@@ -7504,7 +7520,7 @@
       if (flPopKey === key) { flCloseHour(); return; }
       flCloseHour();
       if (!flHourPop[key]) return;
-      flPopKey = key; tile.classList.add('sel');
+      flPopKey = key; tile.classList.add('sel'); flPopY = window.scrollY; flPopAt = Date.now();
       const p = document.createElement('div');
       p.id = 'flPop'; p.className = 'fl-pop'; p.innerHTML = flHourPop[key];
       document.body.appendChild(p);
@@ -7527,6 +7543,8 @@
       if (!flPopKey) return;
       const p = document.getElementById('flPop');
       if (p && e.target instanceof Node && p.contains(e.target)) return;    // scrolling inside the list keeps it open
+      // a real scroll closes it; the small nudge a tap can cause (focus, rounding) doesn't
+      if (Date.now() - flPopAt < 350 || ((e.target === document || e.target === document.documentElement) && Math.abs(window.scrollY - flPopY) < 12)) return;
       flCloseHour();
     }, true);
     function flState(f, dir) {
@@ -7887,13 +7905,13 @@
       if (document.getElementById('view-insights').style.display !== 'none') loadFlights('MEL');
       const today = new Date(); today.setHours(0, 0, 0, 0);
       box.innerHTML = airportOutlookHTML(today, dayOff, allEvents()) + `<div class="ap-sec">🕘 ${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</div>` + `
-        <div class="rank-item"><div><div>🏙 → ✈️ City to airport at ${fmtMin(sm)}</div>
+        <div class="rank-item"><div><div>${dirIcon('out')} City to airport at ${fmtMin(sm)}</div>
           <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
           `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
-        <div class="rank-item"><div><div>✈️ → 🏙 Airport to city at ${fmtMin(sm)}</div>
+        <div class="rank-item"><div><div>${dirIcon('in')} Airport to city at ${fmtMin(sm)}</div>
           <div class="r-sub">Arrivals ${demandName(inNow).toLowerCase()} · wait in the airport queue, pick up at the Uber zone (T1, T2 or T4 car park)</div></div><i class="pill ${vi.c}">${vi.t}</i></div>
-        <div class="ap-strip"><span>🏙→✈️</span><div>${strip('out')}</div></div>
-        <div class="ap-strip"><span>✈️→🏙</span><div>${strip('in')}</div></div>
+        <div class="ap-strip"><span>${dirIcon('out')}</span><div>${strip('out')}</div></div>
+        <div class="ap-strip"><span>${dirIcon('in')}</span><div>${strip('in')}</div></div>
         <div class="demand-axis ap-axis">${AXIS_HRS.map(h => `<span>${fmtHour(h)}</span>`).join('')}</div>
         ${peaks.map(e => `<div class="ap-peak">🟣 Uber: <b>${esc(e.name)}</b> ${fmtTimeRange(e.s, e.e)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}</div>`).join('')}
         <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.
