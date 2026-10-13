@@ -652,6 +652,9 @@
     .zn { font-style: normal; font-size: .85rem; font-weight: 800; }
     .zn.g { color: #16a34a; } .zn.y { color: #ca8a04; } .zn.q { color: #2563eb; }
     .chip.on .zn.g { color: #4ade80; } .chip.on .zn.y { color: #fde047; } .chip.on .zn.q { color: #bfdbfe; }
+    .map-chips #chipNear { position: relative; overflow: visible; }
+    .ev-badge { position: absolute; top: -7px; right: -7px; display: flex; gap: 1px; padding: 1px 3px; border-radius: 999px; background: #fff;
+      font-size: .62rem; line-height: 1.2; box-shadow: 0 1px 4px rgba(0,0,0,.35); border: 1.5px solid #ef4444; pointer-events: none; z-index: 2; }
     .map-chips .chip.all { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
     .chip {
       flex: none; background: var(--glass); border: 1px solid var(--card-border); color: var(--muted);
@@ -5828,6 +5831,15 @@
       const t = Date.now();
       return allEvents().filter(e => e.e > t - 1800000 && e.s < t + 3 * 3600000 && evPos(e)).sort((a, b) => a.s - b.s);
     }
+    // Event kind for badges: ✈️ airport, 🏟 sport and races, 🎪 festival, 🎤 concert/show, 🎟 anything else
+    function evType(e) {
+      const t = `${e.name} ${e.place || ''} ${e.tag || ''}`;
+      if (e.zone === AIRPORT_ZONE || /airport|\bMEL\b/i.test(t)) return '✈️';
+      if (/festival|fest\b|carnival|fair\b|moomba|white night|parade|fireworks/i.test(t)) return '🎪';
+      if (/\bvs\b|\bv\b|FC\b|AFL|footy|cricket|tennis|rugby|league|grand prix|cup\b|plate\b|derby|stakes|race|racecourse|stadium|MCG|AAMI|Marvel/i.test(t)) return '🏟';
+      if (/concert|tour|live\b|arena|theatre|theater|music|band|gig|show\b| and /i.test(t)) return '🎤';
+      return '🎟';
+    }
     function busyCount() {
       const now = new Date(); now.setMinutes(0, 0, 0);
       return buildSurges().length + busyZones(now).length + nearEvents().length;
@@ -6155,7 +6167,11 @@
       const nLive = surges.filter(s => s.kind === 'live').length, nPred = surges.length - nLive;
       const nBusy = busyCount();
       if (!document.getElementById('busyPanel').hidden && !busyRefining && !busySel) renderBusy();
-      document.getElementById('chipNear').textContent = `🔥 ${nBusy}`;
+      // 🔥 count, plus a small badge (like an app's notification badge) with the kind of event that's on nearby
+      const evTypes = [...new Set(nearEvents().map(evType))].slice(0, 3);
+      const cn = document.getElementById('chipNear');
+      cn.innerHTML = `🔥 ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
+      cn.setAttribute('aria-label', `Busy near you: ${nBusy}` + (evTypes.length ? ' including events' : ''));
       syncLayerChips();
       document.getElementById('chipNear').setAttribute('aria-label', `Busy near you: ${nBusy} surges, zones and events`);
       let msg = '', place = false;
@@ -6183,7 +6199,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.33.4';
+    const APP_VERSION = '1.33.5';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
