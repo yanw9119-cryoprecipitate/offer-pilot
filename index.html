@@ -1065,6 +1065,16 @@
       padding: 2px 0; outline: none; -webkit-appearance: none; appearance: none; font-family: inherit; }
     .sx-field select { background: var(--arrow) no-repeat right center / 16px; padding-right: 24px; }
     .sx-field input:focus { color: var(--sx-blue); }
+    .dev-code { display: block; width: 100%; margin: 14px 0 6px; padding: 12px; border-radius: 14px; border: 1.5px solid var(--sx-line); background: var(--bg); color: var(--sx-ink);
+      font-size: 1.6rem; font-weight: 800; letter-spacing: .5em; text-align: center; box-sizing: border-box; }
+    .dev-code:focus { outline: none; border-color: var(--sx-blue); }
+    .dev-code.shake { animation: devShake .35s; border-color: #ef4444; }
+    @keyframes devShake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+    .dev-msg { min-height: 1.2em; color: #ef4444; font-size: .82rem; font-weight: 700; margin-bottom: 8px; text-align: center; }
+    .dev-forgot { display: block; margin: 10px auto 0; background: none; border: none; color: var(--sx-muted); font-size: .82rem; text-decoration: underline; }
+    .dev-forgot.warn { color: #ef4444; font-weight: 700; }
+    .dev-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+    .dev-btn { flex: 1 1 30%; min-width: 0; padding: 10px 6px; border-radius: 12px; border: 1px solid var(--sx-line); background: var(--bg); color: var(--sx-ink); font-weight: 700; font-size: .8rem; }
     .sx-hint { color: var(--sx-muted); font-size: .8rem; line-height: 1.4; margin-top: 8px; }
     .sx-hint:empty { display: none; }
     .sx-note { font-size: .9rem; line-height: 1.45; }
@@ -1814,8 +1824,6 @@
             <svg class="sx-ic"><use href="#i-cloud"/></svg><span class="sx-rt"><b>Backup &amp; restore</b><small id="sxsBackup"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="manage data delete remove download export csv zip offers trends snapshots shifts events clear reset" onclick="sxGo('data')">
             <svg class="sx-ic"><use href="#i-folder"/></svg><span class="sx-rt"><b>Manage &amp; download data</b><small id="sxsData"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
-          <button type="button" class="sx-row" data-k="test run trial practice sandbox" onclick="sxGo('test')">
-            <svg class="sx-ic"><use href="#i-flask"/></svg><span class="sx-rt"><b>Test run</b><small id="sxsTest"></small></span><i class="sx-badge" id="sxbTest">Off</i><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
       </div>
 
@@ -1829,6 +1837,17 @@
             <svg class="sx-ic" viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg><span class="sx-rt"><b>Map style</b><small id="sxsMapStyle"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="time format clock 12 24 hour am pm" onclick="sxGo('time')">
             <svg class="sx-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="sx-rt"><b>Time format</b><small id="sxsTime"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
+        </div>
+      </div>
+
+      <div class="sx-group" data-group>
+        <h2 class="sx-h">Developer</h2>
+        <p class="sx-sub">API keys and test runs · 🔒 passcode protected</p>
+        <div class="sx-card">
+          <button type="button" class="sx-row" data-k="developer api key keys password passcode tomtom traffic train transport flight flights aerodatabox rapidapi" onclick="devGo('dev')">
+            <svg class="sx-ic" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="sx-rt"><b>API keys</b><small id="sxsDev"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
+          <button type="button" class="sx-row" data-k="developer test run trial practice sandbox" onclick="devGo('test')">
+            <svg class="sx-ic"><use href="#i-flask"/></svg><span class="sx-rt"><b>Test run</b><small id="sxsTest"></small></span><i class="sx-badge" id="sxbTest">Off</i><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
       </div>
 
@@ -1915,22 +1934,38 @@
             <option value="off">Off</option>
           </select></div>
       </div>
+      <div class="sx-card sx-pad"><div class="sx-hint" style="margin-top:0">🔒 Live traffic, train and flight keys are in Settings → Developer.</div></div>
+      <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
+    </section>
+
+    <!-- ===== Developer: API keys behind a passcode ===== -->
+    <section class="sx-page" data-page="dev" hidden>
+      <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
+      <h1 class="sx-big">Developer</h1><p class="sx-lead" id="devLead">API keys for live data. They stay on this phone and are never in the app’s public code.</p>
+      <div id="devLock" class="sx-card sx-pad dev-lock"></div>
+      <div id="devKeys" hidden>
       <div class="sx-card sx-pad">
-        <h3 class="sx-ch">Live traffic</h3>
-        <div class="sx-field"><label for="cfgTomTom">TomTom key (optional)</label><input type="text" id="cfgTomTom" placeholder="Leave empty to use free road data" autocomplete="off" spellcheck="false" /></div>
+        <h3 class="sx-ch">🚗 Live traffic</h3>
+        <div class="sx-field"><label for="cfgTomTom">TomTom key (optional)</label><input type="password" id="cfgTomTom" placeholder="Leave empty to use free road data" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-hint">Without a key, drive times use free road data plus Melbourne rush-hour estimates. A free key from developer.tomtom.com adds live traffic.</div>
       </div>
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">🚆 Train disruptions</h3>
-        <div class="sx-field"><label for="cfgTrainKey">Transport Victoria open data key (optional)</label><input type="text" id="cfgTrainKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-field"><label for="cfgTrainKey">Transport Victoria open data key (optional)</label><input type="password" id="cfgTrainKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-hint" id="trainKeyNote">Free key from opendata.transport.vic.gov.au (sign in, then API keys). Shows Metro train suspensions and replacement buses on the map; the key stays on this phone.</div>
       </div>
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">✈️ Live flights</h3>
-        <div class="sx-field"><label for="cfgFlightKey">AeroDataBox key from RapidAPI (optional)</label><input type="text" id="cfgFlightKey" placeholder="Paste your X-RapidAPI-Key" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-field"><label for="cfgFlightKey">AeroDataBox key from RapidAPI (optional)</label><input type="password" id="cfgFlightKey" placeholder="Paste your X-RapidAPI-Key" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-hint" id="flightKeyNote"></div>
       </div>
-      <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
+        <div class="sx-card sx-pad dev-tools">
+          <button type="button" class="dev-btn" onclick="devShowKeys()" id="devShowBtn">👁 Show keys</button>
+          <button type="button" class="dev-btn" onclick="devChangePass()">🔑 Change passcode</button>
+          <button type="button" class="dev-btn" onclick="devLockNow()">🔒 Lock</button>
+        </div>
+        <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
+      </div>
     </section>
 
     <!-- ===== Backup ===== -->
@@ -2029,7 +2064,8 @@
     // ---------- Safe storage helpers ----------
     // Test run keeps its own copy of everything under "test:" keys
     const TEST = (() => { try { return localStorage.getItem('testMode') === '1'; } catch (e) { return false; } })();
-    const tk = k => TEST && k !== 'testMode' ? 'test:' + k : k;
+    const SHARED_KEYS = new Set(['testMode', 'devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'flCalls']);   // same in test runs
+    const tk = k => TEST && !SHARED_KEYS.has(k) ? 'test:' + k : k;
     function lsGet(k) { try { return localStorage.getItem(tk(k)); } catch (e) { return null; } }
     function lsSet(k, v) { try { localStorage.setItem(tk(k), v); } catch (e) {} }
     function lsDel(k) { try { localStorage.removeItem(tk(k)); } catch (e) {} }
@@ -2378,6 +2414,7 @@
       if (themePick) { themePick = null; applyTheme(savedTheme()); }
       if (mapStylePick) { mapStylePick = null; applyMapStyle(); }
       timePick = null;
+      devLockNow(true);
       toggleSettings(false);
       toast('Changes discarded');
     }
@@ -2395,11 +2432,7 @@
         document.getElementById('cfgMinKm').value = config.minRateKm;
         document.getElementById('cfgCostKm').value = config.costPerKm;
         document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
-        document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
-        document.getElementById('cfgTrainKey').value = lsGet('cfgTrainKey') || '';
-        syncTrainNote();
-        document.getElementById('cfgFlightKey').value = lsGet('cfgFlightKey') || '';
-        syncFlightNote();
+        devLockNow(true);                  // keys are filled in only after the passcode
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
         fillVehicleUI();
         renderFillLog();
@@ -2429,14 +2462,14 @@
       lsSet('vehMaint', veh.maint); lsSet('vehKmh', veh.kmh);
       lsSet('goalHr', veh.goalHr); lsSet('goalKm', veh.goalKm);
       chaseCfg.maxMin = parseFloat(document.getElementById('cfgMaxChase').value) || 12;
-      chaseCfg.tomtom = document.getElementById('cfgTomTom').value.trim();
+      if (devUnlocked) chaseCfg.tomtom = document.getElementById('cfgTomTom').value.trim();
       chaseCfg.alerts = document.getElementById('cfgAlerts').value;
       lsSet('cfgAlerts', chaseCfg.alerts);
       lsSet('cfgMaxChase', chaseCfg.maxMin);
       lsSet('cfgTomTom', chaseCfg.tomtom);
-      { const tk = document.getElementById('cfgTrainKey').value.trim(), old = lsGet('cfgTrainKey') || '';
+      if (devUnlocked) { const tk = document.getElementById('cfgTrainKey').value.trim(), old = lsGet('cfgTrainKey') || '';
         lsSet('cfgTrainKey', tk); if (tk !== old) { train.at = 0; train.err = ''; if (tk) loadTrainAlerts(true); else { train.alerts = []; drawTrain(); } } }
-      { const fk = document.getElementById('cfgFlightKey').value.trim(), old = lsGet('cfgFlightKey') || '';
+      if (devUnlocked) { const fk = document.getElementById('cfgFlightKey').value.trim(), old = lsGet('cfgFlightKey') || '';
         lsSet('cfgFlightKey', fk); if (fk !== old) { Object.keys(flights).forEach(k => { delete flights[k]; lsDel('flights:' + k); }); if (fk) loadFlights('MEL', true); } }
       routeCache.clear();
       if (themePick) { lsSet('theme', themePick); themePick = null; }
@@ -2446,6 +2479,7 @@
       const sg = parseFloat(document.getElementById('setShiftGoal').value);
       if (sg > 0) { lsSet('shiftGoal', sg); const cur = loadShift(); if (cur) { cur.goal = sg; lsSet(SHIFT_KEY, JSON.stringify(cur)); } renderShiftBar(); }
       toast('✓ Settings saved');
+      devLockNow(true);
 
       toggleSettings(false);
       recalculate();
@@ -3419,6 +3453,8 @@
       const bd = document.getElementById('sxbTest'); bd.textContent = TEST ? 'On' : 'Off'; bd.classList.toggle('on', TEST);
       set('sxsTheme', THEME_NAMES[themePick || savedTheme()] + ((themePick || savedTheme()) === 'auto' ? ` (${resolveTheme('auto') === 'dark' ? 'dark' : 'light'} now)` : ''));
       set('sxsMapStyle', MAPSTYLE_NAMES[mapStylePick || savedMapStyle()] + ((mapStylePick || savedMapStyle()) === 'auto' ? ` (${wantNightMap() ? 'dark' : 'light'} now)` : ''));
+      { const n = [chaseCfg.tomtom, lsGet('cfgTrainKey'), lsGet('cfgFlightKey')].filter(Boolean).length;
+        set('sxsDev', `${n} of 3 keys added · ${devPass() ? '🔒 passcode on' : 'set a passcode'}`); }
       set('sxsTime', (timePick || (is24() ? '24' : '12')) === '24' ? '24-hour · 15:00–16:00' : '12-hour · 3–4PM, 10AM–2PM');
       set('sxsVersion', `v${APP_VERSION}${newerVersion ? ' · update ready, tap to load' : ' · tap to check'}`);
     }
@@ -6775,7 +6811,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.43.1';
+    const APP_VERSION = '1.44.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7040,6 +7076,99 @@
       drawWx(); showMapHelp('wx', layers.wx);
     }
 
+
+    // ================= 🔒 DEVELOPER PAGE: API keys behind a passcode =================
+    // The passcode is kept only as a salted SHA-256 hash. It keeps the keys away from anyone using the phone;
+    // it is not encryption, and the keys still work for the app while locked.
+    let devUnlocked = false, devStage = null;     // devStage: 'new' | 'confirm' | 'unlock' | 'change'
+    const devPass = () => { try { return JSON.parse(lsGet('devPass')); } catch (e) { return null; } };
+    async function devHash(code, salt) {
+      const txt = salt + ':' + code;
+      try {
+        const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+        return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+      } catch (e) {          // no WebCrypto (very old browser): simple fallback hash
+        let h = 2166136261; for (const ch of txt) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return 'f' + (h >>> 0).toString(16);
+      }
+    }
+    function devFill() {
+      document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
+      document.getElementById('cfgTrainKey').value = lsGet('cfgTrainKey') || '';
+      document.getElementById('cfgFlightKey').value = lsGet('cfgFlightKey') || '';
+      ['cfgTomTom', 'cfgTrainKey', 'cfgFlightKey'].forEach(id => { document.getElementById(id).type = 'password'; });
+      document.getElementById('devShowBtn').textContent = '👁 Show keys';
+      syncTrainNote(); syncFlightNote();
+    }
+    function devLockNow(quiet) {
+      devUnlocked = false;
+      ['cfgTomTom', 'cfgTrainKey', 'cfgFlightKey'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      devRenderLock(devPass() ? 'unlock' : 'new');
+      if (!quiet) toast('🔒 Keys locked');
+    }
+    function devRenderLock(stage, msg) {
+      devStage = stage;
+      const box = document.getElementById('devLock'), keys = document.getElementById('devKeys');
+      if (!box) return;
+      box.hidden = devUnlocked; keys.hidden = !devUnlocked;
+      if (devUnlocked) return;
+      const t = { new: ['🔐 Create a passcode', 'At least 4 digits. You’ll need it to open API keys and Test run.'],
+                  confirm: ['🔐 Enter it again', 'To make sure it’s right.'],
+                  unlock: ['🔒 Enter your passcode', devNext === 'test' ? 'To open Test run.' : 'To see or change your API keys.'],
+                  change: ['🔑 New passcode', 'At least 4 digits.'] }[stage];
+      box.innerHTML = `<h3 class="sx-ch">${t[0]}</h3><div class="sx-hint" style="margin-top:0">${t[1]}</div>
+        <input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" id="devCode" class="dev-code" maxlength="12" placeholder="••••"
+          onkeydown="if(event.key==='Enter')devSubmit()" />
+        <div class="dev-msg" id="devMsg">${msg || ''}</div>
+        <button type="button" class="sx-primary" onclick="devSubmit()">${stage === 'unlock' ? 'Unlock' : 'Next'}</button>
+        ${stage === 'unlock' ? '<button type="button" class="dev-forgot" onclick="devForgot(this)">Forgot passcode?</button>' : ''}`;
+      setTimeout(() => { const el = document.getElementById('devCode'); if (el && document.getElementById('settingsModal').style.display === 'block' && !document.querySelector('[data-page="dev"]').hidden) el.focus(); }, 60);
+    }
+    let devFirst = '';
+    async function devSubmit() {
+      const el = document.getElementById('devCode'), code = (el.value || '').trim();
+      const bad = m => { document.getElementById('devMsg').textContent = m; el.value = ''; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); try { navigator.vibrate && navigator.vibrate(80); } catch (e) {} };
+      if (devStage === 'new' || devStage === 'change') {
+        if (!/^\d{4,12}$/.test(code)) return bad('Use 4 to 12 digits.');
+        devFirst = code; devRenderLock('confirm'); return;
+      }
+      if (devStage === 'confirm') {
+        if (code !== devFirst) { devFirst = ''; devRenderLock(devPass() && devUnlockedBefore ? 'change' : 'new', 'They didn’t match. Try again.'); return; }
+        const salt = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        lsSet('devPass', JSON.stringify({ salt, h: await devHash(code, salt) }));
+        devFirst = ''; devUnlocked = true; devUnlockedBefore = false; devFill(); devRenderLock(); sxSummaries();
+        toast('✓ Passcode set'); devAfter(); return;
+      }
+      const p = devPass();
+      if (!p) { devRenderLock('new'); return; }
+      if (await devHash(code, p.salt) !== p.h) return bad('Wrong passcode.');
+      devUnlocked = true; devFill(); devRenderLock(); devAfter();
+    }
+    // Developer pages (API keys, Test run) open straight away once unlocked; otherwise the passcode comes first
+    let devNext = null;
+    function devGo(page) {
+      if (devUnlocked) { sxGo(page); return; }
+      devNext = page === 'dev' ? null : page;
+      document.getElementById('devLead').textContent = devNext === 'test' ? 'Test run is passcode protected.' : 'API keys for live data. They stay on this phone and are never in the app’s public code.';
+      devRenderLock(devPass() ? 'unlock' : 'new');
+      sxGo('dev');
+    }
+    function devAfter() { if (devNext) { const p = devNext; devNext = null; sxGo(p); } }
+    let devUnlockedBefore = false;
+    function devChangePass() { devUnlocked = false; devUnlockedBefore = true; devRenderLock('change'); }
+    function devShowKeys() {
+      const ids = ['cfgTomTom', 'cfgTrainKey', 'cfgFlightKey'], show = document.getElementById(ids[0]).type === 'password';
+      ids.forEach(id => { document.getElementById(id).type = show ? 'text' : 'password'; });
+      document.getElementById('devShowBtn').textContent = show ? '🙈 Hide keys' : '👁 Show keys';
+    }
+    // Forgot: tap twice to remove the passcode and every key (they can be pasted in again)
+    function devForgot(btn) {
+      if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Tap again to remove the passcode and all 3 keys'; btn.classList.add('warn'); return; }
+      ['devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey'].forEach(k => lsDel(k));
+      chaseCfg.tomtom = ''; train.alerts = []; train.at = 0; Object.keys(flights).forEach(k => { delete flights[k]; lsDel('flights:' + k); });
+      try { drawTrain(); } catch (e) {}
+      devUnlocked = false; devRenderLock('new', 'Passcode and keys removed. Create a new passcode.'); sxSummaries();
+    }
+
     // ================= ✈️ LIVE FLIGHTS (AeroDataBox via RapidAPI) =================
     // Arrivals and departures for the next ~11 hours. The free plan has a small monthly allowance, so each
     // airport is fetched at most once an hour, and only when you look at airport info (map panel or Plan a Shift).
@@ -7138,7 +7267,7 @@
     const flFoot = code => { const c = flights[code]; return `${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}Checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('${code}', true);return false;">Refresh</a>`; };
     // Plan a Shift: the live picture from your chosen start (or now, if that has passed), for the date you picked
     function flightPlanHTML(st) {
-      if (!lsGet('cfgFlightKey')) return `<div class="fl-plan">✈️ Add a free AeroDataBox key in Settings → Surge chasing to see live arrivals here.</div>`;
+      if (!lsGet('cfgFlightKey')) return `<div class="fl-plan">✈️ Add a free AeroDataBox key in Settings → Developer to see live arrivals here.</div>`;
       const c = flights.MEL;
       if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-plan">✈️ ${flLoading.MEL || !c ? 'Loading live flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div>`;
       const now = Date.now(), from = Math.max(st.getTime(), now), h0 = new Date(from); h0.setMinutes(0, 0, 0);
@@ -7153,7 +7282,7 @@
     }
     // Map side box: a short summary, with the full list in Plan a Shift
     function flightsHTML(code) {
-      if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Surge chasing to see real arrivals here.</div></div>`;
+      if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Developer to see real arrivals here.</div></div>`;
       const c = flights[code];
       if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">${flLoading[code] || !c ? 'Loading flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div></div>`;
       const now = Date.now(), h0 = Math.floor(now / 3600000) * 3600000;
