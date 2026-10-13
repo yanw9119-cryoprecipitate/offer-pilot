@@ -1666,6 +1666,8 @@
         <div class="sx-card">
           <button type="button" class="sx-row" data-k="theme appearance dark light contrast night colours colors display" onclick="sxGo('theme')">
             <svg class="sx-ic"><use href="#i-sun"/></svg><span class="sx-rt"><b>Theme</b><small id="sxsTheme"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
+          <button type="button" class="sx-row" data-k="map style dark light night streets theme" onclick="sxGo('mapstyle')">
+            <svg class="sx-ic" viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg><span class="sx-rt"><b>Map style</b><small id="sxsMapStyle"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="time format clock 12 24 hour am pm" onclick="sxGo('time')">
             <svg class="sx-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="sx-rt"><b>Time format</b><small id="sxsTime"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
@@ -1796,6 +1798,21 @@
           <span class="sx-rt"><b>Dark</b><small>Easy on the eyes when driving at night</small></span><span class="th-chk"><svg><use href="#i-check"/></svg></span></button>
         <button type="button" class="th-opt" data-th="contrast" onclick="pickTheme('contrast')"><span class="th-sw" style="--a:#000000;--b:#ffd60a"><i></i><i></i></span>
           <span class="sx-rt"><b>High contrast</b><small>Black, white and yellow with bold outlines, for glare and quick glances</small></span><span class="th-chk"><svg><use href="#i-check"/></svg></span></button>
+      </div>
+      <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
+    </section>
+
+    <!-- ===== Map style ===== -->
+    <section class="sx-page" data-page="mapstyle" hidden>
+      <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
+      <h1 class="sx-big">Map style</h1><p class="sx-lead">Light or dark streets on the map, separate from the app theme</p>
+      <div class="sx-card" id="mapStyleList">
+        <button type="button" class="th-opt" data-ms="auto" onclick="pickMapStyle('auto')"><span class="th-sw" style="--a:#e8e6df;--b:#2a2d35"><i></i><i></i></span>
+          <span class="sx-rt"><b>Automatic</b><small>Follows the app theme: light theme, light streets; dark, dark streets</small></span><span class="th-chk"><svg><use href="#i-check"/></svg></span></button>
+        <button type="button" class="th-opt" data-ms="light" onclick="pickMapStyle('light')"><span class="th-sw" style="--a:#f2efe6;--b:#e8e6df"><i></i><i></i></span>
+          <span class="sx-rt"><b>Light streets</b><small>Always the day map, easiest to read in sunlight</small></span><span class="th-chk"><svg><use href="#i-check"/></svg></span></button>
+        <button type="button" class="th-opt" data-ms="dark" onclick="pickMapStyle('dark')"><span class="th-sw" style="--a:#2a2d35;--b:#16181d"><i></i><i></i></span>
+          <span class="sx-rt"><b>Dark streets</b><small>Always the night map, easier on the eyes at night</small></span><span class="th-chk"><svg><use href="#i-check"/></svg></span></button>
       </div>
       <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
     </section>
@@ -2190,6 +2207,7 @@
     // Close without saving: fields are refilled from the saved settings next time it opens
     function cancelSettings() {
       if (themePick) { themePick = null; applyTheme(savedTheme()); }
+      if (mapStylePick) { mapStylePick = null; applyMapStyle(); }
       timePick = null;
       toggleSettings(false);
       toast('Changes discarded');
@@ -2201,7 +2219,7 @@
       if (show) {
         document.getElementById('sxSearch').value = ''; filterSettings('');
         document.getElementById('setShiftGoal').value = shiftGoal();
-        themePick = null; applyTheme(savedTheme());
+        themePick = null; mapStylePick = null; applyTheme(savedTheme());
         timePick = null; syncTimeOpts();
         sxGo('main');
         document.getElementById('cfgMinHr').value = config.minGrossHr;
@@ -2245,6 +2263,8 @@
       lsSet('cfgTomTom', chaseCfg.tomtom);
       routeCache.clear();
       if (themePick) { lsSet('theme', themePick); themePick = null; }
+      if (mapStylePick) { lsSet('mapStyle', mapStylePick); mapStylePick = null; }
+      applyMapStyle();
       if (timePick) { const ch = timePick !== (is24() ? '24' : '12'); lsSet('timeFmt', timePick); timePick = null; if (ch) refreshTimes(); }
       const sg = parseFloat(document.getElementById('setShiftGoal').value);
       if (sg > 0) { lsSet('shiftGoal', sg); const cur = loadShift(); if (cur) { cur.goal = sg; lsSet(SHIFT_KEY, JSON.stringify(cur)); } renderShiftBar(); }
@@ -3175,8 +3195,22 @@
       const m = document.querySelector('meta[name="theme-color"]');
       if (m) m.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#ffffff');
       document.querySelectorAll('#themeList .th-opt').forEach(b => b.classList.toggle('on', b.dataset.th === t));
+      try { applyMapStyle(); } catch (e) {}
     }
     function pickTheme(t) { themePick = t; applyTheme(t); }
+    // ---- Map style ----
+    const MAPSTYLE_NAMES = { auto: 'Automatic', light: 'Light streets', dark: 'Dark streets' };
+    let mapStylePick = null;
+    function savedMapStyle() { const v = lsGet('mapStyle'); return v || (lsGet('nightMap') === '1' ? 'dark' : 'auto'); }
+    function wantNightMap() {
+      const st = mapStylePick || savedMapStyle();
+      return st === 'dark' || (st === 'auto' && resolveTheme(themePick || savedTheme()) !== 'light');
+    }
+    function applyMapStyle() {
+      document.querySelectorAll('#mapStyleList .th-opt').forEach(b => b.classList.toggle('on', b.dataset.ms === (mapStylePick || savedMapStyle())));
+      try { setNightMap(wantNightMap()); } catch (e) {}       // the map may not exist yet
+    }
+    function pickMapStyle(v) { mapStylePick = v; applyMapStyle(); }
     try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyTheme(themePick || savedTheme())); } catch (e) {}
 
     // ---- Settings pages ----
@@ -3204,6 +3238,7 @@
       set('sxsTest', TEST ? 'On: nothing is saved to your real data' : 'Practise without saving');
       const bd = document.getElementById('sxbTest'); bd.textContent = TEST ? 'On' : 'Off'; bd.classList.toggle('on', TEST);
       set('sxsTheme', THEME_NAMES[themePick || savedTheme()] + ((themePick || savedTheme()) === 'auto' ? ` (${resolveTheme('auto') === 'dark' ? 'dark' : 'light'} now)` : ''));
+      set('sxsMapStyle', MAPSTYLE_NAMES[mapStylePick || savedMapStyle()] + ((mapStylePick || savedMapStyle()) === 'auto' ? ` (${wantNightMap() ? 'dark' : 'light'} now)` : ''));
       set('sxsTime', (timePick || (is24() ? '24' : '12')) === '24' ? '24-hour · 15:00–16:00' : '12-hour · 3–4PM, 10AM–2PM');
       set('sxsVersion', `v${APP_VERSION}${newerVersion ? ' · update ready, tap to load' : ' · tap to check'}`);
     }
@@ -4920,18 +4955,16 @@
     // ================= SURGE MAP =================
     let map = null, markerLayer = null, areaLayer = null, tilesBlocked = false;
     let baseLayers = null, nightMap = false;
-    try { nightMap = lsGet('nightMap') === '1'; } catch (e) {}
+    // Map style (Settings → Map style): Automatic follows the app theme, or always light / always dark streets
+    nightMap = wantNightMap();
 
-    // Street map by day, dark map for night driving (remembered on this phone)
     function setNightMap(on) {
+      if (nightMap === on && map && baseLayers && map.hasLayer(on ? baseLayers.dark : baseLayers.streets)) return;
       nightMap = on;
-      lsSet('nightMap', on ? '1' : '0');
       if (!map || !baseLayers) return;
       const add = on ? baseLayers.dark : baseLayers.streets, drop = on ? baseLayers.streets : baseLayers.dark;
       if (map.hasLayer(drop)) map.removeLayer(drop);
       if (!map.hasLayer(add)) add.addTo(map);
-      const b = document.getElementById('fabNight');
-      if (b) { b.textContent = on ? '☀️' : '🌙'; b.setAttribute('aria-label', on ? 'Day map' : 'Night map'); }
       if (areaLayer) renderMap();
     }
     const MELB = [-37.8136, 144.9631];
@@ -5443,7 +5476,6 @@
           box.innerHTML =
             '<button type="button" class="map-fab map-compass" id="fabCompass" aria-label="Compass: tap for north up or direction up">' + COMPASS_SVG + '</button>' +
             '<button type="button" class="map-fab" id="fabWx" aria-label="Weather and rain radar">🌦</button>' +
-            '<button type="button" class="map-fab" id="fabNight" aria-label="Night map">🌙</button>' +
             '<button type="button" class="map-fab" id="fabCity" aria-label="Show all of Melbourne">🏙</button>' +
             '<button type="button" class="map-fab' + (followMe ? ' on' : '') + '" id="fabLocate" aria-label="Follow my location">' +
             '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3L12.5 20z" fill="currentColor"/></svg></button>';
@@ -5452,7 +5484,6 @@
           box.querySelector('#fabCompass').onclick = () => setHeadUp(!headUp);
           box.querySelector('#fabCity').onclick = () => { if (headUp) setHeadUp(false, true); setFollow(false); map.setView(MELB, 12); showMapHelp('city', true); };
           box.querySelector('#fabWx').onclick = toggleWx;
-          box.querySelector('#fabNight').onclick = () => { setNightMap(!nightMap); showMapHelp('night', nightMap); };
           box.querySelector('#fabLocate').onclick = () => {
             enableCompass();
             setFollow(true);
@@ -5466,7 +5497,7 @@
       map.addControl(new Ctl());
       map.on('rotate', syncCompass);
       if (headUp) setHeadUp(true, true); else syncCompass();
-      setNightMap(nightMap);
+      nightMap = !wantNightMap(); setNightMap(wantNightMap());
       drawMe();
       map.on('dragstart', () => { setFollow(false); hideMapHelp(); });
       map.on('zoomstart', () => { if (!followMe) hideMapHelp(); });
@@ -5564,7 +5595,6 @@
       hist: ['🕘 History', 'Every past snapshot. Choose a day and time in the bar above, or tap Now.'],
       busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.'],
       wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 when it’s raining there now, 🌦 when rain is due within 2 hours, and ☀️ when it’s 30° or hotter.'],
-      night: ['🌙 Night map', 'Dark streets for night driving, easier on the eyes.'],
       city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
       headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Red needle shows north. Tap again for north up.'],
       north: ['🧭 North up', 'North is back at the top. Tap the compass to turn the map with your direction.'],
@@ -5640,7 +5670,7 @@
         ['⛽ Fuel', 'Petrol stations on the map with brand, fuels, opening hours and drive time. Tap one to navigate.'],
         ['🌦 Weather', 'Rain radar (last 2 hours, looping) and live rain or heat in each zone. The button shows the weather now.'],
         ['🧭 Compass', 'Tap to turn the map so your direction is up; tap again for north up. The red needle always points north.'],
-        ['🌙 · 🏙 · ➤', 'Night map, zoom out to all of Melbourne, and follow me (arrow turns with the compass).'],
+        ['🏙 · ➤', 'Zoom out to all of Melbourne, and follow me (arrow turns with the compass). Light or dark streets: Settings → Map style.'],
         ['Good to know', 'Drag the map to look around; tap ➤ to follow again. Tap a surge pin for the drive and whether it’s worth it.']]],
       trends: ['📈 Uber Trends', [
         ['📍 Where you are', 'Today’s demand in your zone, hour by hour through Uber’s day, with the current hour outlined.'],
@@ -6339,7 +6369,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.34.0';
+    const APP_VERSION = '1.34.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
