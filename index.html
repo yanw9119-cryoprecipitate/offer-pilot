@@ -568,6 +568,8 @@
       transform: translate(-50%, -50%); white-space: nowrap; font: 800 11px/1.2 -apple-system, sans-serif; color: var(--text);
       background: var(--glass-strong); border: 2px solid; border-radius: 10px; padding: 4px 8px; text-align: center; box-shadow: var(--shadow);
     }
+    .zone-tag.quiet { opacity: .85; font-size: 10px; }
+    .chip { touch-action: manipulation; }
     .zone-tag span { display: block; font-weight: 700; font-size: 10px; color: var(--muted); }
     .surge-pin {
       transform: translate(-50%, -120%); white-space: nowrap; font: 800 11px/1 -apple-system, sans-serif;
@@ -1022,7 +1024,7 @@
           <div class="map-chips">
             <!-- Most useful first: surges near you, busy zones, then the layers you check less often -->
             <button class="chip chip-go" id="chipNear" onclick="openSurgeList()">🔥 Surges</button>
-            <button class="chip on" id="chipZones" onclick="toggleLayer('zones')">🗺 Zones</button>
+            <button class="chip on" id="chipZones" onclick="zonesChipTap()">🗺 Zones</button>
             <button class="chip on" id="chipLive" onclick="toggleLayer('live')">🔴 Live</button>
             <button class="chip on" id="chipPred" onclick="toggleLayer('pred')">🔮 Predicted</button>
             <button class="chip" id="chipSpots" onclick="toggleLayer('spots')">⭐ Spots</button>
@@ -4705,7 +4707,25 @@
     // Map layers: Zones on by default; your choices are remembered
     const layers = Object.assign({ live: true, pred: true, hist: false, zones: true, spots: false },
       (() => { try { const v = JSON.parse(lsGet('mapLayers')); delete (v || {}).hist; return v || {}; } catch (e) { return {}; } })());
+    // Zones chip: tap = zones on/off; double tap = label every zone (quiet ones too), double tap again = busy ones only
+    let zonesTapAt = 0, zonesTapPrev = null;
+    function zonesChipTap() {
+      const now = Date.now();
+      if (now - zonesTapAt < 380) {                    // second tap of a double tap: undo the first tap, switch mode
+        zonesTapAt = 0;
+        layers.zones = true;
+        layers.zonesAll = !layers.zonesAll;
+        lsSet('mapLayers', JSON.stringify(layers));
+        syncLayerChips(); renderMap();
+        toast(layers.zonesAll ? '🗺 Showing all zones' : '🗺 Showing busy zones only');
+        return;
+      }
+      zonesTapAt = now;
+      toggleLayer('zones');
+    }
     function syncLayerChips() {
+      const zc = document.getElementById('chipZones');
+      if (zc) zc.textContent = layers.zonesAll ? '🗺 All zones' : '🗺 Zones';
       Object.entries({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots' })
         .forEach(([k, id]) => document.getElementById(id).classList.toggle('on', !!layers[k]));
       document.getElementById('histBar').hidden = !layers.hist;
@@ -4723,8 +4743,7 @@
     function toggleLayer(k) {
       layers[k] = !layers[k];
       lsSet('mapLayers', JSON.stringify(layers));
-      document.getElementById({ live: 'chipLive', pred: 'chipPred', hist: 'chipHist', zones: 'chipZones', spots: 'chipSpots' }[k]).classList.toggle('on', layers[k]);
-      document.getElementById('histBar').hidden = !layers.hist;
+      syncLayerChips();
       renderMap();
     }
 
@@ -5276,10 +5295,11 @@
         const here = myZone(), from = myPos(), zoneMissing = [];
         Object.entries(UBER_ZONE_SHAPES).forEach(([z, ring]) => {
           const v = demandAdj(z, now);
-          const hot = v !== null && v >= OK;                  // only busy zones are highlighted and labelled
+          const busy = v !== null && v >= OK;
+          const hot = busy || layers.zonesAll;               // busy zones are highlighted; double-tap Zones to label all
           const col = v === null ? '#64748b' : v >= GOOD ? '#16a34a' : v >= OK ? '#eab308' : '#94a3b8';
-          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: hot ? 3 : 1.5, opacity: hot ? 0.95 : 0.5, dashArray: hot ? '10 6' : '4 6',
-            fillColor: col, fillOpacity: hot ? 0.08 : 0, interactive: false }).addTo(markerLayer);
+          L.polygon(ring, { renderer: suburbRenderer, color: col, weight: busy ? 3 : 1.5, opacity: busy ? 0.95 : hot ? 0.8 : 0.5, dashArray: busy ? '10 6' : '4 6',
+            fillColor: col, fillOpacity: busy ? 0.08 : 0, interactive: false }).addTo(markerLayer);
           if (!hot) return;
           // Drive time to the nearest edge of the zone
           let drive;
@@ -5291,7 +5311,7 @@
           }
           const c = L.polygon(ring).getBounds().getCenter();
           L.marker(c, { interactive: false, icon: L.divIcon({ className: 'surge-pin-wrap', iconSize: null, iconAnchor: [0, 0],
-            html: `<div class="zone-tag" style="border-color:${col}">${esc(z)}<span>${demandName(v)} now · ${drive}</span></div>` }) })
+            html: `<div class="zone-tag${busy ? '' : ' quiet'}" style="border-color:${col}">${esc(z)}<span>${v === null ? 'no trend yet' : demandName(v) + ' now'} · ${drive}</span></div>` }) })
             .addTo(markerLayer);
         });
         if (zoneMissing.length && from.gps) fetchMissingRoutes(zoneMissing);
@@ -5356,7 +5376,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.1';
+    const APP_VERSION = '1.25.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
