@@ -6962,7 +6962,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.57.0';
+    const APP_VERSION = '1.57.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7350,7 +7350,7 @@
       const base = 'Free key from rapidapi.com (subscribe to AeroDataBox, Basic plan, then copy the X-RapidAPI-Key). Adds real Melbourne Airport arrivals and departures; the key stays on this phone.';
       const c = flights.MEL, used = flCalls();
       n.textContent = !lsGet('cfgFlightKey') ? base : c && c.err ? `⚠️ ${c.err}` :
-        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${DAYS[dayIdx(new Date(c.to))]} ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} of ${flCap()} calls used this month` +
+        c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${DAYS[dayIdx(new Date(c.to))]} ${new Date(c.to).getDate()} ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} of ${flCap()} calls used this month` +
           (() => { const w = flWeekStatus(); return w.have < w.of ? ` · week ahead: ${w.have} of ${w.of} half-days loaded, catching up every 6 hours` : ' · full week ahead loaded, topped up twice a day'; })() +
           (flBudgetOk() ? ' · hourly updates while you use the app' : ' · hourly updates paused to save calls (Refresh still works)') :
         'Key saved. Flights load when you open the airport on the map or Plan a Shift.';
