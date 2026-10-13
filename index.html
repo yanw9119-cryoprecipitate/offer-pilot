@@ -2760,6 +2760,9 @@
       return levels.every(l => l < 0) ? '<div class="empty">No Uber trend for this zone yet.</div>'
         : levels.map((l, i) => l < 0 ? `<i class="nodata${cls(i)}"></i>` : `<i class="lv${l}${cls(i)}" style="height:${Math.max(4, l * 25)}%"></i>`).join('');
     }
+    // "Zone – Suburb" for where you are, e.g. "Melbourne City – Richmond"
+    function hereSuburb() { try { return lastFix ? areaOf(lastFix.lat, lastFix.lng) : null; } catch (e) { return null; } }
+    function hereLabel(zone) { const sb = hereSuburb(); return zone ? zone + (sb && sb.name !== zone ? ' – ' + sb.name : '') : '—'; }
     function renderTrendNow() {
       const box = document.getElementById('tnHereChart');
       if (!box) return;
@@ -2767,14 +2770,13 @@
       const here = myZone();
       // Where you are
       const hn = document.getElementById('tnHereName'), hp = document.getElementById('tnHerePill'), hs = document.getElementById('tnHereSub');
-      hn.textContent = here || '—';
+      hn.textContent = hereLabel(here);
       if (!here) { box.innerHTML = ''; hp.hidden = true; hs.textContent = lastFix ? 'You’re outside Uber’s trend zones.' : 'Waiting for your location…'; }
       else {
         const t = todayLevels(here), v = demandAdj(here, now), vd = VERDICT(v);
         hp.hidden = false; hp.className = 'pill ' + vd.c; hp.textContent = vd.t;
         const age = Math.round((Date.now() - lastFix.t) / 60000);
-        let sub = null; try { sub = areaOf(lastFix.lat, lastFix.lng); } catch (e) {}
-        hs.textContent = `${sub ? '📍 ' + sub.name + ' · ' : ''}${demandName(v)} now · ${fmtHour(now.getHours())} · location ${age < 1 ? 'just now' : age + ' min ago'}`;
+        hs.textContent = `${demandName(v)} now · ${fmtHour(now.getHours())} · location ${age < 1 ? 'just now' : age + ' min ago'}`;
         box.innerHTML = chartHTML(t.levels, t.nowIdx, null);
       }
       // Recommended: now, next hour and in 2 hours. One chart per area: hours with the same area share it.
@@ -3883,7 +3885,7 @@
       box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><button type="button" class="cal-today${sel === 0 ? ' on' : ''}" onclick="calToday()">Today</button></div>` +
         `<div class="cal-zone"><button type="button" class="cal-loc${zone === here ? ' on' : ''}" onclick="calHere()" aria-label="Use the area you're in">📍</button>` +
         `<select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
-          `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === here ? '<small>you’re here</small>' : ''}</div>` +
+          `<option value="${esc(z)}"${z === zone ? ' selected' : ''}>${esc(z === here ? hereLabel(z) : z)}</option>`).join('')}</select></div>` +
         `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
         `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (${fmtRange(6, 2)}) · ✈️ airport runs recommended · 🏟 event · 📅 holiday</span></div>` +
         airportOutlookHTML(today, sel, evs) + weatherOutlookHTML(today, sel);
@@ -6377,7 +6379,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.34.2';
+    const APP_VERSION = '1.34.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
