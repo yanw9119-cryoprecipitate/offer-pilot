@@ -546,12 +546,20 @@
     .ac-hrs div { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; }
     .ac-hrs small { font-size: .62rem; color: var(--muted); font-weight: 700; } .ac-hrs b { font-size: .92rem; } .ac-hrs .pos { color: var(--green); } .ac-hrs .neg { color: #ef4444; }
     .ac-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .ac-due { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin: 6px 0; padding: 9px 11px; border-radius: 12px; border: 1.5px solid #f59e0b;
+      background: color-mix(in srgb, #f59e0b 12%, var(--card-2)); color: var(--text); font: inherit; font-size: .82rem; text-align: left; cursor: pointer; }
+    .ac-due b { color: #d97706; white-space: nowrap; }
     .ac-save { margin-top: 8px; padding: 9px 11px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--card-2)); font-size: .85rem; }
     .ac-set { margin-top: 10px; font-size: .8rem; } .ac-set summary { cursor: pointer; font-weight: 700; color: var(--muted); }
     .ac-set label { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; }
     .ac-set input { width: 90px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; text-align: right; }
     .ac-set .rs-btn { margin-top: 8px; }
     .ex-photo { grid-column: 1 / -1; justify-self: start; margin-bottom: 4px; }
+    /* Account forms: the date box spans the row and stays inside it on iPhone */
+    #acctSheet .setting-item:has(input[type="date"]) { grid-column: 1 / -1; }
+    #acctSheet input { min-width: 0; max-width: 100%; box-sizing: border-box; }
+    #acctSheet input[type="date"] { display: block; width: 100%; -webkit-appearance: none; appearance: none; text-align: left; min-height: 2.6em; }
+    #acctSheet input[type="date"]::-webkit-date-and-time-value { text-align: left; }
     .rc-view { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; }
     .rc-view img { max-width: 100%; max-height: 85vh; border-radius: 8px; } .rc-view small { color: #ddd; }
     .cal-add { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -3657,7 +3665,7 @@
         sec('trends', '📈 Uber trends', Object.keys(tr).length, trends) +
         sec('snaps', '📸 Surge snapshots', snaps.length, snapRows, 'clearAllSnaps') +
         sec('fills', '⛽ Fill-ups', fills.length, fillRows, 'clearFills') +
-        sec('receipts', '🧾 Receipts', rcpts.length, rcpts.map(f => `<div class="fl-row"><span>${f.kind === 'other' ? '🧾' : f.kind === 'charge' ? '⚡' : '⛽'} ${dShort(f.t)} · ${esc(f.what)}${f.paid ? ' · $' + (+f.paid).toFixed(2) : ''}${f.gst ? ' (GST $' + (+f.gst).toFixed(2) + ')' : ''}</span><button type="button" class="chip" onclick="viewReceipt('${f.imgId}')">View</button></div>`).join('') +
+        sec('receipts', '🧾 Receipts', rcpts.length, rcpts.map(f => `<div class="fl-row"><span>${f.kind === 'statement' ? '📄' : f.kind === 'other' ? '🧾' : f.kind === 'charge' ? '⚡' : '⛽'} ${dShort(f.t)} · ${esc(f.what)}${f.paid ? ' · $' + (+f.paid).toFixed(2) : ''}${f.gst ? ' (GST $' + (+f.gst).toFixed(2) + ')' : ''}</span><button type="button" class="chip" onclick="viewReceipt('${f.imgId}')">View</button></div>`).join('') +
           (rcpts.length ? `<button type="button" class="pip-btn dm-dl" onclick="downloadReceipts()">⬇️ Download all receipt photos (.zip)</button>` : '')) +
         sec('shifts', '⏱ Shifts', hist.length + (cur ? 1 : 0), shiftRows, 'clearShifts') +
         sec('events', '🏟 Your & Discover events', mine.length, evRows, 'clearMyEvents') +
@@ -3734,6 +3742,7 @@
     const receiptFills = () => loadFills().filter(f => f.imgId);
     // all receipt photos: fuel fill-ups and other costs, oldest first
     const allReceipts = () => receiptFills().map(f => ({ t: f.t, kind: f.type === 'ev' ? 'charge' : 'fuel', what: f.station || 'Fuel', paid: f.paid, gst: f.gst ?? null, qty: f.qty, unit: f.type === 'ev' ? 'kWh' : 'L', date: f.rcDate || '', imgId: f.imgId }))
+      .concat(loadStatements().filter(x => x.imgId).map(x => ({ t: x.t, kind: 'statement', what: 'Uber week ' + x.wk, paid: x.gross, gst: +(x.gross / 11).toFixed(2), qty: '', unit: '', date: '', imgId: x.imgId })))
       .concat(loadExpenses().filter(x => x.imgId).map(x => ({ t: x.t, kind: 'other', what: x.what || 'Other cost', paid: x.amt, gst: x.gstAmt ?? (x.gst ? +(x.amt / 11).toFixed(2) : 0), qty: '', unit: '', date: '', imgId: x.imgId })))
       .sort((a, b) => a.t - b.t);
     const dataUrlBytes = u => { const b = atob(u.split(',')[1] || ''), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
@@ -4493,7 +4502,7 @@
     function fyStart(d = new Date()) { return new Date(d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1, 6, 1).getTime(); }
     function periodRange(p) {
       const d = new Date(); d.setHours(0, 0, 0, 0);
-      const mon = d.getTime() - dayIdx(d) * 86400000;
+      const mon = uberWeekStart(Date.now());                         // Uber's week: Monday 4am to Monday 4am
       if (p === 'week') return [mon, mon + 7 * 86400000, 'This week'];
       if (p === 'last') return [mon - 7 * 86400000, mon, 'Last week'];
       if (p === 'month') return [new Date(d.getFullYear(), d.getMonth(), 1).getTime(), new Date(d.getFullYear(), d.getMonth() + 1, 1).getTime(), 'This month'];
@@ -4529,7 +4538,9 @@
       return { gross, fee, tips, payout: gross - fee + tips, grossIncome, costsEx, offers: offers.length, sts: sts.length, planned, actual, km, shifts: worked.length,
         fuelPaid, fuelN: fuel.length, exPaid, exN: ex.length, gstOnFares, gstCredits, gstNet, profit, biz: cfg.biz };
     }
-    const weekOf = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return ymd(new Date(d.getTime() - dayIdx(d) * 86400000)); };
+    // Uber's pay week runs Monday 4am → Monday 4am; a trip at 2am Monday belongs to the week before
+    function uberWeekStart(t) { const d = new Date(t - 4 * 3600000); d.setHours(0, 0, 0, 0); d.setTime(d.getTime() - dayIdx(d) * 86400000); d.setHours(4); return d.getTime(); }
+    const weekOf = t => ymd(new Date(uberWeekStart(t)));
     const acMoney = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(Math.abs(v) >= 1000 ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     function renderAccount() {
       const box = document.getElementById('acctCard'); if (!box) return;
@@ -4546,7 +4557,9 @@
       const chip = (p, t) => `<button type="button" class="ac-chip${acctPeriod === p ? ' on' : ''}" onclick="acctPeriod='${p}'; renderAccount()">${t}</button>`;
       const line = (k, v, cls = '') => `<div class="ac-line ${cls}"><span>${k}</span><b>${v}</b></div>`;
       const hrDiff = n.actual - n.planned;
+      const due = statementDue();
       box.innerHTML = `<div class="demand-title">💼 Account</div>
+        ${due ? `<button type="button" class="ac-due" onclick="openStatement()">📄 Uber statement for the week of ${new Date(due + 'T12:00').toLocaleDateString([], { day: 'numeric', month: 'short' })} is ready to add <b>Add ›</b></button>` : ''}
         <div class="ac-chips">${chip('week', 'This week')}${chip('last', 'Last week')}${chip('month', 'Month')}${chip('qtr', 'Quarter')}${chip('fy', 'FY')}</div>
         <div class="ac-sec">💵 Pay · ${label}</div>
         ${line('Fares (incl. GST)', acMoney(n.gross))}${line('Uber service fee', '−' + acMoney(n.fee))}${n.tips ? line('Tips', acMoney(n.tips)) : ''}
@@ -4577,11 +4590,39 @@
           <label>Business use of the car (%)<input type="number" id="acBiz" min="0" max="100" value="${cfg.biz}" inputmode="numeric"></label>
           <label>Other taxable income this FY ($)<input type="number" id="acOther" min="0" step="100" value="${cfg.other || ''}" placeholder="0" inputmode="numeric"></label>
           <label>Uber service fee (% of fare, for estimates)<input type="number" id="acFee" min="0" max="60" value="${cfg.feePct}" inputmode="numeric"></label>
+          <label>Monday reminder to add the statement<input type="time" id="acRemind" value="${cfg.remind || ''}"></label>
+          <div class="ac-note">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
+          ${cfg.remind ? `<button type="button" class="rs-btn" onclick="remindToCalendar()">📅 Add the Monday reminder to my phone calendar</button>` : ''}
           <button type="button" class="rs-btn go" onclick="saveAcctCfg()">Save</button></details>`;
+    }
+    // Monday reminder: due once Monday's chosen time has passed and last week's statement isn't in yet
+    function statementDue() {
+      const cfg = acctCfg(); if (!cfg.remind) return null;
+      const [h, m] = cfg.remind.split(':').map(Number), wk = uberWeekStart(Date.now()), monday = new Date(wk); monday.setHours(h, m, 0, 0);
+      if (Date.now() < monday.getTime()) return null;
+      const last = weekOf(wk - 3600000);
+      return loadStatements().some(x => x.wk === last) ? null : last;
+    }
+    function remindToCalendar() {
+      const cfg = acctCfg(); if (!cfg.remind) return;
+      const [h, m] = cfg.remind.split(':').map(Number), d = new Date(uberWeekStart(Date.now()) + 7 * 86400000); d.setHours(h, m, 0, 0);
+      const loc = x => `${x.getFullYear()}${pad2(x.getMonth() + 1)}${pad2(x.getDate())}T${pad2(x.getHours())}${pad2(x.getMinutes())}00`;
+      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Offer Pilot//EN', 'BEGIN:VEVENT', `UID:statement-${Date.now()}@offer-pilot`,
+        `DTSTAMP:${loc(new Date())}`, `DTSTART:${loc(d)}`, `DTEND:${loc(new Date(d.getTime() + 15 * 60000))}`, 'RRULE:FREQ=WEEKLY;BYDAY=MO',
+        'SUMMARY:Add Uber weekly statement to Offer Pilot', 'DESCRIPTION:Offer & Account → ＋ Uber weekly statement (screenshot or type the amounts).',
+        'BEGIN:VALARM', 'TRIGGER:PT0M', 'ACTION:DISPLAY', 'DESCRIPTION:Add your Uber weekly statement', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+      saveFile('uber-statement-reminder.ics', ics, 'text/calendar');
+      toast('📅 Weekly Monday reminder ready: tap Add');
+    }
+    function checkStatementReminder() {
+      const due = statementDue(); if (!due || lsGet('stRemindShown') === due) return;
+      lsSet('stRemindShown', due);
+      toast('📄 Last week’s Uber statement should be ready', 'Add it', () => { showTab('log'); openStatement(); });
     }
     function saveAcctCfg() {
       const v = id => parseFloat(document.getElementById(id).value);
-      lsSet('acctCfg', JSON.stringify({ biz: Math.min(100, Math.max(0, v('acBiz') || 0)), other: Math.max(0, v('acOther') || 0), feePct: Math.min(60, Math.max(0, isNaN(v('acFee')) ? 27 : v('acFee'))) }));
+      lsSet('acctCfg', JSON.stringify({ biz: Math.min(100, Math.max(0, v('acBiz') || 0)), other: Math.max(0, v('acOther') || 0), feePct: Math.min(60, Math.max(0, isNaN(v('acFee')) ? 27 : v('acFee'))),
+        remind: document.getElementById('acRemind').value || '' }));
       toast('✓ Saved'); renderAccount();
     }
     // Small form sheets (reuse the app's sheet style)
@@ -4595,14 +4636,34 @@
     }
     const fld = (id, label, extra = '') => `<div class="setting-item"><label for="${id}">${label}</label><input id="${id}" ${extra} /></div>`;
     const num = id => parseFloat(document.getElementById(id).value);
+    let stPhoto = null;
+    // Uber's statement as a screenshot or photo: amounts are read on the phone and filled in for you to check
+    function parseStatement(text) {
+      const lines = text.replace(/,(?=\d{3}\b)/g, '').split(/\n+/);
+      const find = re => { for (const l of lines) { if (!re.test(l)) continue; const m = l.match(/-?\$?\s*(\d{1,6}\.\d{2})/g); if (m) return Math.abs(parseFloat(m[m.length - 1].replace(/[^\d.]/g, ''))); } return null; };
+      return { gross: find(/fares?\b|gross|trip earnings|total fare/i), fee: find(/service fee|uber fee|commission/i), tips: find(/\btips?\b/i), payout: find(/payout|total earnings|net|transferred/i) };
+    }
+    async function stAddPhoto() {
+      const r = await pickReceiptPhoto(); if (!r) return;
+      stPhoto = r;
+      let p = {}; try { const img = await getImg(r.imgId); const i = new Image(); await new Promise(res => { i.onload = res; i.src = img; }); p = parseStatement(await importOCR(cropCanvas(i, 0, 0, i.width, i.height), 4)); } catch (e) {}
+      if (p.gross) document.getElementById('stGross').value = p.gross;
+      if (p.fee) document.getElementById('stFee').value = p.fee;
+      if (p.tips) document.getElementById('stTips').value = p.tips;
+      document.getElementById('stPhotoBtn').textContent = '✓ Statement added (tap to retake)';
+      toast(p.gross ? `📄 Read fares $${p.gross}${p.fee ? ', fee $' + p.fee : ''}. Check and save.` : '📄 Saved. Type the amounts in from the statement.');
+    }
     function openStatement() {
+      stPhoto = null;
       const wk = weekOf(Date.now() - 7 * 86400000);
-      acctSheet('💵 Uber weekly statement', fld('stWeek', 'Week starting (Monday)', `type="date" value="${wk}"`) + fld('stGross', 'Gross fares incl. GST ($)', 'type="number" inputmode="decimal" step="0.01"') +
+      acctSheet('💵 Uber weekly statement', `<button type="button" class="rs-btn ex-photo" id="stPhotoBtn" onclick="stAddPhoto()">📷 Upload statement screenshot</button>` +
+        fld('stWeek', 'Week starting (Monday)', `type="date" value="${wk}"`) + fld('stGross', 'Gross fares incl. GST ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('stFee', 'Uber service fee ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTips', 'Tips ($)', 'type="number" inputmode="decimal" step="0.01"'), () => {
         const w = document.getElementById('stWeek').value, g = num('stGross');
         if (!w || !(g > 0)) { toast('Enter the week and gross fares'); return false; }
-        const t = new Date(w + 'T12:00').getTime(), list = loadStatements().filter(x => x.wk !== weekOf(t));
-        list.push({ t, wk: weekOf(t), gross: g, fee: num('stFee') || 0, tips: num('stTips') || 0 });
+        const t = uberWeekStart(new Date(w + 'T12:00').getTime()) + 3600000, list = loadStatements().filter(x => x.wk !== weekOf(t));
+        list.push({ t, wk: weekOf(t), gross: g, fee: num('stFee') || 0, tips: num('stTips') || 0, ...(stPhoto ? { imgId: stPhoto.imgId } : {}) });
+        stPhoto = null;
         lsSet('uberStatements', JSON.stringify(list)); toast('✓ Statement saved');
       });
     }
@@ -7377,7 +7438,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.62.0';
+    const APP_VERSION = '1.63.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7927,7 +7988,8 @@
       return { have: n, of: FL_AHEAD };
     }
     setInterval(flAutoCheck, 3 * 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(flAutoCheck, 1500); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { setTimeout(flAutoCheck, 1500); setTimeout(checkStatementReminder, 2500); } });
+    setTimeout(() => { try { checkStatementReminder(); } catch (e) {} }, 6000);
     setTimeout(flAutoCheck, 4000);
     // Live counts for a time window, or null when there is no live data covering it
     function flCount(code, dir, s, e) {
