@@ -575,6 +575,7 @@
     .ac-chk { justify-content: flex-start !important; gap: 8px !important; font-weight: 600; } .ac-chk input { width: auto !important; }
     .ac-line.muted span, .ac-line.muted b { color: var(--muted); font-weight: 600; }
     .ex-photo { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+    .ex-photo .rs-btn.up { font-weight: 800; }
     .ex-photo .ok { font-weight: 800; color: var(--green); font-size: .82rem; margin-right: 4px; }
     /* Account forms: the date box spans the row and stays inside it on iPhone */
     #acctSheet .setting-item:has(input[type="date"]) { grid-column: 1 / -1; }
@@ -585,6 +586,15 @@
     #acctSheet .ex-one input { padding-left: 8px; padding-right: 6px; font-size: .9rem; }
     #acctSheet .ex-one input[type="date"] { font-size: .8rem; padding-left: 6px; }
     #acctSheet .ex-one .tgl { grid-column: 1 / -1; }
+    #acctSheet .fu-one .veh-grid { grid-template-columns: minmax(0, .8fr) minmax(0, 1.1fr) minmax(0, 1.1fr); gap: 6px; }
+    #acctSheet .fu-one .fu-st { grid-column: 1 / -1; } #acctSheet .fu-one .fu-st small { color: var(--muted); font-weight: 600; margin-left: 6px; }
+    #acctSheet .fu-one .setting-item:has(input[type="date"]) { grid-column: auto; }
+    #acctSheet .fu-one .setting-item:has(#fuQty) { grid-column: 1 / -1; }
+    #acctSheet .fu-one .setting-item label { font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #acctSheet .fu-one input:not([type="checkbox"]), #acctSheet .fu-one select { padding-left: 8px; padding-right: 6px; font-size: .9rem; min-width: 0; max-width: 100%; box-sizing: border-box; width: 100%; }
+    #acctSheet .fu-one select { border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; font-size: .85rem; }
+    #acctSheet .fu-one input[type="date"] { font-size: .8rem; padding-left: 6px; }
+    #acctSheet .fu-one .tgl { grid-column: 1 / -1; }
     #acctSheet input { min-width: 0; max-width: 100%; box-sizing: border-box; }
     #acctSheet input[type="date"] { display: block; width: 100%; -webkit-appearance: none; appearance: none; text-align: left; min-height: 2.6em; }
     #acctSheet input[type="date"]::-webkit-date-and-time-value { text-align: left; }
@@ -3723,7 +3733,7 @@
         return `<div class="fl-row"><span>📸 ${dShort(s.t)} · ${LEVELS[s.level]}${s.amt ? ' ' + esc(s.amt) : ''}${a ? ' · ' + esc(a.name) : ''}</span>${delBtn(`deleteSnap('${s.id}');renderDataSheet()`)}</div>`; }).join('');
       const fills = loadFills(), rcpts = allReceipts().reverse();
       const fillRows = fills.map((f, i) => ({ f, i })).reverse().map(({ f, i }) =>
-        `<div class="fl-row"><span>${f.type === 'ev' ? '⚡' : '⛽'} ${dShort(f.t)} · ${f.qty} ${f.type === 'ev' ? 'kWh' : 'L'}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}</span>${delBtn(`delFill(${i})`)}</div>`).join('');
+        `<div class="fl-row"><span>${f.type === 'ev' ? '⚡' : '⛽'} ${dShort(f.t)} · ${f.qty ? f.qty + ' ' + (f.type === 'ev' ? 'kWh' : 'L') : (f.grade || 'fuel')}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}</span>${delBtn(`delFill(${i})`)}</div>`).join('');
       let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
       const cur = loadShift();
       const shiftRows = (cur ? `<div class="fl-row"><span>⏱ Current shift since ${dShort(cur.start)}</span><button type="button" class="chip" onclick="cancelShift()">Cancel without saving</button></div>` : '') +
@@ -3762,7 +3772,7 @@
         return csv(['start', 'end', 'hours', 'trips', 'fares', 'km', 'take_home', 'goal', 'net_per_hr'],
           h.map(x => [tIso(x.start), tIso(x.end), x.hrs.toFixed(2), x.trips, x.earn.toFixed(2), x.km.toFixed(1), x.net.toFixed(2), x.goal, (x.net / x.hrs).toFixed(2)])); },
       fills: () => csv(['time', 'type', 'quantity', 'unit', 'paid', 'gst', 'odometer', 'full', 'station', 'receipt_photo'],
-        loadFills().map(f => [tIso(f.t), f.type, f.qty, f.type === 'ev' ? 'kWh' : 'L', f.paid ?? '', f.gst ?? '', f.odo ?? '', f.full ? 'yes' : 'no', f.station || '', f.imgId ? 'yes' : ''])),
+        loadFills().map(f => [tIso(f.t), f.grade || f.type, f.qty ?? '', f.type === 'ev' ? 'kWh' : 'L', f.paid ?? '', f.gst ?? '', f.odo ?? '', f.full ? 'yes' : 'no', f.station || '', f.imgId ? 'yes' : ''])),
       snaps: () => csv(['time', 'level', 'amount', 'suburb', 'zone', 'lat', 'lng'],
         loadSnaps().map(x => { const a = x.lat != null ? areaOf(x.lat, x.lng) : null;
           return [tIso(x.t), LEVELS[x.level], x.amt || '', a ? a.name : '', x.lat != null ? zoneAt(x.lat, x.lng) || '' : '', x.lat ?? '', x.lng ?? '']; })),
@@ -4696,7 +4706,7 @@
         ${n.car.cash ? line('🏦 Loan repayments (cash, not all deductible)', acMoney(n.car.cash), 'muted') : ''}
         ${line(`Other (${n.exN})`, acMoney(n.exPaid))}
         ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car (rental, lease, loan or own) in ⚙️ Account &amp; tax settings (below) to count its costs.</div>` : ''}
-        <div class="ac-acts one"><button type="button" class="rs-btn" onclick="scanReceipt(true)" title="Take a photo of a fuel receipt">📷 Fuel</button><button type="button" class="rs-btn" onclick="scanReceipt(false)" title="Fuel receipt from your photos">🖼 Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
+        <div class="ac-acts one"><button type="button" class="rs-btn" onclick="openFuelCost()">＋ Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
         <div class="ac-sec"><svg class="h-ic"><use href="#h-bank"/></svg>GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
         ${line(n.gstNet >= 0 ? 'GST to pay (BAS)' : 'GST refund (BAS)', acMoney(Math.abs(n.gstNet)), 'tot')}
@@ -4806,13 +4816,13 @@
       if (p.gross) document.getElementById('stGross').value = p.gross;
       if (p.fee) document.getElementById('stFee').value = p.fee;
       if (p.tips) document.getElementById('stTips').value = p.tips;
-      document.getElementById('stPhotoBtn').innerHTML = '<span class="ok">✓ Statement added</span><button type="button" class="rs-btn" onclick="stAddPhoto(true)">📷 Retake</button><button type="button" class="rs-btn" onclick="stAddPhoto(false)">🖼 Choose</button>';
+      document.getElementById('stPhotoBtn').innerHTML = '<span class="ok">✓ Statement added</span><button type="button" class="rs-btn" onclick="stAddPhoto(false)">📤 Upload another</button>';
       toast(p.gross ? `📄 Read fares $${p.gross}${p.fee ? ', fee $' + p.fee : ''}. Check and save.` : '📄 Saved. Type the amounts in from the statement.');
     }
     function openStatement() {
       stPhoto = null;
       const wk = weekOf(Date.now() - 7 * 86400000);
-      acctSheet('💵 Uber weekly statement', `<div class="ex-photo" id="stPhotoBtn"><button type="button" class="rs-btn" onclick="stAddPhoto(true)">📷 Take photo</button><button type="button" class="rs-btn" onclick="stAddPhoto(false)">🖼 Choose screenshot</button></div>` +
+      acctSheet('💵 Uber weekly statement', `<div class="ex-photo" id="stPhotoBtn"><button type="button" class="rs-btn up" onclick="stAddPhoto(false)">📤 Upload</button></div>` +
         fld('stWeek', 'Week starting (Monday)', `type="date" value="${wk}"`) + fld('stGross', 'Gross fares incl. GST ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('stFee', 'Uber service fee ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTips', 'Tips ($)', 'type="number" inputmode="decimal" step="0.01"'), () => {
         const w = document.getElementById('stWeek').value, g = num('stGross');
@@ -4822,6 +4832,73 @@
         stPhoto = null;
         lsSet('uberStatements', JSON.stringify(list)); toast('✓ Statement saved');
       });
+    }
+    // ⛽ Fuel cost: same flow as Other cost. Station name is cross-checked with the servos around you on the map
+    // (nearest first); the receipt photo fills in the cost, fuel type, litres and date where it can read them.
+    const FUEL_GRADES = ['Unleaded 91', 'E10', 'Premium 95', 'Premium 98', 'Diesel', 'Premium diesel', 'LPG', 'EV charge'];
+    let fuPhoto = null;
+    function nearbyStations() {
+      const me = myPos(), seen = new Set(), out = [];
+      [...(typeof fuelList !== 'undefined' ? fuelList : []), ...stations].forEach(s => {
+        if (s.lat == null) return;
+        const name = (s.addr && s.name && !s.name.includes(s.addr.split(' ').pop()) ? `${s.name}, ${s.addr.split(' ').slice(-1)[0]}` : s.name) || 'Service station';
+        const k = name.toLowerCase(); if (seen.has(k)) return; seen.add(k);
+        out.push({ name, brand: (s.brand || s.name || '').toLowerCase(), d: distM(me.lat, me.lng, s.lat, s.lng), ev: !!s.ev });
+      });
+      return out.sort((a, b) => a.d - b.d).slice(0, 10);
+    }
+    function fuelGradeFrom(text) {
+      const t = (text || '').toLowerCase();
+      if (/premium\s*diesel|v-?power\s*diesel|vortex\s*diesel|ultimate\s*diesel/.test(t)) return 'Premium diesel';
+      if (/diesel/.test(t)) return 'Diesel';
+      if (/\blpg\b|autogas/.test(t)) return 'LPG';
+      if (/\be10\b/.test(t)) return 'E10';
+      if (/\b98\b|v-?power|ultimate\s*98|vortex\s*98/.test(t)) return 'Premium 98';
+      if (/\b95\b|premium/.test(t)) return 'Premium 95';
+      if (/\b91\b|unleaded|\bulp\b/.test(t)) return 'Unleaded 91';
+      return '';
+    }
+    function openFuelCost() {
+      fuPhoto = null;
+      const near = nearbyStations(), me = near[0];
+      if (!near.length) { try { const p = myPos(); loadStations(p.lat, p.lng); } catch (e) {} }
+      const opts = near.map(s => `<option value="${esc(s.name)}">${s.d < 1000 ? Math.round(s.d) + ' m' : (s.d / 1000).toFixed(1) + ' km'}</option>`).join('');
+      const last = [...loadFills()].reverse().find(f => f.grade);
+      acctSheet('⛽ Fuel', `<div class="ex-photo" id="fuPhotoBtn"><button type="button" class="rs-btn up" onclick="fuAddPhoto(false)">📤 Upload</button></div>` +
+        `<div class="setting-item fu-st"><label for="fuStation">Station <small id="fuNear">${me ? (me.d < 300 ? '📍 you’re here' : `nearest ${me.d < 1000 ? Math.round(me.d) + ' m' : (me.d / 1000).toFixed(1) + ' km'} away`) : 'type the name'}</small></label>` +
+        `<input id="fuStation" type="text" list="fuStations" autocomplete="off" value="${me && me.d < 300 ? esc(me.name) : ''}" placeholder="${me ? esc(me.name) : 'e.g. Shell Richmond'}"><datalist id="fuStations">${opts}</datalist></div>` +
+        fld('fuCost', 'Cost ($)', 'type="number" inputmode="decimal" step="0.01"') +
+        `<div class="setting-item"><label for="fuGrade">Fuel</label><select id="fuGrade">${FUEL_GRADES.map(g => `<option${(last && last.grade === g) || (!last && g === 'Unleaded 91') ? ' selected' : ''}>${g}</option>`).join('')}</select></div>` +
+        fld('fuDate', 'Date', `type="date" value="${ymd(new Date())}"`) +
+        fld('fuQty', 'Litres (optional)', 'type="number" inputmode="decimal" step="0.01" placeholder="for real economy"') +
+        `<label class="tgl"><input type="checkbox" id="fuFull" checked /><span>Filled to full<small>Full tanks with litres give your real fuel economy.</small></span></label>`, () => {
+        const cost = num('fuCost'); if (!(cost > 0)) { toast('Enter the cost'); return false; }
+        const grade = document.getElementById('fuGrade').value, d = document.getElementById('fuDate').value, qty = num('fuQty');
+        const t = d === ymd(new Date()) ? Date.now() : new Date(d + 'T12:00').getTime() || Date.now();
+        const fills = loadFills();
+        fills.push({ t, station: document.getElementById('fuStation').value.trim() || (me ? me.name : 'Fuel'), type: grade === 'EV charge' ? 'ev' : 'fuel', grade,
+          qty: qty > 0 ? qty : null, paid: cost, odo: null, full: document.getElementById('fuFull').checked, gpsKm: trackedKm(),
+          ...(fuPhoto ? { imgId: fuPhoto.imgId, gst: fuPhoto.gst || null, rcDate: fuPhoto.date || null } : {}) });
+        fills.sort((a, b) => a.t - b.t); saveFills(fills); fuPhoto = null;
+        toast('⛽ Fuel saved'); try { renderFillLog(); } catch (e) {}
+      }, 'fu-one');
+      const h = document.getElementById('fuCost').offsetHeight; if (h) document.getElementById('fuGrade').style.height = h + 'px';   // same height as the boxes beside it
+    }
+    async function fuAddPhoto(camera) {
+      const r = await pickReceiptPhoto(camera); if (!r) return;
+      fuPhoto = r;
+      if (r.total) document.getElementById('fuCost').value = r.total;
+      if (r.litres) document.getElementById('fuQty').value = r.litres;
+      if (r.date) { const m = r.date.split('/'); if (m.length === 3) { const y = m[2].length === 2 ? '20' + m[2] : m[2]; document.getElementById('fuDate').value = `${y}-${m[1].padStart(2, '0')}-${m[0].padStart(2, '0')}`; } }
+      const g = fuelGradeFrom(r.text || ''); if (g) document.getElementById('fuGrade').value = g;
+      // station: match the brand on the receipt to the servos around you (nearest first)
+      const brand = (r.station || '').toLowerCase().split(/\s+/)[0];
+      const hit = brand && nearbyStations().find(s => s.name.toLowerCase().includes(brand) || s.brand.includes(brand));
+      const st = document.getElementById('fuStation');
+      if (hit) { st.value = hit.name; document.getElementById('fuNear').textContent = `✓ matches the receipt · ${hit.d < 1000 ? Math.round(hit.d) + ' m' : (hit.d / 1000).toFixed(1) + ' km'} away`; }
+      else if (r.station && !st.value) st.value = r.station;
+      document.getElementById('fuPhotoBtn').innerHTML = '<span class="ok">✓ Photo added</span><button type="button" class="rs-btn" onclick="fuAddPhoto(false)">📤 Upload another</button>';
+      toast(r.total ? `🧾 Read $${r.total}${r.litres ? ' · ' + r.litres + ' L' : ''}${g ? ' · ' + g : ''}. Check and save.` : '🧾 Photo saved. Type the amounts in.');
     }
     let exPhoto = null;                                   // { imgId } for the cost being added
     // Photo of a receipt for any cost: saved with it, and the total (and GST) are read to fill the form
@@ -4837,7 +4914,7 @@
             const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
             const c = cropCanvas(img, 0, 0, img.width, img.height), imgId = 'rcpt' + Date.now();
             await putImg(imgId, c.toDataURL('image/jpeg', 0.82));
-            let rc = {}; try { rc = parseReceipt(await importOCR(c, 4)); } catch (e) {}
+            let rc = {}; try { const txt = await importOCR(c, 4); rc = { ...parseReceipt(txt), text: txt }; } catch (e) {}
             resolve({ imgId, ...rc });
           } catch (e) { toast('Couldn’t open the photo'); resolve(null); }
         };
@@ -4851,12 +4928,12 @@
       if (r.gst) document.getElementById('exGst').checked = true;
       if (r.station && !document.getElementById('exWhat').value) document.getElementById('exWhat').value = r.station;
       if (r.date) { const m = r.date.split('/'); if (m.length === 3) { const y = m[2].length === 2 ? '20' + m[2] : m[2]; document.getElementById('exDate').value = `${y}-${m[1].padStart(2, '0')}-${m[0].padStart(2, '0')}`; } }
-      const b = document.getElementById('exPhotoBtn'); if (b) b.innerHTML = '<span class="ok">✓ Photo added</span><button type="button" class="rs-btn" onclick="exAddPhoto(true)">📷 Retake</button><button type="button" class="rs-btn" onclick="exAddPhoto(false)">🖼 Choose</button>';
+      const b = document.getElementById('exPhotoBtn'); if (b) b.innerHTML = '<span class="ok">✓ Photo added</span><button type="button" class="rs-btn" onclick="exAddPhoto(false)">📤 Upload another</button>';
       toast(r.total ? `🧾 Read $${r.total}${r.gst ? ' (GST $' + r.gst + ')' : ''}. Check and save.` : '🧾 Photo saved. Type the amount in.');
     }
     function openExpense() {
       exPhoto = null;
-      acctSheet('🧾 Other cost', `<div class="ex-photo" id="exPhotoBtn"><button type="button" class="rs-btn" onclick="exAddPhoto(true)">📷 Take photo</button><button type="button" class="rs-btn" onclick="exAddPhoto(false)">🖼 Choose photo</button></div>` +
+      acctSheet('🧾 Other cost', `<div class="ex-photo" id="exPhotoBtn"><button type="button" class="rs-btn up" onclick="exAddPhoto(false)">📤 Upload</button></div>` +
         fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount ($)', 'type="number" inputmode="decimal" step="0.01"') +
         fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
         const amt = num('exAmt'); if (!(amt > 0)) { toast('Enter the amount'); return false; }
@@ -6244,9 +6321,9 @@
     // Real-world economy over the last full-to-full stretch
     function economyFor(fills, i) {
       const cur = fills[i];
-      if (!cur.full) return null;
+      if (!cur.full || !(cur.qty > 0)) return null;                  // fuel costs saved without litres don't count
       let qty = cur.qty, j = i - 1;
-      while (j >= 0 && !fills[j].full) { qty += fills[j].qty; j--; }   // partial top-ups in between count too
+      while (j >= 0 && !fills[j].full) { if (!(fills[j].qty > 0)) return null; qty += fills[j].qty; j--; }   // partial top-ups in between count too
       if (j < 0 || fills[j].type !== cur.type) return null;
       const prev = fills[j];
       const km = cur.odo && prev.odo ? cur.odo - prev.odo : (cur.gpsKm - prev.gpsKm);
@@ -6294,7 +6371,7 @@
       if (!box) return;
       const fills = loadFills();
       const fuelAvg = avgEconomy('fuel'), evAvg = avgEconomy('ev');
-      const lastPaid = [...fills].reverse().find(f => f.type === 'fuel' && f.paid);
+      const lastPaid = [...fills].reverse().find(f => f.type === 'fuel' && f.paid && f.qty > 0);
       let html = '';
       if (fuelAvg) html += `<div class="fl-avg">Real-world <b>${fuelAvg.per100.toFixed(1)} L/100 km</b> (last ${fuelAvg.n} tank${fuelAvg.n > 1 ? 's' : ''}, ${Math.round(fuelAvg.km)} km)` +
         (lastPaid ? ` · last paid $${(lastPaid.paid / lastPaid.qty).toFixed(2)}/L` : '') +
@@ -6303,7 +6380,7 @@
       html += fills.slice(-5).reverse().map(f => {
         const d = new Date(f.t);
         return `<div class="fl-row"><span>${f.type === 'ev' ? '⚡' : '⛽'} ${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} · ${esc(f.station)}</span>` +
-          `<span>${f.qty} ${f.type === 'ev' ? 'kWh' : 'L'}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}${f.full ? ' · full' : ''}</span></div>`;
+          `<span>${f.qty ? f.qty + ' ' + (f.type === 'ev' ? 'kWh' : 'L') : esc(f.grade || 'Fuel')}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}${f.full && f.qty ? ' · full' : ''}</span></div>`;
       }).join('') || '<div class="autoread-hint">No fill-ups yet. They’re detected when you stop at a station, or log one here.</div>';
       box.innerHTML = html;
     }
@@ -7597,7 +7674,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.66.0';
+    const APP_VERSION = '1.67.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
