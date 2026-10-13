@@ -436,6 +436,30 @@
     .tn-tags { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-width: 0; }
     .tn-lvl { font-weight: 800; } .tn-lvl + .tn-lvl::before { content: " · "; color: var(--muted); font-weight: 400; }
     .tn-lvl.yes { color: var(--green); } .tn-lvl.maybe { color: var(--amber); } .tn-lvl.no { color: var(--red); }
+    .plan-cal { margin-bottom: 14px; }
+    .cal-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: .9rem; }
+    .cal-top span { font-size: .68rem; color: var(--muted); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-dow { text-align: center; font-size: .62rem; font-weight: 800; color: var(--muted); }
+    .cal-day { position: relative; aspect-ratio: 1 / 1.05; border: var(--bw) solid var(--card-border); border-radius: 10px; background: var(--card-2);
+      color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; font: inherit; min-width: 0; }
+    .cal-day b { font-size: .86rem; line-height: 1; }
+    .cal-day small { font-size: .56rem; color: var(--muted); margin-top: 2px; min-height: .7em; }
+    .cal-day em { position: absolute; top: 1px; right: 2px; font-style: normal; font-size: .5rem; line-height: 1; }
+    .cal-day.yes { background: color-mix(in srgb, var(--green) 14%, var(--card-2)); border-color: color-mix(in srgb, var(--green) 55%, var(--card-border)); }
+    .cal-day.yes b { color: var(--green); font-weight: 900; font-size: .95rem; }
+    .cal-day.maybe { background: color-mix(in srgb, var(--amber) 12%, var(--card-2)); }
+    .cal-day.no { opacity: .7; }
+    .cal-key b.g { color: var(--green); font-weight: 900; }
+    .cal-zone { display: flex; align-items: center; gap: 6px; font-size: .74rem; color: var(--muted); margin-bottom: 8px; }
+    .cal-zone select { flex: 1; min-width: 0; background: var(--card-2); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 10px; padding: 6px 8px; font-size: .8rem; font-weight: 700; }
+    .cal-zone small { flex: none; }
+    .cal-day.today b { text-decoration: underline; text-underline-offset: 3px; }
+    .cal-day.sel { outline: 2.5px solid var(--accent); outline-offset: 1px; }
+    .cal-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: .6rem; color: var(--muted); }
+    .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
+    .cal-key i.yes { background: color-mix(in srgb, var(--green) 45%, var(--card-2)); } .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 40%, var(--card-2)); } .cal-key i.no { background: var(--card-2); border: 1px solid var(--line-strong); }
+    .cal-add { margin-top: 8px; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -877,7 +901,7 @@
     :root[data-theme="contrast"] .sx-card, :root[data-theme="contrast"] .wn-cell, :root[data-theme="contrast"] .sx-search { border: 2px solid var(--card-border); }
     :root[data-theme="contrast"] .sx-field { border-bottom-color: var(--line); }
     .gear-btn { margin-left: auto; }
-    /* Side rail: same size tiles, line icons in the theme colours */
+    /* Side rail: same size tiles, line icons in the theme colours (now laid out as the bottom bar, below) */
     .side-stack { gap: 6px; }
     .side-btn, .side-link { width: 52px; min-height: 54px; padding: 8px 2px 6px; gap: 3px; justify-content: center;
       background: var(--card); color: var(--text); border: var(--bw) solid var(--card-border); border-right: none;
@@ -901,6 +925,37 @@
     .drive .map-note[hidden] { display: none; }
     .drive .map-note { bottom: 40px; }   /* above the map credits */
     .drive { height: calc(100dvh - 96px); }
+    /* ================= BOTTOM BAR (was the side rail): stays put while scrolling ================= */
+    .side-stack { position: fixed; top: auto; right: auto; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+      z-index: 900; flex-direction: row; gap: 2px; width: min(440px, calc(100% - 16px)); padding: 5px;
+      background: var(--glass-strong); border: var(--bw) solid var(--card-border); border-radius: 22px; box-shadow: var(--shadow-strong);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+    .side-stack .side-btn, .side-stack .side-link { flex: 1 1 0; width: auto; min-width: 0; min-height: 50px; border: none; border-radius: 16px;
+      box-shadow: none; background: none; padding: 6px 0 4px; }
+    .side-stack .side-logo { background: var(--accent); }
+    .side-stack .side-btn.open, .side-stack .side-btn.on { background: var(--accent); }
+    .side-stack .side-btn span { font-size: .48rem; }
+    .side-stack .snap-dot { top: 6px; right: calc(50% - 16px); box-shadow: 0 0 0 2px var(--glass-strong); }
+    @media (max-width: 520px) { .app-container { padding-right: 0; } }
+    body { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+    .ver-badge { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 890; }
+    /* Map tab fills the screen between the tabs and the bottom bar */
+    .drive { height: calc(100dvh - 150px - env(safe-area-inset-bottom, 0px)); min-height: 420px; }
+    .tabs { grid-template-columns: repeat(4, 1fr); position: sticky; top: env(safe-area-inset-top); z-index: 800; }
+    .tab { font-size: .72rem; padding: 9px 2px; line-height: 1.15; white-space: normal; }
+    .offer-view .offer-panel { gap: 10px; padding: 12px; }
+    .offer-view .decision-banner { font-size: 1.3rem; padding: 16px 10px; }
+    .offer-view .mini-stats b { font-size: 1.15rem; }
+    .offer-view .input-box input { font-size: 1.35rem; }
+    .offer-view .key { padding: 15px 0; font-size: 1.3rem; }
+    .offer-view .log-btn { padding: 16px 0; font-size: 1.05rem; }
+    .map-offer { position: absolute; left: 50%; transform: translateX(-50%); bottom: 34px; z-index: 640; border: none; border-radius: 18px;
+      padding: 8px 16px; font-weight: 900; font-size: 1rem; color: #fff; white-space: nowrap; box-shadow: var(--shadow-strong); text-align: center; max-width: calc(100% - 120px); }
+    .map-offer[hidden] { display: none; }
+    .map-offer.accept { background: var(--green); } .map-offer.decline { background: var(--red); }
+    :root[data-theme="contrast"] .map-offer { color: #000; }
+    .map-offer small { display: block; font-size: .66rem; font-weight: 700; opacity: .9; }
+    .map-wrap.card-open .map-offer { display: none; }
     /* Theme picker (Settings → Appearance) */
     .th-opt { width: 100%; display: flex; align-items: center; gap: 14px; background: none; border: none; color: var(--text); font: inherit; text-align: left; padding: 14px 18px; }
     .th-opt .sx-rt small { white-space: normal; }
@@ -940,9 +995,10 @@
 
   <div class="app-container">
     <div class="tabs">
-      <button class="tab active" id="tab-drive" onclick="showTab('drive')">🚗 Drive</button>
-      <button class="tab" id="tab-insights" onclick="showTab('insights')">🗓 Plan a Shift</button>
+      <button class="tab active" id="tab-offer" onclick="showTab('offer')">🚗 Drive</button>
+      <button class="tab" id="tab-drive" onclick="showTab('drive')">🗺 Map</button>
       <button class="tab" id="tab-trends" onclick="showTab('trends')">📈 Uber Trends</button>
+      <button class="tab" id="tab-insights" onclick="showTab('insights')">🗓 Plan a Shift</button>
     </div>
 
     <!-- ================= DRIVE VIEW: live map + offer in one ================= -->
@@ -980,8 +1036,13 @@
         <div class="map-note" id="mapNote"></div>
         <div class="surge-card" id="surgeCard" hidden></div>
         <div class="busy-panel" id="busyPanel" hidden></div>
+        <button type="button" class="map-offer" id="mapOffer" hidden onclick="showTab('offer')"></button>
       </div>
 
+    </div>
+
+    <!-- ================= OFFER VIEW: decide on an offer and log it ================= -->
+    <div id="view-offer" class="offer-view" style="display:none;">
       <div class="drive-bottom offer-panel">
           <button type="button" class="shift-bar idle" id="shiftBar" onclick="openShift()"></button>
           <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)">ENTER OFFER DETAILS</div>
@@ -1073,9 +1134,10 @@
         <div class="demand-title">📍 Where to drive</div>
         <div id="whereNow"></div>
         <div class="plan-box">
+          <div class="plan-cal" id="planCal"></div>
           <div class="plan-title">🕘 Choose your hours</div>
           <div class="plan-row">
-            <select id="planDay" onchange="renderPlan()" aria-label="Day"></select>
+            <select id="planDay" onchange="renderPlan(); renderPlanCal()" aria-label="Day"></select>
             <label class="plan-lbl">From <select id="planStart" onchange="renderPlan()" aria-label="Start time"></select></label>
           </div>
           <div class="plan-row">
@@ -1576,7 +1638,7 @@
       const pad = document.getElementById('keypad');
       const btn = document.getElementById('keypadToggle');
       // The side button works from any tab: jump to the Offer tab to open the pad
-      if (document.getElementById('view-drive').style.display === 'none') { showTab('drive'); force = true; }
+      if (document.getElementById('view-offer').style.display === 'none') { showTab('offer'); force = true; }
       const open = typeof force === 'boolean' ? force : pad.style.display === 'none';
       pad.style.display = open ? '' : 'none';
       btn.classList.toggle('open', open);
@@ -1715,6 +1777,8 @@
       else banner.innerHTML = `<span class="banner-arrow">${statusClass === 'accept' ? '⬆' : '⬇'}</span>` +
         statusText.replace(/^[✓✗]\s*/, '');
       banner.className = `decision-banner ${statusClass}`;
+      const mo = document.getElementById('mapOffer');      // the same verdict, floating on the map
+      if (mo) { mo.hidden = statusClass === 'waiting'; mo.className = 'map-offer ' + statusClass; mo.innerHTML = banner.innerHTML + `<small>${netHrStr} net · tap for details</small>`; }
       document.getElementById('grossHr').textContent = grossHrStr;
       document.getElementById('rateKm').textContent = rateKmStr;
       document.getElementById('netHr').textContent = netHrStr;
@@ -2070,7 +2134,13 @@
     const DEMAND_NAMES = ['None', 'Low', 'Medium', 'High', 'Very high'];
     let trendQueue = [], trendPending = null, demandDay = null;
 
-    function loadTrends() { try { return JSON.parse(lsGet(TRENDS_KEY)) || {}; } catch (e) { return {}; } }
+    // Parsed once per change (the planner asks thousands of times). Callers that edit must saveTrends().
+    let trCache = { raw: undefined, val: {} };
+    function loadTrends() {
+      const raw = lsGet(TRENDS_KEY);
+      if (raw !== trCache.raw) { let v = {}; try { v = JSON.parse(raw) || {}; } catch (e) {} trCache = { raw, val: v }; }
+      return trCache.val;
+    }
     function saveTrends(t) { lsSet(TRENDS_KEY, JSON.stringify(t)); }
 
     // Add one chart (24 levels from 4am) for a business day into a zone, averaging with what's there
@@ -2623,8 +2693,12 @@
       live[zone] = { v: level / 4, t };
       lsSet('liveDemand', JSON.stringify(live));
     }
+    let liveCache = { raw: null, val: null };
     function liveAt(zone, dt) {
-      let live = {}; try { live = JSON.parse(lsGet('liveDemand')) || {}; } catch (e) { return null; }
+      const raw = lsGet('liveDemand');
+      if (!raw) return null;
+      let live = liveCache.raw === raw ? liveCache.val : null;
+      if (!live) { try { live = JSON.parse(raw) || {}; } catch (e) { return null; } liveCache = { raw, val: live }; }
       const r = live[zone];
       if (!r) return null;
       const a = new Date(r.t);
@@ -2846,7 +2920,16 @@
     const ymd = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 
     function myEvents() { try { return JSON.parse(lsGet('myEvents')) || []; } catch (e) { return []; } }
+    // Cached for a moment: the planner and calendar ask for events thousands of times per render
+    let evCache = null;
     function allEvents() {
+      const key = (lsGet('myEvents') || '') + (lsGet('hiddenEvents') || '');
+      if (evCache && evCache.key === key && Date.now() - evCache.at < 5000) return evCache.list;
+      const list = allEventsRaw();
+      evCache = { key, at: Date.now(), list };
+      return list;
+    }
+    function allEventsRaw() {
       const seen = new Set();
       const hid = new Set(hiddenEvents());
       return [...myEvents(), ...BUILT_IN_EVENTS].filter(e => { const k = e.name.toLowerCase() + e.start; if (seen.has(k) || hid.has(e.name + '|' + e.start)) return false; seen.add(k); return true; }).map(e => {
@@ -3057,11 +3140,79 @@
     }
 
     // ---- Shift planner ----
+    // ---- Calendar: the next 4 weeks, each day coloured by its best hours ----
+    const CAL_DAYS = 28;
+    let lastPlan = null;
+    // How much of a day is worth driving in one zone: hours from 6am to 2am at High or better
+    const CAL_HOURS = 20;
+    function calZone() {
+      const z = lsGet('calZone');
+      return z && UBER_ZONE_SHAPES[z] ? z : (myZone() || 'Melbourne City');
+    }
+    function dayOutlook(day0, zone) {
+      let good = 0, ok = 0, known = 0;
+      for (let k = 0; k < CAL_HOURS; k++) {
+        const dt = new Date(day0.getTime() + (6 + k) * 3600000), v = demandAdj(zone, dt);
+        if (v === null) continue;
+        known++;
+        if (v >= GOOD) good++; else if (v >= OK) ok++;
+      }
+      if (!known) return null;
+      return { good, ok, cls: good >= CAL_HOURS / 2 ? 'yes' : good + ok >= CAL_HOURS / 2 ? 'maybe' : 'no' };
+    }
+    function renderPlanCal() {
+      const box = document.getElementById('planCal');
+      if (!box) return;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const sel = +document.getElementById('planDay').value || 0;
+      const lead = dayIdx(today);                       // blank cells before today (weeks start Monday)
+      const evs = allEvents(), hols = PUBLIC_HOLIDAYS, zone = calZone();
+      let cells = Array.from({ length: lead }, () => '<i class="cal-blank"></i>');
+      for (let k = 0; k < CAL_DAYS; k++) {
+        const d = new Date(today.getTime() + k * 86400000), o = dayOutlook(d, zone);
+        const d0 = d.getTime() + 4 * 3600000, d1 = d0 + 24 * 3600000;
+        const dayEv = evs.filter(e => e.s < d1 && e.e > d0);
+        const c = !o ? 'na' : o.cls;
+        const marks = (dayEv.some(e => e.zone === AIRPORT_ZONE) ? '✈️' : '') + (dayEv.some(e => e.zone !== AIRPORT_ZONE) ? '🏟' : '') + (hols[ymd(d)] ? '📅' : '');
+        const title = `${d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}: ${o ? `${o.good} recommended hours, ${o.ok} fair` : 'no trend data'}${dayEv.length ? ' · ' + dayEv.map(e => e.name).join(', ') : ''}${hols[ymd(d)] ? ' · ' + hols[ymd(d)] : ''}`;
+        cells.push(`<button type="button" class="cal-day ${c}${k === sel ? ' sel' : ''}${k === 0 ? ' today' : ''}" onclick="pickPlanDay(${k})" title="${esc(title)}" aria-label="${esc(title)}">` +
+          `<b>${d.getDate()}</b><small>${o ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}</button>`);
+      }
+      const m0 = today.toLocaleDateString([], { month: 'long' }), m1 = new Date(today.getTime() + (CAL_DAYS - 1) * 86400000).toLocaleDateString([], { month: 'long' });
+      box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><span>Tap a day to plan it</span></div>` +
+        `<label class="cal-zone">Area <select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
+          `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === myZone() ? '<small>you’re here</small>' : ''}</label>` +
+        `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
+        `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (6am–2am) · 🏟 event · ✈️ airport peak · 📅 holiday</span></div>`;
+    }
+    function pickPlanDay(k) {
+      document.getElementById('planDay').value = String(k);
+      renderPlan(); renderPlanCal();
+      const r = document.getElementById('planResult');
+      if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    // Save the chosen shift to the phone's calendar (.ics opens Apple Calendar's "Add" screen)
+    function addPlanToCalendar() {
+      if (!lastPlan) return;
+      const f = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      const title = lastPlan.zone ? `Uber shift · ${lastPlan.zone}` : 'Uber shift';
+      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Offer Pilot//EN', 'BEGIN:VEVENT',
+        `UID:${Date.now()}@offer-pilot`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(lastPlan.start)}`, `DTEND:${f(lastPlan.end)}`,
+        `SUMMARY:${title}`, `DESCRIPTION:Planned with Offer Pilot. ${lastPlan.verdict}.`, 'BEGIN:VALARM', 'TRIGGER:-PT30M', 'ACTION:DISPLAY',
+        `DESCRIPTION:${title} in 30 minutes`, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+      const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = 'uber-shift.ics';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast('📅 Calendar event ready: tap Add');
+    }
     function initPlanner() {
       const today = new Date();
-      document.getElementById('planDay').innerHTML = Array.from({ length: 7 }, (_, k) => {
+      document.getElementById('planDay').innerHTML = Array.from({ length: CAL_DAYS }, (_, k) => {
         const d = new Date(today.getTime() + k * 86400000);
-        return `<option value="${k}">${k === 0 ? `Today (${DAYS[dayIdx(d)]})` : k === 1 ? `Tomorrow (${DAYS[dayIdx(d)]})` : DAYS[dayIdx(d)]}</option>`;
+        const dm = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
+        return `<option value="${k}">${k === 0 ? `Today (${DAYS[dayIdx(d)]})` : k === 1 ? `Tomorrow (${DAYS[dayIdx(d)]})` : `${DAYS[dayIdx(d)]} ${dm}`}</option>`;
       }).join('');
       const hours = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${fmtHour(h)}</option>`).join('');
       document.getElementById('planStart').innerHTML = hours;
@@ -3165,6 +3316,8 @@
       }
       const hol = holidayOn(hrs[0]);
       if (hol) head += ` <br>📅 ${esc(hol)}: a public holiday, so the usual pattern may differ.`;
+      lastPlan = { start: hrs[0], end: new Date(hrs[0].getTime() + len * 3600000), zone: top.avg >= OK ? top.z : null, verdict: v.t };
+      head += `<div class="cal-add"><button type="button" class="chip" onclick="addPlanToCalendar()">📅 Add to Calendar</button></div>`;
       out.innerHTML = `<div class="wn-head">${head}</div>` + rows.map(r => {
         const vv = VERDICT(r.avg);
         const win = r.best ? `busiest ${fmtHour(hrs[r.best[0]].getHours())}–${fmtHour((hrs[r.best[1]].getHours() + 1) % 24)}` : 'no busy hours';
@@ -3198,6 +3351,7 @@
       const ranked = renderDemand();
       renderWhereNow();
       renderPlan();
+      renderPlanCal();
       renderEvents();
       renderSpotList();
       renderTrendChanges();
@@ -3393,7 +3547,7 @@
       if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; }
       pendingOutcome = null;
       setOCRStatus(false, 'OFF');
-      if (document.getElementById('view-drive').style.display === 'none') stopTracking();
+      if (document.getElementById('view-drive').style.display === 'none' && document.getElementById('view-offer').style.display === 'none') stopTracking();
       const btn = document.getElementById('ocrToggleBtn');
       btn.textContent = 'Share Screen & Start Auto-Read';
       btn.classList.replace('stop', 'start');
@@ -4946,6 +5100,14 @@
       renderMap();
     }
 
+    // Chase alerts keep working while you're on the Drive tab (the map isn't drawn then)
+    function backgroundChaseCheck() {
+      try {
+        const surges = buildSurges(), from = myPos(), evals = new Map();
+        surges.forEach(sg => { const q = routeNow(from, sg); evals.set(sg.key, { r: q.r, real: q.real, w: worthIt(sg, q.r) }); });
+        checkChaseAlerts(surges, evals);
+      } catch (e) {}
+    }
     function renderMap() {
       const note = document.getElementById('mapNote');
       if (document.getElementById('view-drive').style.display === 'none') return;
@@ -5075,18 +5237,20 @@
     }
 
     function showTab(tab) {
-      ['drive', 'insights', 'trends'].forEach(t => {
+      ['drive', 'offer', 'insights', 'trends'].forEach(t => {
         document.getElementById('view-' + t).style.display = tab === t ? '' : 'none';
         document.getElementById('tab-' + t).classList.toggle('active', tab === t);
       });
       if (tab === 'insights' || tab === 'trends') renderInsights();
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
-      else stopTracking(); // save battery when the map isn't showing
+      else if (tab === 'offer') startTracking();          // offers remember where you were
+      else stopTracking(); // save battery when neither the map nor the offer screen is showing
+      window.scrollTo(0, 0);
     }
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.22.7';
+    const APP_VERSION = '1.24.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -5459,11 +5623,11 @@
       renderShiftBar(); setInterval(renderShiftBar, 30000);
       syncTestUI(); applyTheme(savedTheme()); syncLayerChips();
       renderBackupInfo(); weeklyReminders();
-      showTab('drive');
+      showTab('offer');
       // Keep live-surge ages and predictions current while driving
       setInterval(() => {
         if (document.getElementById('view-drive').style.display !== 'none') renderMap();
-        else { renderWhereNow(); renderTrendNow(); }                         // Where to drive: keep now/next hours current
+        else { renderWhereNow(); renderTrendNow(); backgroundChaseCheck(); }                         // Where to drive: keep now/next hours current
       }, 60000);
     };
   </script>
