@@ -735,6 +735,12 @@
     .wx-h em { font-style: normal; font-size: .56rem; color: #2563eb; font-weight: 800; min-height: .8em; }
     .wx-h.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
     .wx-h.wet { background: color-mix(in srgb, #3b82f6 12%, var(--card-2)); }
+    .train-pin-wrap { display: flex; align-items: center; gap: 3px; }
+    .train-pin { position: relative; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: .85rem; background: #fff; border: 2px solid #0f766e; box-shadow: 0 1px 4px rgba(0,0,0,.35); animation: trainPulse 1.6s ease-in-out infinite; }
+    .train-pin b { position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: #dc2626; color: #fff; font-size: .6rem; line-height: 14px; text-align: center; }
+    .train-pin-wrap span { font-size: .62rem; font-weight: 800; color: #0f766e; background: rgba(255,255,255,.92); border-radius: 6px; padding: 1px 5px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+    @keyframes trainPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(15,118,110,.5), 0 1px 4px rgba(0,0,0,.35); } 50% { box-shadow: 0 0 0 6px rgba(15,118,110,0), 0 1px 4px rgba(0,0,0,.35); } }
+    .train-pop .tp-desc { font-size: .74rem; color: #333; margin: 6px 0 2px; line-height: 1.35; }
     .fuel-pin-wrap { display: flex; align-items: center; gap: 3px; }
     .fuel-pin { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .8rem; background: #fff; border: 2px solid #ea580c; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
     .fuel-pin { border-color: #64748b; }
@@ -1803,6 +1809,11 @@
         <div class="sx-field"><label for="cfgTomTom">TomTom key (optional)</label><input type="text" id="cfgTomTom" placeholder="Leave empty to use free road data" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-hint">Without a key, drive times use free road data plus Melbourne rush-hour estimates. A free key from developer.tomtom.com adds live traffic.</div>
       </div>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">🚆 Train disruptions</h3>
+        <div class="sx-field"><label for="cfgTrainKey">Transport Victoria open data key (optional)</label><input type="text" id="cfgTrainKey" placeholder="Paste your API key" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-hint" id="trainKeyNote">Free key from opendata.transport.vic.gov.au (sign in, then API keys). Shows Metro train suspensions and replacement buses on the map; the key stays on this phone.</div>
+      </div>
       <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
     </section>
 
@@ -2269,6 +2280,8 @@
         document.getElementById('cfgCostKm').value = config.costPerKm;
         document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
         document.getElementById('cfgTomTom').value = chaseCfg.tomtom;
+        document.getElementById('cfgTrainKey').value = lsGet('cfgTrainKey') || '';
+        syncTrainNote();
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
         fillVehicleUI();
         renderFillLog();
@@ -2303,6 +2316,8 @@
       lsSet('cfgAlerts', chaseCfg.alerts);
       lsSet('cfgMaxChase', chaseCfg.maxMin);
       lsSet('cfgTomTom', chaseCfg.tomtom);
+      { const tk = document.getElementById('cfgTrainKey').value.trim(), old = lsGet('cfgTrainKey') || '';
+        lsSet('cfgTrainKey', tk); if (tk !== old) { train.at = 0; train.err = ''; if (tk) loadTrainAlerts(true); else { train.alerts = []; drawTrain(); } } }
       routeCache.clear();
       if (themePick) { lsSet('theme', themePick); themePick = null; }
       if (mapStylePick) { lsSet('mapStyle', mapStylePick); mapStylePick = null; }
@@ -6098,10 +6113,15 @@
         const col = x.v >= GOOD ? '#16a34a' : '#eab308';
         return row('zone:' + x.z, col, esc(x.z), x.here ? '<span class="bp-min">here</span>' : mins(x.to, 'zone:' + x.z), `selectBusyZone(${esc(JSON.stringify(x.z))})`);
       }).join('');
+      const trains = trainActive().filter(a => (a.stations || []).length);
+      if (trains.length) html += `<div class="bp-sec">Train disruptions</div>` + trains.map(a => {
+        const st = a.stations.slice().sort((p, q) => distM(from.lat, from.lng, p.lat, p.lng) - distM(from.lat, from.lng, q.lat, q.lng))[0];
+        return row('train:' + a.id, '#0f766e', `🚆 ${esc(a.stations.map(x => x.name).slice(0, 2).join(' – '))}`, mins(st, 'train:' + a.id), `selectBusyTrain(${esc(JSON.stringify(a.id))})`);
+      }).join('');
       if (events.length) html += `<div class="bp-sec">Events</div>` + events.map(e =>
         row('event:' + e.name + e.start, e.zone === AIRPORT_ZONE ? '#0ea5e9' : '#7c3aed', `${e.zone === AIRPORT_ZONE ? '✈️ ' : ''}${esc(e.name)}`,
           mins(evPos(e), 'event:' + e.name + e.start), `selectBusyEvent(${esc(JSON.stringify(e.name))}, '${e.start}')`)).join('');
-      if (!surges.length && !zones.length && !events.length) html += `<div class="bp-empty">Nothing busy right now.</div>`;
+      if (!surges.length && !zones.length && !events.length && !trains.length) html += `<div class="bp-empty">Nothing busy right now.</div>`;
       panel.innerHTML = html;
       if (busySel) fillBusyDetail();
       refineBusyTimes(from, zones, events);
@@ -6126,6 +6146,7 @@
       map.fitBounds(L.latLngBounds(points).pad(0.04), { paddingTopLeft: [panel.offsetWidth + 10, 50], paddingBottomRight: [8, 10], maxZoom: 14 });
     }
     function selectBusyZone(z) { busySel = 'zone:' + z; renderBusy(); }
+    function selectBusyTrain(id) { busySel = 'train:' + id; renderBusy(); }
     function selectBusyEvent(name, start) { busySel = 'event:' + name + start; renderBusy(); }
     async function fillBusyDetail() {
       const key = busySel, box = document.getElementById('bpDetail');
@@ -6143,6 +6164,15 @@
         if (!here) to = nearestOnRing(from.lat, from.lng, ring);
         fitBusy(ring.concat([[from.lat, from.lng]]));
         if (here) { box.innerHTML = html + `<div class="bp-drive">You’re in this zone</div>`; return; }
+      } else if (key.startsWith('train:')) {
+        const a = train.alerts.find(x => 'train:' + x.id === key);
+        if (!a || !(a.stations || []).length) return;
+        const st = a.stations.slice().sort((p, q) => distM(from.lat, from.lng, p.lat, p.lng) - distM(from.lat, from.lng, q.lat, q.lng))[0];
+        to = { lat: st.lat, lng: st.lng }; color = '#0f766e';
+        html = `<div class="bp-why">${esc(a.header || TRAIN_EFFECT[a.effect] || 'Train disruption')}${trainWhen(a) ? ' · ' + esc(trainWhen(a)) : ''}</div>`;
+        a.stations.forEach(x => L.circleMarker([x.lat, x.lng], { radius: 8, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }).addTo(routeLayer)
+          .bindTooltip(esc(x.name), { permanent: x === st, direction: 'top', offset: [0, -8], className: 'ev-tip' }));
+        fitBusy([[from.lat, from.lng]].concat(a.stations.map(x => [x.lat, x.lng])));
       } else {
         const e = allEvents().find(x => 'event:' + x.name + x.start === key);
         if (!e) return;
@@ -6325,6 +6355,7 @@
       if (layers.spots) drawSpots();
       drawFuel();
       drawWx();
+      drawTrain(); loadTrainAlerts();
 
       // Uber trend zones with demand right now
       if (layers.zones) {
@@ -6388,7 +6419,7 @@
       const nBusy = busyCount();
       if (!document.getElementById('busyPanel').hidden && !busyRefining && !busySel) renderBusy();
       // 🔥 count, plus a small badge (like an app's notification badge) with the kind of event that's on nearby
-      const evTypes = [...new Set(nearEvents().map(evType))].slice(0, 3);
+      const evTypes = [...new Set(nearEvents().map(evType).concat(trainActive().some(a => (a.stations || []).length) ? ['🚆'] : []))].slice(0, 3);
       const cn = document.getElementById('chipNear');
       cn.classList.toggle('burning', nBusy > 0);   // surges or busy zones: the flame flickers
       cn.innerHTML = `<span class="chip-flame"><span class="cf-glow"></span>🔥<em></em><em></em><em></em></span> ${nBusy}` + (evTypes.length ? `<span class="ev-badge" aria-hidden="true">${evTypes.join('')}</span>` : '');
@@ -6420,7 +6451,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.35.3';
+    const APP_VERSION = '1.36.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6684,6 +6715,128 @@
       layers.wx = !layers.wx; lsSet('mapLayers', JSON.stringify(layers));
       drawWx(); showMapHelp('wx', layers.wx);
     }
+
+    // ================= 🚆 TRAIN DISRUPTIONS (Transport Victoria open data, GTFS Realtime) =================
+    // Metro train service alerts (suspensions, buses replacing trains, big delays). The feed is protocol
+    // buffers, read here with a tiny decoder. Stations named in an alert are placed using OpenStreetMap.
+    const TRAIN_URL = 'https://api.opendata.transport.vic.gov.au/opendata/public-transport/gtfs/realtime/v1/metro/service-alerts';
+    const train = { alerts: [], at: 0, loading: false, err: '', layer: null };
+    const TRAIN_EFFECT = { 1: 'No service', 2: 'Reduced service', 3: 'Major delays', 4: 'Detour', 5: 'Extra service', 6: 'Changed service', 7: 'Other', 8: 'Unknown', 9: 'Stop moved', 10: 'No effect', 11: 'Accessibility' };
+    function syncTrainNote() {
+      const n = document.getElementById('trainKeyNote'); if (!n) return;
+      const base = 'Free key from opendata.transport.vic.gov.au (sign in, then API keys). Shows Metro train suspensions and replacement buses on the map; the key stays on this phone.';
+      n.textContent = !lsGet('cfgTrainKey') ? base : train.err ? `⚠️ ${train.err}` : train.at ? `✓ Connected · ${trainActive().length} disruption${trainActive().length === 1 ? '' : 's'} now · checked ${fmtTime(train.at)}` : base;
+    }
+    // --- minimal protocol buffer reader ---
+    function pbFields(u8, start = 0, end = u8.length) {
+      const out = []; let i = start;
+      const varint = () => { let x = 0, m = 1, b; do { b = u8[i++]; x += (b & 0x7f) * m; m *= 128; } while (b & 0x80 && i < end + 10); return x; };
+      while (i < end) {
+        const key = varint(), f = Math.floor(key / 8), wt = key % 8;
+        if (wt === 0) out.push([f, varint()]);
+        else if (wt === 2) { const len = varint(); out.push([f, [i, i + len]]); i += len; }
+        else if (wt === 1) i += 8; else if (wt === 5) i += 4; else break;
+      }
+      return out;
+    }
+    const pbText = (u8, r) => new TextDecoder().decode(u8.subarray(r[0], r[1]));
+    function pbTranslated(u8, r) {          // TranslatedString → English text if there is one
+      let best = '';
+      pbFields(u8, r[0], r[1]).filter(([f]) => f === 1).forEach(([, tr]) => {
+        let text = '', lang = '';
+        pbFields(u8, tr[0], tr[1]).forEach(([f, v]) => { if (f === 1) text = pbText(u8, v); if (f === 2) lang = pbText(u8, v); });
+        if (!best || /^en/i.test(lang)) best = text;
+      });
+      return best;
+    }
+    function parseTrainAlerts(u8) {
+      const alerts = [];
+      pbFields(u8).filter(([f]) => f === 2).forEach(([, ent]) => {
+        let id = '', al = null;
+        pbFields(u8, ent[0], ent[1]).forEach(([f, v]) => { if (f === 1) id = pbText(u8, v); if (f === 5) al = v; });
+        if (!al) return;
+        const a = { id, periods: [], routes: [], stops: [], effect: 0, cause: 0, header: '', desc: '', url: '' };
+        pbFields(u8, al[0], al[1]).forEach(([f, v]) => {
+          if (f === 1) { const p = { s: 0, e: 0 }; pbFields(u8, v[0], v[1]).forEach(([g, x]) => { if (g === 1) p.s = x * 1000; if (g === 2) p.e = x * 1000; }); a.periods.push(p); }
+          else if (f === 5) pbFields(u8, v[0], v[1]).forEach(([g, x]) => { if (g === 2) a.routes.push(pbText(u8, x)); if (g === 5) a.stops.push(pbText(u8, x)); });
+          else if (f === 6) a.cause = v; else if (f === 7) a.effect = v;
+          else if (f === 8) a.url = pbTranslated(u8, v); else if (f === 10) a.header = pbTranslated(u8, v); else if (f === 11) a.desc = pbTranslated(u8, v);
+        });
+        alerts.push(a);
+      });
+      return alerts;
+    }
+    // --- Metro station positions (OpenStreetMap), cached on the phone for 30 days ---
+    let metroStations = null;
+    try { const c = JSON.parse(lsGet('metroStations')); if (c && Date.now() - c.at < 30 * 86400000) metroStations = c.list; } catch (e) {}
+    async function loadMetroStations() {
+      if (metroStations) return metroStations;
+      const q = '[out:json][timeout:25];(node["railway"="station"](-38.45,144.5,-37.4,145.6);node["public_transport"="station"]["train"="yes"](-38.45,144.5,-37.4,145.6););out tags;';
+      try {
+        const j = await fetchJSON('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 25000), seen = new Set();
+        metroStations = (j.elements || []).map(e => ({ name: ((e.tags || {}).name || '').replace(/\s+(Railway\s+)?Station$/i, '').trim(), lat: e.lat, lng: e.lon }))
+          .filter(x => x.name.length >= 3 && !seen.has(x.name.toLowerCase()) && seen.add(x.name.toLowerCase()));
+        lsSet('metroStations', JSON.stringify({ at: Date.now(), list: metroStations }));
+      } catch (e) { metroStations = null; }
+      return metroStations;
+    }
+    function alertStations(a) {
+      if (!metroStations) return [];
+      const text = `${a.header} ${a.desc}`;
+      return metroStations.filter(st => new RegExp(`(^|[^A-Za-z])${st.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^A-Za-z]|$)`, 'i').test(text)).slice(0, 6);
+    }
+    function trainActive(at = Date.now()) {
+      return train.alerts.filter(a => [1, 2, 3, 4, 6].includes(a.effect) || /bus(es)? replac|suspend|no trains|not running|major delay/i.test(a.header))
+        .filter(a => !a.periods.length || a.periods.some(p => (!p.s || p.s <= at + 30 * 60000) && (!p.e || p.e >= at)));
+    }
+    async function loadTrainAlerts(force) {
+      const key = lsGet('cfgTrainKey');
+      if (!key || train.loading || (!force && Date.now() - train.at < 3 * 60000)) return;
+      train.loading = true;
+      try {
+        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 12000);
+        const r = await fetch(TRAIN_URL + '?subscription-key=' + encodeURIComponent(key), { signal: ctl.signal });
+        clearTimeout(t);
+        if (r.status === 401 || r.status === 403) throw new Error('The key was refused. Check it in your open data account.');
+        if (!r.ok) throw new Error('The train feed answered ' + r.status + '. It will try again soon.');
+        train.alerts = parseTrainAlerts(new Uint8Array(await r.arrayBuffer()));
+        train.at = Date.now(); train.err = '';
+        await loadMetroStations();
+        train.alerts.forEach(a => { a.stations = alertStations(a); });
+      } catch (e) {
+        train.err = e.name === 'AbortError' ? 'The train feed didn’t answer in time.' : e instanceof TypeError ? 'Couldn’t reach the train feed from this browser (it may block web apps).' : e.message;
+        train.at = train.at || 0;
+      } finally { train.loading = false; syncTrainNote(); drawTrain(); if (map) { const n = busyCount(); } }
+    }
+    function trainWhen(a) {
+      const now = Date.now(), p = a.periods.find(x => (!x.s || x.s <= now + 30 * 60000) && (!x.e || x.e >= now)) || a.periods[0];
+      if (!p) return '';
+      if (p.s > now) return `from ${fmtTime(p.s)}`;
+      return p.e ? `until ${new Date(p.e).toDateString() === new Date().toDateString() ? fmtTime(p.e) : fmtDT(p.e)}` : 'now';
+    }
+    function drawTrain() {
+      if (!map) return;
+      if (!train.layer) train.layer = L.layerGroup().addTo(map);
+      train.layer.clearLayers();
+      const zoom = map.getZoom();
+      trainActive().forEach(a => (a.stations || []).forEach(st => {
+        L.marker([st.lat, st.lng], { zIndexOffset: 300, icon: L.divIcon({ className: 'train-pin-wrap', iconSize: null, iconAnchor: [14, 14],
+          html: `<div class="train-pin">🚆<b>!</b></div>${zoom >= 12 ? `<span>${esc(st.name)}</span>` : ''}` }) })
+          .on('click', () => openTrainCard(a, st)).addTo(train.layer);
+      }));
+    }
+    function openTrainCard(a, st) {
+      setFollow(false);
+      const from = myPos(), km = distM(from.lat, from.lng, st.lat, st.lng) / 1000 * 1.3;
+      L.popup({ className: 'fuel-pop train-pop', offset: [0, -10], minWidth: 220, maxWidth: 280, autoPanPadding: [16, 60] }).setLatLng([st.lat, st.lng]).setContent(
+        `<b>🚆 ${esc(a.header || TRAIN_EFFECT[a.effect] || 'Train disruption')}</b>` +
+        `<div class="fp-sub">${esc(TRAIN_EFFECT[a.effect] || '')}${trainWhen(a) ? ' · ' + esc(trainWhen(a)) : ''}</div>` +
+        (a.desc ? `<div class="tp-desc">${esc(a.desc.length > 260 ? a.desc.slice(0, 257) + '…' : a.desc)}</div>` : '') +
+        `<div class="fp-bits"><span>📍 ${esc(st.name)} station · 🚗 ~${km.toFixed(1)} km · ${Math.max(1, Math.round(estMin(km)))} min</span>` +
+        `<span>💡 Riders stranded here may book rides: worth heading over if it’s close.</span></div>` +
+        `<div class="nav-row">${navLinks(st.lat, st.lng)}</div>`).openOn(map);
+    }
+    setInterval(() => { if (!document.hidden) loadTrainAlerts(); }, 60000);
 
     // ================= ⛽ FUEL STATIONS LAYER (OpenStreetMap, free, no key) =================
     let fuelLayer = null, fuelBox = null, fuelList = [], fuelLoading = false, fuelMoveT = null;
