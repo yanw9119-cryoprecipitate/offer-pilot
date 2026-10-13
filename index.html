@@ -813,7 +813,8 @@
     .flp-h > b { font-size: .95rem; margin-right: 4px; } .flp-h > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
     .flp-h .flh-cs { flex-basis: auto; } .flp-h .flh-c { font-size: .74rem; padding: 2px 6px; gap: 4px; }
     .flh-s > b { flex-basis: auto; }
-    .flh-v { display: inline-flex; gap: 3px; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+    .flh-v { display: inline-flex; gap: 3px; align-items: center; margin-left: auto; flex-wrap: nowrap; white-space: nowrap; }
+    .flh-s > b { white-space: nowrap; }
     .flh-v i { font-style: normal; font-weight: 800; font-size: .56rem; color: #fff; padding: 1px 5px; border-radius: 999px; }
     .flh-v em { font-style: normal; font-weight: 800; font-size: .56rem; } .flh-v em.yes { color: var(--green); } .flh-v em.no { color: var(--muted); }
     .flp-h .flh-v { margin-left: 0; } .flp-h .flh-v i, .flp-h .flh-v em { font-size: .66rem; }
@@ -6959,7 +6960,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.54.0';
+    const APP_VERSION = '1.54.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7495,7 +7496,7 @@
         const rank = { low: 0, med: 1, high: 2 }, kA = gA === AP_TIERS.high ? 'high' : gA === AP_TIERS.med ? 'med' : 'low', kD = gD === AP_TIERS.high ? 'high' : gD === AP_TIERS.med ? 'med' : 'low';
         const kO = rank[kA] >= rank[kD] ? kA : kD, rec = kO === 'high' || (kA !== 'low' && kD !== 'low');
         const head = `<b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
-          `<span class="flh-v"><i style="background:${AP_TIERS[kO].c}">${AP_TIERS[kO].t}</i><em class="${rec ? 'yes' : 'no'}">${rec ? 'Recommended' : 'Not recommended'}</em></span>` +
+          `<span class="flh-v"><i style="background:${AP_TIERS[kO].c}">${AP_TIERS[kO].t}</i><em class="${rec ? 'yes' : 'no'}" title="${rec ? 'Recommended' : 'Not recommended'}">${rec ? '✓ Go' : 'Skip'}</em></span>` +
           `<span class="flh-cs"><span class="flh-c" style="--gc:${gA.c}" title="Airport to city: ${nA} arrivals (${gA.t})${lA ? `, ${lA} delayed` : ''}"><i>${nA}</i> ${dirIcon('in')}${lA ? ` <b>${lA}</b>` : ''}</span>` +
           `<span class="flh-c" style="--gc:${gD.c}" title="City to airport: ${nD} departures (${gD.t})${lD ? `, ${lD} delayed` : ''}"><i>${nD}</i> ${dirIcon('out')}${lD ? ` <b>${lD}</b>` : ''}</span></span>`;
         // The flights for the hour open in a pop-up (tap outside it, or scroll, to close), so nothing on the page moves
@@ -7505,7 +7506,7 @@
             : '<div class="flr none">No passenger flights this hour</div>');
         rows.push(`<div class="flh${cls}${flPopKey === key ? ' sel' : ''}" role="button" tabindex="0" data-k="${key}" onclick="flOpenHour('${key}', this)"><div class="flh-s">${head}</div></div>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · <b style="color:var(--green)">✓ Go</b> recommended, Skip not · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
