@@ -535,6 +535,14 @@
     .cal-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: .6rem; color: var(--muted); }
     .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
     .cal-key i.yes { background: color-mix(in srgb, var(--green) 45%, var(--card-2)); } .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 40%, var(--card-2)); } .cal-key i.no { background: var(--card-2); border: 1px solid var(--line-strong); }
+    .h-ic { width: 1.1em; height: 1.1em; vertical-align: -.17em; margin-right: .38em; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; display: inline-block; }
+    .demand-title .h-ic, .section-title .h-ic { color: var(--accent); }
+    .ac-sec .h-ic, .ap-out-h .h-ic, .ap-sec .h-ic, .plan-title .h-ic, .rs-sub .h-ic, .fl-h .h-ic { color: var(--accent); width: 1.05em; height: 1.05em; }
+    .log-seg button .h-ic { margin-right: .35em; }
+    .log-seg.three { grid-template-columns: repeat(3, 1fr); }
+    .cal-top .h-ic, .rs-btn .h-ic { color: var(--accent); }
+    .ap-datebar { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; padding: 8px 10px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--card-border); font-size: .88rem; }
+    .ap-datebar .h-ic { color: var(--accent); } .ap-datebar .rs-btn { margin-left: auto; padding: 5px 10px; }
     .log-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--card-border); }
     .log-seg button { border: none; border-radius: 999px; padding: 9px 6px; background: none; color: var(--muted); font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
     .log-seg button.on { background: var(--accent); color: var(--on-accent); }
@@ -1498,6 +1506,28 @@
         <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
         <symbol id="i-cam" viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.4h6.8L17 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.6"/></symbol>
         <symbol id="i-pad" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="4" height="4" rx="1"/><rect x="10" y="3.5" width="4" height="4" rx="1"/><rect x="16.5" y="3.5" width="4" height="4" rx="1"/><rect x="3.5" y="10" width="4" height="4" rx="1"/><rect x="10" y="10" width="4" height="4" rx="1"/><rect x="16.5" y="10" width="4" height="4" rx="1"/><rect x="3.5" y="16.5" width="4" height="4" rx="1"/><rect x="10" y="16.5" width="4" height="4" rx="1"/><rect x="16.5" y="16.5" width="4" height="4" rx="1"/></symbol>
+        <symbol id="h-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+        <symbol id="h-plane" viewBox="0 0 24 24"><path d="M10.5 20.5l1.7-1.2v-5.1l6.8 2.3v-1.9l-6.8-4.4V5.1c0-.9-.6-1.6-1.2-1.6s-1.2.7-1.2 1.6v5.1L3 14.6v1.9l6.8-2.3v5.1l1.7 1.2" transform="translate(.5 0)"/></symbol>
+        <symbol id="h-star" viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></symbol>
+        <symbol id="h-ticket" viewBox="0 0 24 24"><path d="M4 7.5a1.5 1.5 0 0 1 1.5-1.5h13A1.5 1.5 0 0 1 20 7.5v2a2.5 2.5 0 0 0 0 5v2a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 16.5v-2a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v12" stroke-dasharray="1.6 2"/></symbol>
+        <symbol id="h-brief" viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="12.5" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17"/></symbol>
+        <symbol id="h-chart" viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><path d="M4 16l5-5.5 4 3.5 6.5-7"/><path d="M15 7h4.5v4.5"/></symbol>
+        <symbol id="h-repeat" viewBox="0 0 24 24"><path d="M17 3.5l3 3-3 3"/><path d="M4 11v-1a3.5 3.5 0 0 1 3.5-3.5H20"/><path d="M7 20.5l-3-3 3-3"/><path d="M20 13v1a3.5 3.5 0 0 1-3.5 3.5H4"/></symbol>
+        <symbol id="h-roster" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.2"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/><path d="M6.6 13.6l1.2 1.2 2-2.2M12 14h5.4M6.6 17.6l1.2 1.2 2-2.2M12 18h3.6"/></symbol>
+        <symbol id="h-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+        <symbol id="h-cash" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></symbol>
+        <symbol id="h-bars" viewBox="0 0 24 24"><path d="M4 20.5h16"/><rect x="5.5" y="12" width="3" height="6.5" rx=".6"/><rect x="10.5" y="7.5" width="3" height="11" rx=".6"/><rect x="15.5" y="4" width="3" height="14.5" rx=".6"/></symbol>
+        <symbol id="h-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 7.5h6M9 11h6M9 14.5h3.5"/></symbol>
+        <symbol id="h-bank" viewBox="0 0 24 24"><path d="M3.5 9.5L12 4.5l8.5 5"/><path d="M5 10v7.5M9.5 10v7.5M14.5 10v7.5M19 10v7.5M3.5 20h17"/></symbol>
+        <symbol id="h-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><rect x="8" y="6" width="8" height="3.5" rx=".6"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01" stroke-width="2.4"/></symbol>
+        <symbol id="h-cloud" viewBox="0 0 24 24"><path d="M7.5 18.5h9.5a3.5 3.5 0 0 0 .4-7 5 5 0 0 0-9.7-1.2A3.9 3.9 0 0 0 7.5 18.5z"/><path d="M17.5 4.5v1.4M21 7.8l-1 .7M14.3 5.2l.6.9"/></symbol>
+        <symbol id="h-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.2"/><path d="M3.5 9.8h17M8 3v4M16 3v4"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01" stroke-width="2.4"/></symbol>
+        <symbol id="h-spark" viewBox="0 0 24 24"><path d="M12 3.5l1.8 5 5 1.8-5 1.8-1.8 5-1.8-5-5-1.8 5-1.8z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+        <symbol id="h-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+        <symbol id="h-list" viewBox="0 0 24 24"><path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" stroke-width="2.6"/></symbol>
+        <symbol id="h-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.3 12.3l2.5 2.5 5-5.3"/></symbol>
+        <symbol id="h-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.3"/><rect x="13" y="4" width="7" height="7" rx="1.3"/><rect x="4" y="13" width="7" height="7" rx="1.3"/><rect x="13" y="13" width="7" height="7" rx="1.3"/></symbol>
+        <symbol id="h-trophy" viewBox="0 0 24 24"><path d="M8 4.5h8v4.5a4 4 0 0 1-8 0z"/><path d="M8 6.5H5.5a2.5 2.5 0 0 0 2.6 3.3M16 6.5h2.5a2.5 2.5 0 0 1-2.6 3.3M12 13v3.5M8.5 20h7M9.5 20l.8-3.5h3.4l.8 3.5"/></symbol>
         <symbol id="i-tocity" viewBox="0 0 64 24"><path d="M2.5 19h19v2h-19v-2zm7.18-5.73l4.35 1.16 5.31 1.42c.8.21 1.62-.26 1.84-1.06.21-.8-.26-1.62-1.06-1.84l-5.31-1.42-2.76-9.02L10.12 2v8.28L5.15 8.95l-.93-2.32-1.45-.39v5.17l1.6.43 5.31 1.43z" fill="var(--dir-plane, #0284c7)"/><path d="M25.8 12.5h12.6M35.2 9.4l3.2 3.1-3.2 3.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><g transform="translate(41 0)" fill="currentColor"><path d="M0 21h23v2H0z"/><rect x="0.6" y="12" width="4.6" height="9.5" rx=".4"/><rect x="6.2" y="5.2" width="5.2" height="16.3" rx=".4"/><path d="M7.6 5.4 8.8 1.6 10 5.4z"/><path d="M8.8 1.8V0" stroke="currentColor" stroke-width=".7"/><rect x="12.4" y="9" width="4.6" height="12.5" rx=".4"/><rect x="13.4" y="7.2" width="2.6" height="2.2"/><rect x="18" y="13.5" width="4.6" height="8" rx=".4"/><path d="M1.5 13.6h1v1.2h-1zM3.4 13.6h1v1.2h-1zM1.5 15.9h1v1.2h-1zM3.4 15.9h1v1.2h-1zM1.5 18.2h1v1.2h-1zM3.4 18.2h1v1.2h-1zM7.2 7.4h1v1.2h-1zM9.1 7.4h1v1.2h-1zM7.2 9.7h1v1.2h-1zM9.1 9.7h1v1.2h-1zM7.2 12.0h1v1.2h-1zM9.1 12.0h1v1.2h-1zM7.2 14.3h1v1.2h-1zM9.1 14.3h1v1.2h-1zM7.2 16.6h1v1.2h-1zM9.1 16.6h1v1.2h-1zM13.2 11.0h1v1.2h-1zM15.1 11.0h1v1.2h-1zM13.2 13.3h1v1.2h-1zM15.1 13.3h1v1.2h-1zM13.2 15.6h1v1.2h-1zM15.1 15.6h1v1.2h-1zM13.2 17.9h1v1.2h-1zM15.1 17.9h1v1.2h-1zM18.9 15.0h1v1.2h-1zM20.8 15.0h1v1.2h-1zM18.9 17.3h1v1.2h-1zM20.8 17.3h1v1.2h-1z" fill="var(--dir-win, #fff)"/></g></symbol>
         <symbol id="i-toairport" viewBox="0 0 64 24"><g fill="currentColor"><path d="M0 21h23v2H0z"/><rect x="0.6" y="12" width="4.6" height="9.5" rx=".4"/><rect x="6.2" y="5.2" width="5.2" height="16.3" rx=".4"/><path d="M7.6 5.4 8.8 1.6 10 5.4z"/><path d="M8.8 1.8V0" stroke="currentColor" stroke-width=".7"/><rect x="12.4" y="9" width="4.6" height="12.5" rx=".4"/><rect x="13.4" y="7.2" width="2.6" height="2.2"/><rect x="18" y="13.5" width="4.6" height="8" rx=".4"/><path d="M1.5 13.6h1v1.2h-1zM3.4 13.6h1v1.2h-1zM1.5 15.9h1v1.2h-1zM3.4 15.9h1v1.2h-1zM1.5 18.2h1v1.2h-1zM3.4 18.2h1v1.2h-1zM7.2 7.4h1v1.2h-1zM9.1 7.4h1v1.2h-1zM7.2 9.7h1v1.2h-1zM9.1 9.7h1v1.2h-1zM7.2 12.0h1v1.2h-1zM9.1 12.0h1v1.2h-1zM7.2 14.3h1v1.2h-1zM9.1 14.3h1v1.2h-1zM7.2 16.6h1v1.2h-1zM9.1 16.6h1v1.2h-1zM13.2 11.0h1v1.2h-1zM15.1 11.0h1v1.2h-1zM13.2 13.3h1v1.2h-1zM15.1 13.3h1v1.2h-1zM13.2 15.6h1v1.2h-1zM15.1 15.6h1v1.2h-1zM13.2 17.9h1v1.2h-1zM15.1 17.9h1v1.2h-1zM18.9 15.0h1v1.2h-1zM20.8 15.0h1v1.2h-1zM18.9 17.3h1v1.2h-1zM20.8 17.3h1v1.2h-1z" fill="var(--dir-win, #fff)"/></g><g transform="translate(-1 0)"><path d="M25.8 12.5h12.6M35.2 9.4l3.2 3.1-3.2 3.1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g><path transform="translate(40 0)" d="M2.5 19h19v2h-19v-2zm19.57-9.36c-.21-.8-1.04-1.28-1.84-1.06L14.92 10l-6.9-6.43-1.93.51 4.14 7.17-4.97 1.33-1.97-1.54-1.45.39 2.59 4.49L21 11.49c.81-.23 1.28-1.05 1.07-1.85z" fill="var(--dir-plane, #0284c7)"/></symbol>
         <symbol id="i-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.4"/><path d="M3.3 10.5c3 .2 5.6-.6 6.5-1.6M20.7 10.5c-3 .2-5.6-.6-6.5-1.6M12 14.4v6.5"/></symbol>
@@ -1635,7 +1665,7 @@
       <div class="demand-card">
         <div class="demand-head">
           <div class="demand-titles">
-            <div class="demand-title">📈 Uber demand</div>
+            <div class="demand-title"><svg class="h-ic"><use href="#h-chart"/></svg>Uber demand</div>
             <div class="demand-sub" id="demandSub"></div>
           </div>
           <label class="imp-btn">Import
@@ -1648,20 +1678,26 @@
       </div>
       <div class="autoread-hint">Screenshot Uber Driver → Earnings trends (each day tab), then Import. Zone names and the day tab are read from the screenshot. You can also import a screenshot of Uber’s Discover tab to add its events and airport peaks.</div>
       <div class="demand-card" style="margin-top:10px;">
-        <div class="demand-title">🔁 Week-on-week changes</div>
+        <div class="demand-title"><svg class="h-ic"><use href="#h-repeat"/></svg>Week-on-week changes</div>
         <div id="trendChanges" style="margin-top:6px;"></div>
       </div>
     </div>
 
     <!-- ================= INSIGHTS VIEW ================= -->
     <div id="view-insights" style="display:none;">
-      <div class="demand-card roster-card" id="rosterCard"></div>
+      <div class="log-seg three" role="tablist" id="planSeg">
+        <button type="button" data-s="roster" onclick="setPlanSide('roster')"><svg class="h-ic"><use href="#h-roster"/></svg>Roster</button>
+        <button type="button" data-s="plan" onclick="setPlanSide('plan')"><svg class="h-ic"><use href="#h-compass"/></svg>Plan</button>
+        <button type="button" data-s="airport" onclick="setPlanSide('airport')"><svg class="h-ic"><use href="#h-plane"/></svg>Airport</button>
+      </div>
+      <div id="planRoster"><div class="demand-card roster-card" id="rosterCard"></div></div>
+      <div id="planPlan">
       <div class="demand-card where-card">
-        <div class="demand-title">📍 Where to drive</div>
+        <div class="demand-title"><svg class="h-ic"><use href="#h-pin"/></svg>Where to drive</div>
         <div id="whereNow"></div>
         <div class="plan-box">
           <div class="plan-cal" id="planCal"></div>
-          <div class="plan-title">🕘 Choose your hours</div>
+          <div class="plan-title"><svg class="h-ic"><use href="#h-clock"/></svg>Choose your hours</div>
           <div class="plan-line">
             <label><span>Day</span><select id="planDay" onchange="renderPlan(); renderPlanCal()" aria-label="Day"></select></label>
             <label><span>From</span><button type="button" class="plan-pick" id="planStartBtn" onclick="openWheel('start', this)" aria-label="Start time"></button></label>
@@ -1673,17 +1709,12 @@
         </div>
       </div>
       <div class="demand-card">
-        <div class="demand-title">✈️ Airport runs</div>
-        <div class="demand-sub">City ⇄ Melbourne Airport for the day and start time chosen above. Everything here follows the date you pick.</div>
-        <div id="airportBox"></div>
-      </div>
-      <div class="demand-card">
-        <div class="demand-title">⭐ Your best pickup spots</div>
+        <div class="demand-title"><svg class="h-ic"><use href="#h-star"/></svg>Your best pickup spots</div>
         <div class="demand-sub">Suburbs ranked by the $/hr of offers you got there. Turn on ⭐ Spots on the map to see them.</div>
         <div id="spotList" style="margin-top:6px;"></div>
       </div>
       <div class="demand-card">
-        <div class="demand-title">🏟 Events &amp; holidays · next 2 weeks</div>
+        <div class="demand-title"><svg class="h-ic"><use href="#h-ticket"/></svg>Events &amp; holidays · next 2 weeks</div>
         <div class="demand-sub">Big events raise demand in their Uber zone as crowds arrive and leave. Rain raises it everywhere.</div>
         <div id="eventList" style="margin-top:6px;"></div>
         <details class="ev-add"><summary>➕ Add your own event</summary>
@@ -1698,16 +1729,24 @@
           <button class="pip-btn" type="button" onclick="addMyEvent()">Add event</button>
         </details>
       </div>
-      <div class="section-title">Best times to drive</div>
+      <div class="section-title"><svg class="h-ic"><use href="#h-trophy"/></svg>Best times to drive</div>
       <div class="rank" id="bestDrive"></div>
       <div class="autoread-hint" style="margin-bottom:8px;">Ranked by Uber demand (60%), your offers' $/hr (25%) and surges you've seen (15%).</div>
+      </div>
+      <div id="planAirport">
+      <div class="demand-card">
+        <div class="demand-title"><svg class="h-ic"><use href="#h-plane"/></svg>Airport runs</div>
+        <div class="demand-sub">City ⇄ Melbourne Airport for the day and start time you picked in Plan.</div>
+        <div id="airportBox"></div>
+      </div>
+      </div>
     </div>
 
     <!-- ================= OFFER LOG (its own page, opened from Plan & Roster) ================= -->
     <div id="view-log" style="display:none;">
       <div class="log-seg" role="tablist">
-        <button type="button" data-s="offers" onclick="setLogSide('offers')">📊 Offers</button>
-        <button type="button" data-s="account" onclick="setLogSide('account')">💼 Account</button>
+        <button type="button" data-s="offers" onclick="setLogSide('offers')"><svg class="h-ic"><use href="#h-bars"/></svg>Offers</button>
+        <button type="button" data-s="account" onclick="setLogSide('account')"><svg class="h-ic"><use href="#h-brief"/></svg>Account</button>
       </div>
       <div id="logAccount"><div class="demand-card acct-card" id="acctCard"></div></div>
       <div id="logOffers">
@@ -1730,7 +1769,7 @@
         </div>
       </div>
 
-      <div class="section-title">Offer $/hr by day &amp; time</div>
+      <div class="section-title"><svg class="h-ic"><use href="#h-grid"/></svg>Offer $/hr by day &amp; time</div>
       <div class="heat-wrap">
         <table class="heat" id="heatTable"></table>
         <div class="legend">
@@ -1742,10 +1781,10 @@
         <div class="detail" id="cellDetail">Tap a square for details. Brighter = more offers logged there.</div>
       </div>
 
-      <div class="section-title">Top slots (3+ offers)</div>
+      <div class="section-title"><svg class="h-ic"><use href="#h-star"/></svg>Top slots (3+ offers)</div>
       <div class="rank" id="topSlots"></div>
 
-      <div class="section-title">Recent offers</div>
+      <div class="section-title"><svg class="h-ic"><use href="#h-list"/></svg>Recent offers</div>
       <div class="rank" id="recentLog"></div>
 
       <div class="btn-row">
@@ -4273,7 +4312,7 @@
           `<b>${lbl(d)}</b><i>${wxIcon(w.code)}</i><span>${wxName(w.code)}</span><span class="wx-t">${Math.round(w.hi)}° <small>${Math.round(w.lo)}°</small></span>` +
           `<span class="wx-p${w.pp >= 50 ? ' wet' : ''}">💧 ${w.pp}%${w.sum >= 1 ? ' · ' + w.sum.toFixed(0) + ' mm' : ''}</span></button>` + hrs;
       }).join('');
-      return `<div class="wx-out"><div class="ap-out-h">🌦 Weather from ${lbl(days[0])}</div>${weather && weather.d ? rows : '<div class="autoread-hint">Loading the forecast…</div>'}</div>`;
+      return `<div class="wx-out"><div class="ap-out-h"><svg class="h-ic"><use href="#h-cloud"/></svg>Weather from ${lbl(days[0])}</div>${weather && weather.d ? rows : '<div class="autoread-hint">Loading the forecast…</div>'}</div>`;
     }
     function airportOutlookHTML(today, sel, evs) {
       const days = Array.from({ length: 7 }, (_, k) => { const d = new Date(today.getTime() + (sel + k) * 86400000); return { d, k: sel + k, ap: airportDay(d, evs) }; });
@@ -4291,7 +4330,7 @@
       const sum = parts.length
         ? `<b>Next 7 days:</b> ${recN} of 7 recommended. Best ${parts.slice(0, 3).map((p, i) => `${i === 0 ? '' : i === parts.slice(0, 3).length - 1 ? ' and ' : ', '}<b>${p.name}</b> (${dayList(p.ds)})`).join('')}.`
         : '<b>Next 7 days:</b> no busy airport times expected.';
-      return `<div class="ap-out"><div class="ap-out-h">📅 Next 3 days from ${lbl(days[0].d)} <small>tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
+      return `<div class="ap-out"><div class="ap-out-h"><svg class="h-ic"><use href="#h-cal"/></svg>Next 3 days from ${lbl(days[0].d)} <small>tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
     }
     function renderPlanCal() {
       const box = document.getElementById('planCal');
@@ -4317,7 +4356,7 @@
       const m0 = today.toLocaleDateString([], { month: 'long' }), m1 = new Date(today.getTime() + (CAL_DAYS - 1) * 86400000).toLocaleDateString([], { month: 'long' });
       const here = myZone();
       setTimeout(() => { const n = box.querySelector('.wx-h.now'); if (n) n.parentElement.scrollLeft = n.offsetLeft - n.parentElement.offsetLeft - 6; }, 0);
-      box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><button type="button" class="cal-today${sel === 0 ? ' on' : ''}" onclick="calToday()">Today</button></div>` +
+      box.innerHTML = `<div class="cal-top"><b><svg class="h-ic"><use href="#h-cal"/></svg>${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><button type="button" class="cal-today${sel === 0 ? ' on' : ''}" onclick="calToday()">Today</button></div>` +
         `<div class="cal-zone"><button type="button" class="cal-loc${zone === here ? ' on' : ''}" onclick="calHere()" aria-label="Use the area you're in">📍</button>` +
         `<select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
           `<option value="${esc(z)}"${z === zone ? ' selected' : ''}>${esc(z === here ? hereLabel(z) : z)}</option>`).join('')}</select></div>` +
@@ -4602,6 +4641,15 @@
     function uberWeekStart(t) { const d = new Date(t - 4 * 3600000); d.setHours(0, 0, 0, 0); d.setTime(d.getTime() - dayIdx(d) * 86400000); d.setHours(4); return d.getTime(); }
     const weekOf = t => ymd(new Date(uberWeekStart(t)));
     const acMoney = v => (v < 0 ? '−' : '') + '$' + Math.abs(v).toFixed(Math.abs(v) >= 1000 ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // Roster | Plan | Airport switch at the top of the Plan & Roster page (remembered)
+    function setPlanSide(side, keepScroll) {
+      lsSet('planSide', side);
+      ['roster', 'plan', 'airport'].forEach(k => { document.getElementById('plan' + k[0].toUpperCase() + k.slice(1)).hidden = side !== k; });
+      document.querySelectorAll('#planSeg button').forEach(b => b.classList.toggle('on', b.dataset.s === side));
+      if (side === 'roster') renderRoster();
+      if (side === 'airport') { try { renderAirport(); } catch (e) {} }
+      if (!keepScroll) window.scrollTo(0, 0);
+    }
     // Offers | Account switch at the top of the Offer & Account page (remembered)
     function setLogSide(side) {
       lsSet('logSide', side);
@@ -4627,32 +4675,32 @@
       const line = (k, v, cls = '') => `<div class="ac-line ${cls}"><span>${k}</span><b>${v}</b></div>`;
       const hrDiff = n.actual - n.planned;
       const due = statementDue();
-      box.innerHTML = `<div class="demand-title">💼 Account</div>
+      box.innerHTML = `<div class="demand-title"><svg class="h-ic"><use href="#h-brief"/></svg>Account</div>
         ${due ? `<button type="button" class="ac-due" onclick="openStatement()">📄 Uber statement for the week of ${new Date(due + 'T12:00').toLocaleDateString([], { day: 'numeric', month: 'short' })} is ready to add <b>Add ›</b></button>` : ''}
         <div class="ac-chips">${chip('week', 'This week')}${chip('last', 'Last week')}${chip('month', 'Month')}${chip('qtr', 'Quarter')}${chip('fy', 'FY')}</div>
-        <div class="ac-sec">💵 Pay · ${label}</div>
+        <div class="ac-sec"><svg class="h-ic"><use href="#h-cash"/></svg>Pay · ${label}</div>
         ${line('Fares (incl. GST)', acMoney(n.gross))}${line('Uber service fee', '−' + acMoney(n.fee))}${n.tips ? line('Tips', acMoney(n.tips)) : ''}
         ${line('Paid to you', acMoney(n.payout), 'tot')}
         <div class="ac-note">${n.sts ? `${n.sts} Uber statement${n.sts === 1 ? '' : 's'}` : ''}${n.sts && n.offers ? ' + ' : ''}${n.offers ? `${n.offers} accepted offer${n.offers === 1 ? '' : 's'} (estimate: fee taken as ${cfg.feePct}%)` : ''}${!n.sts && !n.offers ? 'No trips logged in this period.' : ''}</div>
-        <div class="ac-sec">📊 Income · ${label}</div>
+        <div class="ac-sec"><svg class="h-ic"><use href="#h-bars"/></svg>Income · ${label}</div>
         ${line('Gross income (fares ex GST + tips)', acMoney(n.grossIncome))}${line(`Costs ex GST (fee + ${n.biz}% of fuel, car & other)`, '−' + acMoney(n.costsEx))}
         ${line('Net income (before tax)', acMoney(n.profit), 'tot')}
         ${line(`Net after tax (est. ${Math.round(effRate * 100)}% of profit)`, acMoney(n.profit - Math.max(0, n.profit) * effRate))}
-        <div class="ac-sec">⏱ Hours</div>
+        <div class="ac-sec"><svg class="h-ic"><use href="#h-clock"/></svg>Hours</div>
         <div class="ac-hrs"><div><small>Planned</small><b>${(Math.round(n.planned * 10) / 10)} h</b></div><div><small>Worked</small><b>${(Math.round(n.actual * 10) / 10)} h</b></div>
           <div><small>Difference</small><b class="${hrDiff >= 0 ? 'pos' : 'neg'}">${hrDiff >= 0 ? '+' : '−'}${Math.abs(Math.round(hrDiff * 10) / 10)} h</b></div>
           <div><small>Per hour</small><b>${n.actual > 0.2 ? acMoney(n.payout / n.actual) : '—'}</b></div></div>
-        <div class="ac-sec">🧾 Costs</div>
+        <div class="ac-sec"><svg class="h-ic"><use href="#h-receipt"/></svg>Costs</div>
         ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}
         ${n.car.items.map(x => line(`${CAR_TYPES[n.car.type].split(' ')[0]} ${x.k}`, acMoney(x.amt))).join('')}
         ${n.car.cash ? line('🏦 Loan repayments (cash, not all deductible)', acMoney(n.car.cash), 'muted') : ''}
         ${line(`Other (${n.exN})`, acMoney(n.exPaid))}
         ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car (rental, lease, loan or own) in ⚙️ Account &amp; tax settings (below) to count its costs.</div>` : ''}
         <div class="ac-acts one"><button type="button" class="rs-btn" onclick="scanReceipt(true)" title="Take a photo of a fuel receipt">📷 Fuel</button><button type="button" class="rs-btn" onclick="scanReceipt(false)" title="Fuel receipt from your photos">🖼 Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
-        <div class="ac-sec">🏛 GST · ${label}</div>
+        <div class="ac-sec"><svg class="h-ic"><use href="#h-bank"/></svg>GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
         ${line(n.gstNet >= 0 ? 'GST to pay (BAS)' : 'GST refund (BAS)', acMoney(Math.abs(n.gstNet)), 'tot')}
-        <div class="ac-sec">🧮 Income tax estimate · ${periodRange('fy')[2]}</div>
+        <div class="ac-sec"><svg class="h-ic"><use href="#h-calc"/></svg>Income tax estimate · ${periodRange('fy')[2]}</div>
         ${line('Ride profit so far (ex GST)', acMoney(fy.profit))}${line('Projected for the full year (at your last 4 weeks’ pace)', acMoney(yearProfit))}
         ${cfg.other ? line('Other income (wages etc.)', acMoney(cfg.other)) : ''}
         ${line('Tax + Medicare on ride profit (year)', acMoney(taxRide), 'tot')}${line('Share for the year so far', acMoney(taxSoFar))}
@@ -4879,13 +4927,13 @@
       if (rosterEdit) {
         const x = r.find(y => y.id === rosterEdit);
         if (x) Object.assign(x, { s: p.s, e: p.e, z: p.z || x.z, src: x.src === 'pilot' ? 'pilot-adj' : x.src });
-        rosterEdit = null; toast('✓ Shift updated');
+        rosterEdit = null; toast('✓ Shift updated'); setTimeout(() => setPlanSide('roster'), 400);
       } else { r.push({ id: 'r' + Date.now().toString(36), s: p.s, e: p.e, z: p.z, src: 'manual' }); toast('✓ Added to your roster'); }
       saveRoster(r); renderPlan(); renderPlanCal();
     }
     function rosterRemove() {
       saveRoster(loadRoster().filter(x => x.id !== rosterEdit)); rosterEdit = null;
-      toast('Shift removed'); renderPlan(); renderPlanCal();
+      toast('Shift removed'); setTimeout(() => setPlanSide('roster'), 400); renderPlan(); renderPlanCal();
     }
     function rosterCancel() { rosterEdit = null; renderPlan(); }
     // Load a shift (or a suggestion) into the planner so its times can be adjusted
@@ -4897,7 +4945,8 @@
       document.getElementById('planMode').value = 'end';
       const en = new Date(e); document.getElementById('planEnd').value = String(en.getHours() * 60 + en.getMinutes());
       fillPlanUntil(); renderPlan(); renderPlanCal();
-      const box = document.querySelector('#view-insights .plan-box'); if (box) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setPlanSide('plan', true);
+      const box = document.querySelector('#view-insights .plan-box'); if (box) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
     }
     function rosterOpen(id) {
       const x = loadRoster().find(y => y.id === id); if (!x) return;
@@ -4949,18 +4998,18 @@
       let sug = '';
       if (rosterShowSug) {
         const list = rosterSuggestions();
-        sug = `<div class="rs-sub">✨ Pilot suggests <small>best stretch each day for the next 7 days, from your Uber trends, starting from home where it's busy enough</small></div>` +
+        sug = `<div class="rs-sub"><svg class="h-ic"><use href="#h-spark"/></svg>Pilot suggests <small>best stretch each day for the next 7 days, from your Uber trends, starting from home where it's busy enough</small></div>` +
           `<label class="rs-home">🏠 Home area <select onchange="setHomeZone(this.value)">${Object.keys(UBER_ZONE_SHAPES).map(z => `<option${z === homeZone() ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select></label>` +
           (list.length ? list.map(x => `<div class="rs-sug"><div><b>${shiftLabel(x)}</b><span>${x.home ? '🏠 ' : ''}${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}</span></div>` +
             `<button type="button" class="rs-btn go" onclick="rosterPick(${x.s}, ${x.e}, '${esc(x.z).replace(/'/g, '&#39;')}')">Pick up</button>` +
             `<button type="button" class="rs-btn" onclick="rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`).join('')
             : '<div class="autoread-hint">No busy stretches found in the next 7 days' + (Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)') + '.</div>');
       }
-      box.innerHTML = `<div class="demand-title">🗓 My roster</div>` +
-        `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}. Tap a shift to change its times. Add one with the planner below, or let Pilot suggest some.</div>` +
+      box.innerHTML = `<div class="demand-title"><svg class="h-ic"><use href="#h-roster"/></svg>My roster</div>` +
+        `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}. Tap a shift to change its times. Add your own in Plan, or let Pilot suggest some.</div>` +
         `<div class="rs-list">${up.length ? up.map(x => row(x)).join('') : '<div class="autoread-hint">No shifts planned yet.</div>'}</div>` +
-        `<div class="rs-acts"><button type="button" class="rs-btn${rosterShowSug ? ' on' : ''}" onclick="rosterToggleSug()">✨ ${rosterShowSug ? 'Hide suggestions' : 'Suggest shifts'}</button>` +
-        `<button type="button" class="rs-btn" onclick="rosterEdit=null; const b=document.querySelector('#view-insights .plan-box'); if (b) b.scrollIntoView({behavior:'smooth', block:'start'})">✍️ Add my own</button></div>` +
+        `<div class="rs-acts"><button type="button" class="rs-btn${rosterShowSug ? ' on' : ''}" onclick="rosterToggleSug()"><svg class="h-ic"><use href="#h-spark"/></svg>${rosterShowSug ? 'Hide suggestions' : 'Suggest shifts'}</button>` +
+        `<button type="button" class="rs-btn" onclick="rosterEdit=null; setPlanSide('plan', true); const b=document.querySelector('#view-insights .plan-box'); if (b) setTimeout(() => b.scrollIntoView({behavior:'smooth', block:'start'}), 60)"><svg class="h-ic"><use href="#h-compass"/></svg>Add my own in Plan</button></div>` +
         sug + (done.length ? `<div class="rs-sub">Done</div>` + done.map(x => row(x, true)).join('') : '');
     }
     // Planner buttons: add to roster, or update/remove the shift being edited
@@ -7538,6 +7587,7 @@
         if (tb) tb.classList.toggle('active', tab === t);
       });
       if (tab === 'insights' || tab === 'trends' || tab === 'log') renderInsights();
+      if (tab === 'insights') setPlanSide(['roster', 'plan', 'airport'].includes(lsGet('planSide')) ? lsGet('planSide') : 'plan');
       if (tab === 'log') setLogSide(lsGet('logSide') === 'offers' ? 'offers' : 'account');
       if (tab === 'drive') { startTracking(); setTimeout(() => { renderMap(); drawMe(); }, 50); }
       else if (tab === 'offer') startTracking();          // offers remember where you were
@@ -7547,7 +7597,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.65.0';
+    const APP_VERSION = '1.66.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8189,7 +8239,7 @@
       if (from > c.to) {
         const top = Array.from({ length: 11 }, (_, k) => { const s = Math.floor(now / 3600000) * 3600000 + k * 3600000; return { s, n: flCount('MEL', 'in', s, s + 3600000) }; })
           .filter(x => x.n !== null).sort((x, y) => y.n - x.n)[0];
-        return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Live arrivals reach only until ${fmtTime(c.to)}${new Date(c.to).toDateString() === new Date().toDateString() ? ' today' : ' ' + DAYS[dayIdx(new Date(c.to))]}, so this date and time use the estimate above. Pick today or a time before then to see them.${top ? ` Busiest coming up: ${fmtHour(new Date(top.s).getHours())} (${top.n} flights).` : ''}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
+        return `<div class="fl-box fl-wide"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div><div class="bp-why">Live arrivals reach only until ${fmtTime(c.to)}${new Date(c.to).toDateString() === new Date().toDateString() ? ' today' : ' ' + DAYS[dayIdx(new Date(c.to))]}, so this date and time use the estimate above. Pick today or a time before then to see them.${top ? ` Busiest coming up: ${fmtHour(new Date(top.s).getHours())} (${top.n} flights).` : ''}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
       }
       // Hour by hour from your start: 🛬 arrivals and 🛫 departures scheduled that hour; tap an hour for every flight and its status
       // Every hour the last check collected (about 12), in a grid of 2–3 columns; an opened hour spans the full width
@@ -8223,7 +8273,7 @@
             : '<div class="flr none">No passenger flights this hour</div>');
         rows.push(`<div class="flh${cls}${flPopKey === key ? ' sel' : ''}" role="button" tabindex="0" data-k="${key}" onclick="flOpenHour('${key}', this)"><div class="flh-s">${head}</div></div>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${new Date(hStart).toDateString() !== new Date().toDateString() ? DAYS[dayIdx(new Date(hStart))] + ' ' : ''}${fmtHour(new Date(hStart).getHours())} to ${fmtHour(new Date(hrs[hrs.length - 1] + 3600000).getHours())} · boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · <b style="color:var(--green)">✓ Go</b> recommended, Skip not · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights by hour <small>${new Date(hStart).toDateString() !== new Date().toDateString() ? DAYS[dayIdx(new Date(hStart))] + ' ' : ''}${fmtHour(new Date(hStart).getHours())} to ${fmtHour(new Date(hrs[hrs.length - 1] + 3600000).getHours())} · boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · <b style="color:var(--green)">✓ Go</b> recommended, Skip not · tap an hour for every flight</small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
@@ -8276,16 +8326,16 @@
     }
     // Map side box: a short summary, with the full list in Plan & Roster
     function flightsHTML(code) {
-      if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Developer to see real arrivals here.</div></div>`;
+      if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Developer to see real arrivals here.</div></div>`;
       const c = flights[code];
-      if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div><div class="bp-why">${flLoading[code] || !c ? 'Loading flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div></div>`;
+      if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-box"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div><div class="bp-why">${flLoading[code] || !c ? 'Loading flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div></div>`;
       const now = Date.now(), h0 = Math.floor(now / 3600000) * 3600000;
       const soon = flCount(code, 'in', now, now + 3600000), d = flCount(code, 'out', now + 3600000, now + 2 * 3600000);
       const top = Array.from({ length: 5 }, (_, k) => ({ s: h0 + k * 3600000, n: flCount(code, 'in', h0 + k * 3600000, h0 + (k + 1) * 3600000) })).filter(x => x.n !== null).sort((x, y) => y.n - x.n)[0];
       const up = c.arr.filter(f => flOut(f) > now && flEt(f) < now + 3 * 3600000);
       const late = up.filter(f => !flCancelled(f) && f.rt && f.rt - f.t >= 600000).length, canc = up.filter(flCancelled).length;
       const ti = airportTier(code, 'in'), to = airportTier(code, 'out');
-      return `<div class="fl-box"><div class="fl-h">✈️ Live flights</div>` +
+      return `<div class="fl-box"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div>` +
         (ti && ti.live ? `<div class="ap-grade">${tierPill(ti)} <span>pick-ups · ${ti.n} flight${ti.n === 1 ? '' : 's'} coming out</span></div>` : '') +
         (to && to.live ? `<div class="ap-grade">${tierPill(to)} <span>rides to the airport · ${to.n} departure${to.n === 1 ? '' : 's'} in 1–2 hrs</span></div>` : '') +
         (top ? `<div class="bp-why">Busiest pick-ups: ${fmtHour(new Date(top.s).getHours())} (${top.n} flights)</div>` : '') +
@@ -8299,8 +8349,7 @@
       document.getElementById('planDay').value = String(n.day);
       document.getElementById('planStart').value = String(n.min);
       try { fillPlanUntil(); } catch (e) {}
-      showTab('insights'); renderPlan(); renderPlanCal();
-      setTimeout(() => { const el = document.getElementById('airportBox'); if (el) el.closest('.demand-card').scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 80);
+      lsSet('planSide', 'airport'); showTab('insights'); renderPlan(); renderPlanCal();
     }
 
     // ================= 🚆 TRAIN DISRUPTIONS (Transport Victoria open data, GTFS Realtime) =================
@@ -8622,7 +8671,8 @@
       const bo = best('out'), bi = best('in');
       if (document.getElementById('view-insights').style.display !== 'none') loadFlights('MEL');
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      box.innerHTML = airportOutlookHTML(today, dayOff, allEvents()) + `<div class="ap-sec">🕘 ${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</div>` + `
+      const dbar = `<div class="ap-datebar"><svg class="h-ic"><use href="#h-clock"/></svg><b>${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</b><button type="button" class="rs-btn" onclick="setPlanSide('plan')">Change</button></div>`;
+      box.innerHTML = dbar + airportOutlookHTML(today, dayOff, allEvents()) + `<div class="ap-sec"><svg class="h-ic"><use href="#h-clock"/></svg>${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</div>` + `
         <div class="rank-item"><div><div>${dirIcon('out')} City to airport at ${fmtMin(sm)}</div>
           <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
           `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
