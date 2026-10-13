@@ -427,6 +427,9 @@
     .tn-hr b { font-size: .85rem; }
     .tn-hr.cur { border-color: #f97316; }
     .tn-hr.yes b { color: var(--green); } .tn-hr.maybe b { color: var(--amber); } .tn-hr.no b { color: var(--red); }
+    .tn-tags { display: flex; gap: 4px; flex-wrap: wrap; flex: 1; min-width: 0; }
+    .tn-lvl { font-weight: 800; } .tn-lvl + .tn-lvl::before { content: " · "; color: var(--muted); font-weight: 400; }
+    .tn-lvl.yes { color: var(--green); } .tn-lvl.maybe { color: var(--amber); } .tn-lvl.no { color: var(--red); }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -2320,9 +2323,10 @@
       return { levels: hrs.map(t => { const v = demandAdj(zone, t); return v === null ? -1 : Math.round(v * 4); }),
         nowIdx: Math.floor((now - start) / 3600000), start };
     }
-    // target: the hour this chart is about (Next hour / In 2 hours), outlined in the theme colour
-    function chartHTML(levels, nowIdx, target) {
-      const cls = i => (i === nowIdx ? ' now' : '') + (target != null && target !== nowIdx && i === target ? ' soon' : '') + (target != null && i === target ? ' hl' : '');
+    // targets: the hours this chart is about (now / next hour / in 2 hours), outlined in the theme colour
+    function chartHTML(levels, nowIdx, targets) {
+      const tg = [].concat(targets == null ? [] : targets);
+      const cls = i => (i === nowIdx ? ' now' : '') + (tg.includes(i) && i !== nowIdx ? ' soon' : '') + (tg.includes(i) ? ' hl' : '');
       return levels.every(l => l < 0) ? '<div class="empty">No Uber trend for this zone yet.</div>'
         : levels.map((l, i) => l < 0 ? `<i class="nodata${cls(i)}"></i>` : `<i class="lv${l}${cls(i)}" style="height:${Math.max(4, l * 25)}%"></i>`).join('');
     }
@@ -2341,27 +2345,36 @@
         hs.textContent = `${demandName(v)} now · ${fmtHour(now.getHours())}`;
         box.innerHTML = chartHTML(t.levels, t.nowIdx, null);
       }
-      // Recommended: now, next hour and in 2 hours, each with its own bars
-      const labels = ['⭐ Recommended now', '⏭ Next hour', '⏩ In 2 hours'];
-      document.getElementById('tnRec').innerHTML = [0, 1, 2].map(k => {
+      // Recommended: now, next hour and in 2 hours. One chart per area: hours with the same area share it.
+      const labels = ['⭐ Now', '⏭ Next hour', '⏩ In 2 hours'];
+      const groups = [];
+      [0, 1, 2].forEach(k => {
         const dt = new Date(now.getTime() + k * 3600000), best = bestZoneAt(dt);
-        const head = `<div class="tn-sep"></div><div class="tn-head"><span class="tn-tag best">${labels[k]} · ${fmtHour(dt.getHours())}</span>`;
-        if (!best) return head + `<b>—</b></div><div class="tn-sub">Import Uber trends to get a recommendation.</div>`;
-        let zone = best.z, note = '';
-        if (zone === here) {
-          const other = best.all.find(r => r.z !== here);
-          note = `You’re in the best area${k ? ' for ' + fmtHour(dt.getHours()) : ' now'} (${demandName(best.v).toLowerCase()}).`;
-          if (other) { zone = other.z; note += ' Next best below.'; }
-        }
-        const v = demandAdj(zone, dt), vd = VERDICT(v), km = zoneKm(zone);
-        const why = boostAt(zone, dt).why;
-        const t = todayLevels(zone, dt);
-        const target = Math.floor((dt - t.start) / 3600000);
-        return head + `<b>${esc(zone)}</b><i class="pill ${vd.c}">${vd.t}</i></div>` +
-          `<div class="tn-sub">${note ? esc(note) + ' ' : ''}${demandName(v)} at ${fmtHour(dt.getHours())}${km ? ` · ${km.toFixed(0)} km away` : zone === here ? ' · you’re here' : ''}${why.length ? ' · ' + esc(why.join(' · ')) : ''}</div>` +
-          `<div class="demand-chart tn-rec-chart">${chartHTML(t.levels, t.start <= Date.now() ? t.nowIdx : -1, target)}</div>` +
-          `<div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>`;
-      }).join('');
+        if (!best) return;
+        let zone = best.z, stay = false;
+        if (zone === here) { const other = best.all.find(r => r.z !== here); stay = true; if (other) zone = other.z; }
+        const h = { k, dt, zone, stay, v: demandAdj(zone, dt), why: boostAt(zone, dt).why };
+        const g = groups.find(x => x.zone === zone);
+        if (g) g.hours.push(h); else groups.push({ zone, hours: [h] });
+      });
+      document.getElementById('tnRec').innerHTML = !groups.length
+        ? `<div class="tn-sep"></div><div class="tn-head"><span class="tn-tag best">⭐ Recommended</span><b>—</b></div><div class="tn-sub">Import Uber trends to get a recommendation.</div>`
+        : groups.map(g => {
+          const first = g.hours[0], vd = VERDICT(first.v), km = zoneKm(g.zone);
+          const t = todayLevels(g.zone, first.dt);
+          const targets = g.hours.map(h => Math.floor((h.dt - t.start) / 3600000));
+          const tags = g.hours.map(h => `<span class="tn-tag best">${labels[h.k]} · ${fmtHour(h.dt.getHours())}</span>`).join('');
+          const rows = g.hours.map(h => {
+            const hv = VERDICT(h.v);
+            return `<span class="tn-lvl ${hv.c}">${fmtHour(h.dt.getHours())} ${demandName(h.v).toLowerCase()}</span>`;
+          }).join('');
+          const stayNote = g.hours.some(h => h.stay) ? `<div class="tn-sub">You’re in the best area for ${g.hours.filter(h => h.stay).map(h => fmtHour(h.dt.getHours())).join(', ')}; this is the next best.</div>` : '';
+          const why = [...new Set(g.hours.flatMap(h => h.why))];
+          return `<div class="tn-sep"></div><div class="tn-head"><span class="tn-tags">${tags}</span><i class="pill ${vd.c}">${vd.t}</i><b>${esc(g.zone)}</b></div>` +
+            `<div class="tn-sub">${rows}${km ? ` · ${km.toFixed(0)} km away` : g.zone === here ? ' · you’re here' : ''}${why.length ? ' · ' + esc(why.join(' · ')) : ''}</div>` + stayNote +
+            `<div class="demand-chart tn-rec-chart">${chartHTML(t.levels, t.start <= Date.now() ? t.nowIdx : -1, targets)}</div>` +
+            `<div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>`;
+        }).join('');
     }
     function onDemandZone(v) { lsSet('trendZone', v); renderInsights(); }
 
@@ -4917,7 +4930,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.22.2';
+    const APP_VERSION = '1.22.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
