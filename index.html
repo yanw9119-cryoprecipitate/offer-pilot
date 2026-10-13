@@ -287,6 +287,7 @@
       font-size: 1.1rem; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35); cursor: pointer;
     }
     .map-fab.on { color: #1a73e8; }
+    .night-tiles { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.7); }
     .map-compass { padding: 0; }
     .map-compass .cmp-needle { transition: transform .08s linear; }
     .map-compass.on { box-shadow: 0 0 0 2.5px #1a73e8, 0 2px 6px rgba(0,0,0,0.35); }
@@ -5020,15 +5021,17 @@
       map = L.map('surgeMap', { zoomControl: false, rotate: true, bearing: 0, rotateControl: false, touchRotate: false, shiftKeyRotate: false, compassBearing: false }).setView(MELB, 12);
       // Each base map tries several tile providers and falls back if one is blocked.
       const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+      // Key-free map pictures only. CARTO now answers with "API KEY REQUIRED" tiles, so it isn't used.
+      const ESRI_STREET = ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
       const STREET_SOURCES = [
-        // Key-free maps first (Esri's old street service can answer with "API key / token required" tiles)
-        { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', opt: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' } },
-        { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opt: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' } },
-        { url: ESRI + 'World_Street_Map/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, attribution: 'Tiles &copy; Esri' } }
+        { url: ESRI_STREET, opt: { maxZoom: 19, attribution: 'Tiles &copy; Esri' } },
+        { url: OSM, opt: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' } }
       ];
+      // Night: the same street map turned dark (labels stay readable at every zoom)
       const NIGHT_SOURCES = [
-        { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', opt: { maxZoom: 19, subdomains: 'abcd', attribution: '&copy; OpenStreetMap &copy; CARTO' } },
-        { url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 16, attribution: 'Tiles &copy; Esri' } }
+        { url: ESRI_STREET, opt: { maxZoom: 19, attribution: 'Tiles &copy; Esri', className: 'night-tiles' } },
+        { url: OSM, opt: { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors', className: 'night-tiles' } },
+        { url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' } }
       ];
       function fallbackBase(sources) {
         const group = L.layerGroup();
@@ -5916,7 +5919,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.29.1';
+    const APP_VERSION = '1.29.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
