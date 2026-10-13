@@ -479,6 +479,15 @@
     @keyframes fhIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
     :root[data-theme="contrast"] .field-help { background: var(--accent); color: #000; }
     :root[data-theme="contrast"] .field-help::after { border-top-color: var(--accent); }
+    .map-help { position: absolute; left: 10px; right: 64px; bottom: 40px; z-index: 660;   /* clear of the round map buttons */
+      background: var(--text); color: var(--bg); border-radius: 14px; padding: 9px 12px; font-size: .78rem; line-height: 1.35; box-shadow: var(--shadow-strong); cursor: pointer; }
+    .map-help[hidden] { display: none; }
+    .map-help b { font-size: .86rem; }
+    .map-help .mh-on, .map-help .mh-off { font-size: .62rem; font-weight: 900; padding: 1px 6px; border-radius: 999px; margin-left: 4px; vertical-align: 1px; }
+    .map-help .mh-on { background: var(--green); color: #fff; } .map-help .mh-off { background: var(--muted); color: var(--bg); }
+    .map-help.show { animation: mhIn .18s ease-out; }
+    @keyframes mhIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    :root[data-theme="contrast"] .map-help { background: var(--accent); color: #000; }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1058,6 +1067,7 @@
         <div class="surge-card" id="surgeCard" hidden></div>
         <div class="busy-panel" id="busyPanel" hidden></div>
         <button type="button" class="map-offer" id="mapOffer" hidden onclick="showTab('offer')"></button>
+        <div class="map-help" id="mapHelp" hidden onclick="hideMapHelp()" role="status" aria-live="polite"></div>
       </div>
 
     </div>
@@ -4718,7 +4728,8 @@
       map.addControl(new Ctl());
       setNightMap(nightMap);
       drawMe();
-      map.on('dragstart', () => setFollow(false));
+      map.on('dragstart', () => { setFollow(false); hideMapHelp(); });
+      map.on('zoomstart', () => { if (!followMe) hideMapHelp(); });
       if (lastFix) map.setView([lastFix.lat, lastFix.lng], 15);
 
       suburbRenderer = L.canvas({ padding: 0.3 });
@@ -4757,7 +4768,7 @@
         layers.zonesAll = !layers.zonesAll;
         lsSet('mapLayers', JSON.stringify(layers));
         syncLayerChips(); renderMap();
-        toast(layers.zonesAll ? '🗺 Showing all zones' : '🗺 Showing busy zones only');
+        showMapHelp(layers.zonesAll ? 'zonesAll' : 'zonesBusy', true);
         return;
       }
       zonesTapAt = now;
@@ -4785,7 +4796,34 @@
       lsSet('mapLayers', JSON.stringify(layers));
       syncLayerChips();
       renderMap();
+      showMapHelp(k, layers[k]);
     }
+
+    // What each map button shows: a short pop-up at the bottom of the map (4 s, gone on scroll or map move)
+    const MAP_HELP = {
+      zones: ['🗺 Zones', 'Uber’s trend zones right now: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
+      zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
+      zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
+      live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
+      pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
+      spots: ['⭐ Spots', 'Suburbs coloured by the $/hr of offers you got there (2 or more offers): green good, yellow fair, red poor.'],
+      hist: ['🕘 History', 'Every past snapshot. Choose a day and time in the bar above, or tap Now.'],
+      busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.']
+    };
+    let mapHelpT = null;
+    function showMapHelp(key, on) {
+      const el = document.getElementById('mapHelp'), h = MAP_HELP[key];
+      if (!el || !h) return;
+      const stateless = key === 'zonesAll' || key === 'zonesBusy' || key === 'busy';
+      el.innerHTML = `<b>${h[0]}${stateless ? '' : on ? ' <span class="mh-on">ON</span>' : ' <span class="mh-off">OFF</span>'}</b>` +
+        `<div>${on || stateless ? h[1] : 'Hidden from the map. Tap again to show it.'}</div>`;
+      el.hidden = false;
+      el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+      clearTimeout(mapHelpT);
+      mapHelpT = setTimeout(hideMapHelp, 4000);
+    }
+    function hideMapHelp() { clearTimeout(mapHelpT); const el = document.getElementById('mapHelp'); if (el) { el.hidden = true; el.classList.remove('show'); } }
+    window.addEventListener('scroll', () => { const el = document.getElementById('mapHelp'); if (el && !el.hidden) hideMapHelp(); }, { passive: true });
 
     // Weights each past snapshot by how closely its day and time match right now.
     function forecastScores() {
@@ -5086,6 +5124,7 @@
       panel.hidden = false;
       busySel = null;
       renderBusy();
+      showMapHelp('busy', true);
     }
     function renderBusy() {
       const panel = document.getElementById('busyPanel');
@@ -5416,7 +5455,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.5';
+    const APP_VERSION = '1.25.6';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
