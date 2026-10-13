@@ -476,7 +476,7 @@
     .tn-lvl { font-weight: 800; } .tn-lvl + .tn-lvl::before { content: " · "; color: var(--muted); font-weight: 400; }
     .tn-lvl.yes { color: var(--green); } .tn-lvl.maybe { color: var(--amber); } .tn-lvl.no { color: var(--red); }
     .plan-cal { margin-bottom: 14px; }
-    .cal-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: .9rem; }
+    .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: .9rem; }
     .cal-top span { font-size: .68rem; color: var(--muted); }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .cal-dow { text-align: center; font-size: .62rem; font-weight: 800; color: var(--muted); }
@@ -506,8 +506,13 @@
     .cal-airlist { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 10px; font-size: .78rem; }
     .cal-airlist b { width: 100%; }
     .cal-airlist .chip { box-shadow: none; background: var(--card-2); color: var(--text); font-size: .68rem; }
-    .cal-zone { display: flex; align-items: center; gap: 6px; font-size: .74rem; color: var(--muted); margin-bottom: 8px; }
-    .cal-zone select { flex: 1; min-width: 0; background: var(--card-2); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 10px; padding: 6px 8px; font-size: .8rem; font-weight: 700; }
+    .cal-zone { display: flex; align-items: center; gap: 6px; font-size: .7rem; color: var(--muted); margin-bottom: 8px; }
+    .cal-zone select { flex: 1; min-width: 0; height: 30px; background: var(--card-2) var(--arrow) no-repeat right 8px center / 12px; color: var(--text); border: var(--bw) solid var(--card-border);
+      border-radius: 999px; padding: 0 26px 0 10px; font-size: .78rem; font-weight: 700; -webkit-appearance: none; appearance: none; }
+    .cal-loc { flex: none; width: 30px; height: 30px; border-radius: 50%; border: var(--bw) solid var(--card-border); background: var(--card-2); font-size: .85rem; padding: 0; display: grid; place-items: center; }
+    .cal-loc.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .cal-today { border: 1.5px solid var(--accent); background: none; color: var(--accent); font-weight: 800; font-size: .74rem; border-radius: 999px; padding: 4px 12px; }
+    .cal-today.on { background: var(--accent); color: var(--on-accent); }
     .cal-zone small { flex: none; }
     .cal-day.today b { text-decoration: underline; text-underline-offset: 3px; }
     .cal-day.sel { outline: 2.5px solid var(--accent); outline-offset: 1px; }
@@ -3672,18 +3677,28 @@
           `<b>${d.getDate()}</b><small>${o ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}${ap.rec ? `<span class="cal-air${ap.peak ? ' peak' : ''}">✈️</span>` : ''}</button>`);
       }
       const m0 = today.toLocaleDateString([], { month: 'long' }), m1 = new Date(today.getTime() + (CAL_DAYS - 1) * 86400000).toLocaleDateString([], { month: 'long' });
-      box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><span>Tap a day to plan it</span></div>` +
-        `<label class="cal-zone">Area <select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
-          `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === myZone() ? '<small>you’re here</small>' : ''}</label>` +
+      const here = myZone();
+      box.innerHTML = `<div class="cal-top"><b>📅 ${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><button type="button" class="cal-today${sel === 0 ? ' on' : ''}" onclick="calToday()">Today</button></div>` +
+        `<div class="cal-zone"><button type="button" class="cal-loc${zone === here ? ' on' : ''}" onclick="calHere()" aria-label="Use the area you're in">📍</button>` +
+        `<select onchange="lsSet('calZone', this.value); renderPlanCal()" aria-label="Calendar area">${Object.keys(UBER_ZONE_SHAPES).map(z =>
+          `<option${z === zone ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select>${zone === here ? '<small>you’re here</small>' : ''}</div>` +
         `<div class="cal-grid">${DAYS.map(d => `<span class="cal-dow">${d.slice(0, 1)}</span>`).join('')}${cells.join('')}</div>` +
         `<div class="cal-key"><span><b class="g">12</b> Mostly recommended</span><span><i class="maybe"></i>Some good hours</span><span><i class="no"></i>Quiet</span><span>“9h” = recommended hours (${fmtRange(6, 2)}) · ✈️ airport runs recommended · 🏟 event · 📅 holiday</span></div>` +
         airportOutlookHTML(today, sel, evs);
     }
+    // 📍 back to the area you're in; Today back to today
+    function calHere() {
+      lsDel('calZone'); renderPlanCal();
+      refreshZoneFix();
+      toast(myZone() ? `📍 ${myZone()}` : '📍 Finding your location…');
+    }
+    function calToday() {
+      document.getElementById('planDay').value = '0';
+      renderPlan(); renderPlanCal();
+    }
     function pickPlanDay(k) {
       document.getElementById('planDay').value = String(k);
-      renderPlan(); renderPlanCal();
-      const r = document.getElementById('planResult');
-      if (r) r.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      renderPlan(); renderPlanCal();   // stay where you are on the page
     }
     // Save the chosen shift to the phone's calendar (.ics opens Apple Calendar's "Add" screen)
     function addPlanToCalendar() {
@@ -6122,7 +6137,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.32.1';
+    const APP_VERSION = '1.32.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
