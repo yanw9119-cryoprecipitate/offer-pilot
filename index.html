@@ -788,6 +788,30 @@
     .fl-more { display: inline-block; margin-top: 4px; font-weight: 700; color: var(--accent); }
     .ap-sec { margin-top: 12px; font-weight: 800; font-size: .9rem; }
     .ap-out-h small { font-weight: 600; color: var(--muted); font-size: .7rem; }
+    .flh-list { margin-top: 6px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+    @media (min-width: 560px) { .flh-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .flh[open] { grid-column: 1 / -1; }
+    .flh.past { opacity: .6; } .flh.now { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; } .flh.start { border-color: #0284c7; }
+    .flh summary > b small { font-size: .58rem; color: var(--accent); font-weight: 800; text-transform: uppercase; }
+    .flh { border: 1px solid var(--card-border); border-radius: 10px; background: var(--card-2); overflow: hidden; }
+    .flh summary { list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; padding: 7px 8px; cursor: pointer; font-size: .8rem; position: relative; padding-right: 20px; }
+    .flh summary::after { position: absolute; right: 7px; top: 8px; }
+    .flh summary::-webkit-details-marker { display: none; }
+    .flh summary::after { content: '▾'; margin-left: auto; color: var(--muted); transition: transform .2s; }
+    .flh[open] summary::after { transform: rotate(180deg); }
+    .flh summary > b { flex-basis: 100%; }
+    .flh-n { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .flh-x:empty { display: none; } .flh-x { flex-basis: 100%; }
+    .flh[open] summary > b { flex-basis: auto; margin-right: 6px; } .flh[open] .flh-x { flex-basis: auto; }
+    .flh-x { display: flex; gap: 4px; flex-wrap: wrap; }
+    .fls { font-style: normal; font-weight: 800; font-size: .62rem; padding: 1px 6px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+    .fls.ok { background: rgba(34,197,94,.18); color: var(--green); } .fls.late { background: rgba(245,158,11,.2); color: #d97706; }
+    .fls.canc { background: rgba(239,68,68,.16); color: #dc2626; } .fls.done { background: rgba(148,163,184,.22); color: var(--muted); }
+    .flr { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-top: 1px dashed var(--line); font-size: .76rem; }
+    .flr > b { font-variant-numeric: tabular-nums; } .flr s { color: var(--muted); font-size: .66rem; }
+    .flr-f { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+    .flr-f em { font-style: normal; font-weight: 700; font-size: .64rem; padding: 0 4px; border-radius: 4px; background: color-mix(in srgb, #0284c7 18%, transparent); color: #0284c7; }
+    .flr.none { color: var(--muted); justify-content: center; }
     .fl-plan { margin: 6px 0 2px; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, #0284c7 12%, var(--card-2)); font-size: .78rem; line-height: 1.35; }
     .fl-plan small { color: var(--muted); }
     .ap-pk { margin-top: 6px; font-size: .74rem; line-height: 1.3; }
@@ -6916,7 +6940,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.50.1';
+    const APP_VERSION = '1.51.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7320,7 +7344,11 @@
         const r = await fetch(url, { headers: { 'X-RapidAPI-Key': key, 'X-RapidAPI-Host': FL_HOST }, signal: ctl.signal });
         clearTimeout(tm);
         const m = ymd(new Date()).slice(0, 7); lsSet('flCalls', JSON.stringify({ m, n: flCalls() + 1 }));
-        if (r.status === 401 || r.status === 403) throw new Error('The key was refused. Check you subscribed to AeroDataBox on RapidAPI and copied the right key.');
+        if (r.status === 401 || r.status === 403) {
+          let m = ''; try { m = ((await r.json()) || {}).message || ''; } catch (e) {}
+          throw new Error(/not subscribed/i.test(m) ? 'Your RapidAPI account isn’t subscribed to AeroDataBox yet. Open AeroDataBox on RapidAPI → Pricing → subscribe to the free Basic plan.'
+            : 'The key was refused' + (m ? ` (“${m}”)` : '') + '. Check you copied the right X-RapidAPI-Key.');
+        }
         if (r.status === 429) throw new Error('The monthly or per-second limit on your flight key was reached. It will try again later.');
         if (!r.ok && r.status !== 204) throw new Error('The flight service answered ' + r.status + '. It will try again later.');
         const j = r.status === 204 ? {} : await r.json(), now = Date.now();
@@ -7415,9 +7443,39 @@
           .filter(x => x.n !== null).sort((x, y) => y.n - x.n)[0];
         return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights</div><div class="bp-why">Live arrivals reach only until ${fmtTime(c.to)}${new Date(c.to).toDateString() === new Date().toDateString() ? ' today' : ' ' + DAYS[dayIdx(new Date(c.to))]}, so this date and time use the estimate above. Pick today or a time before then to see them.${top ? ` Busiest coming up: ${fmtHour(new Date(top.s).getHours())} (${top.n} flights).` : ''}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
       }
-      const a = flCount('MEL', 'in', h0.getTime(), h0.getTime() + 3600000), d = flCount('MEL', 'out', h0.getTime() + 3600000, h0.getTime() + 2 * 3600000);
-      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live: passengers coming out each hour <small>from ${fmtTime(from)}${from > st.getTime() ? ' (now)' : ''} · ${a} flight${a === 1 ? '' : 's'} that hour${d !== null ? ` · ${d} departure${d === 1 ? '' : 's'} an hour later for drop-off runs` : ''}</small></div>` +
-        flBarsHTML('MEL', h0.getTime(), 5) + flListHTML('MEL', from, 8) + `<div class="fl-foot">${flFoot('MEL')}</div></div>`;
+      // Hour by hour from your start: 🛬 arrivals and 🛫 departures scheduled that hour; tap an hour for every flight and its status
+      // Every hour the last check collected (about 12), in a grid of 2–3 columns; an opened hour spans the full width
+      const rows = [], hStart = Math.floor(c.from / 3600000) * 3600000, hNow = Math.floor(Date.now() / 3600000) * 3600000;
+      for (let t = hStart; t < c.to && rows.length < 13; t += 3600000) {
+        const inH = f => flEt(f) >= t && flEt(f) < t + 3600000;
+        const arr = c.arr.filter(inH), dep = c.dep.filter(inH);
+        const all = arr.map(f => ({ f, dir: 'arr' })).concat(dep.map(f => ({ f, dir: 'dep' }))).sort((x, y) => flEt(x.f) - flEt(y.f));
+        const st = all.map(x => flState(x.f, x.dir));
+        const nLate = st.filter(x => x.k === 'late').length, nCanc = st.filter(x => x.k === 'canc').length;
+        const key = String(t), open = flOpenHours.has(key);
+        const cls = (t < hNow ? ' past' : '') + (t === hNow ? ' now' : '') + (t === h0.getTime() && h0.getTime() !== hNow ? ' start' : '');
+        rows.push(`<details class="flh${cls}"${open ? ' open' : ''} ontoggle="flToggleHour('${key}', this.open)"><summary><b>${fmtHour(new Date(t).getHours())}${t === hNow ? ' <small>now</small>' : ''}</b>` +
+          `<span class="flh-n">🛬 ${arr.filter(f => !flCancelled(f)).length}</span><span class="flh-n">🛫 ${dep.filter(f => !flCancelled(f)).length}</span>` +
+          `<span class="flh-x">${nLate ? `<i class="fls late">${nLate} delayed</i>` : ''}${nCanc ? `<i class="fls canc">${nCanc} cancelled</i>` : ''}</span></summary>` +
+          (all.length ? all.map((x, i) => { const f = x.f, s2 = st[i];
+            return `<div class="flr"><b>${fmtTime(flEt(f))}</b>${f.rt && Math.abs(f.rt - f.t) >= 600000 ? `<s>${fmtTime(f.t)}</s>` : ''}<span class="flr-d">${x.dir === 'arr' ? '🛬' : '🛫'}</span>` +
+              `<span class="flr-f">${esc(f.n)}${f.ap ? ` · ${x.dir === 'arr' ? 'from' : 'to'} ${esc(f.ap)}` : ''}${f.term ? ` <em>T${esc(f.term)}</em>` : ''}</span><i class="fls ${s2.k}">${s2.t}</i></div>`; }).join('')
+            : '<div class="flr none">No passenger flights this hour</div>') + `</details>`);
+      }
+      return `<div class="fl-box fl-wide"><div class="fl-h">✈️ Live flights by hour <small>${fmtHour(new Date(hStart).getHours())} to ${fmtTime(c.to)} · 🛬 arrivals 🛫 departures · tap an hour for every flight</small></div>` +
+        `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
+    }
+    // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
+    const flOpenHours = new Set();
+    function flToggleHour(k, open) { if (open) flOpenHours.add(k); else flOpenHours.delete(k); }
+    function flState(f, dir) {
+      if (flCancelled(f)) return { k: 'canc', t: 'Cancelled' };
+      if (/divert/i.test(f.st)) return { k: 'canc', t: 'Diverted' };
+      const late = f.rt ? Math.round((f.rt - f.t) / 60000) : 0, past = flEt(f) <= Date.now();
+      if (dir === 'arr' && (/arriv|landed/i.test(f.st) || (past && !/expect|enroute|approach|delay/i.test(f.st)))) return { k: 'done', t: late >= 10 ? `Arrived +${late}m` : 'Arrived' };
+      if (dir === 'dep' && (/departed|enroute/i.test(f.st) || (past && !/expect|boarding|checkin|gateclosed|delay/i.test(f.st)))) return { k: 'done', t: late >= 10 ? `Departed +${late}m` : 'Departed' };
+      if (late >= 10 || /delay/i.test(f.st)) return { k: 'late', t: late >= 10 ? `Delayed +${late}m` : 'Delayed' };
+      return { k: 'ok', t: late <= -10 ? `Early ${-late}m` : 'On time' };
     }
     // Map side box: a short summary, with the full list in Plan a Shift
     function flightsHTML(code) {
@@ -7760,7 +7818,7 @@
           .map(r => fmtRange(r.s.getHours(), r.e.getHours() + 1)).join(' and ');
       };
       // Your chosen start time
-      const st = new Date(base.getTime() + sm * 60000 + (sh < 4 ? 86400000 : 0));
+      const st = new Date(base.getTime() + sm * 60000);      // same date as the shift above (1:30 on Wed 14 is early Wed morning)
       const run = airportRun(st), inNow = airportScore('in', st);
       const vo = VERDICT(run.both), vi = VERDICT(inNow);
       const peaks = allEvents().filter(e => e.zone === AIRPORT_ZONE && e.e > base.getTime() + 4 * 3600000 && e.s < base.getTime() + 28 * 3600000);
