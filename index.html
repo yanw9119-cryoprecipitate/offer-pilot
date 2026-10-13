@@ -288,6 +288,7 @@
     }
     .map-fab.on { color: #1a73e8; }
     .night-tiles { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.7); }
+    .nw { white-space: nowrap; }
     .map-compass { padding: 0; }
     .map-compass .cmp-needle { transition: transform .08s linear; }
     .map-compass.on { box-shadow: 0 0 0 2.5px #1a73e8, 0 2px 6px rgba(0,0,0,0.35); }
@@ -2213,8 +2214,7 @@
       relabelAxes();
       const keep = id => { const el = document.getElementById(id); return el ? el.value : null; };
       const ps = keep('planStart'), pe = keep('planEnd'), ft = keep('fTime');
-      const hours = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${fmtHour(h)}</option>`).join('');
-      ['planStart', 'planEnd'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = hours; });
+      ['planStart', 'planEnd'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = planSlotOpts(); });
       if (ps !== null) document.getElementById('planStart').value = ps;
       if (pe !== null) document.getElementById('planEnd').value = pe;
       try { fillPlanUntil(); } catch (e) {}
@@ -3613,6 +3613,12 @@
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       toast('📅 Calendar event ready: tap Add');
     }
+    // Planner times are minutes after midnight in 30-minute steps (0, 30, … 1410)
+    const SLOT = 30, SLOT_MS = SLOT * 60000;
+    const minDate = m => new Date(2000, 0, 1, Math.floor(m / 60), m % 60);
+    const fmtMin = m => fmtTime(minDate(((m % 1440) + 1440) % 1440));
+    const planSlotOpts = (pre = '') => Array.from({ length: 1440 / SLOT }, (_, k) => `<option value="${pre}${k * SLOT}">${fmtMin(k * SLOT)}</option>`).join('');
+    const fmtLen = mins => `${Math.floor(mins / 60)} h${mins % 60 ? ' ' + (mins % 60) + ' min' : ''}`;
     function initPlanner() {
       const today = new Date();
       document.getElementById('planDay').innerHTML = Array.from({ length: CAL_DAYS }, (_, k) => {
@@ -3620,13 +3626,12 @@
         const dm = d.toLocaleDateString([], { day: 'numeric', month: 'short' });
         return `<option value="${k}">${k === 0 ? `Today (${DAYS[dayIdx(d)]})` : k === 1 ? `Tomorrow (${DAYS[dayIdx(d)]})` : `${DAYS[dayIdx(d)]} ${dm}`}</option>`;
       }).join('');
-      const hours = Array.from({ length: 24 }, (_, h) => `<option value="${h}">${fmtHour(h)}</option>`).join('');
-      document.getElementById('planStart').innerHTML = hours;
-      document.getElementById('planEnd').innerHTML = hours;
-      const next = (today.getHours() + 1) % 24;
+      document.getElementById('planStart').innerHTML = planSlotOpts();
+      document.getElementById('planEnd').innerHTML = planSlotOpts();
+      const next = (Math.ceil((today.getHours() * 60 + today.getMinutes() + 1) / SLOT) * SLOT) % 1440;   // next half hour
       document.getElementById('planMode').value = 'suggest';
       document.getElementById('planStart').value = String(next);
-      document.getElementById('planEnd').value = String((next + 3) % 24);
+      document.getElementById('planEnd').value = String((next + 180) % 1440);
       fillPlanUntil();
     }
     // "Until" = Suggest / 2 hours / a set end hour; drives the hidden planMode + planEnd
@@ -3634,7 +3639,7 @@
       const el = document.getElementById('planUntil'); if (!el) return;
       const mode = document.getElementById('planMode').value, eh = document.getElementById('planEnd').value;
       el.innerHTML = `<option value="suggest">Suggest</option><option value="two">2 hrs</option>` +
-        Array.from({ length: 24 }, (_, h) => `<option value="h${h}">${fmtHour(h)}</option>`).join('');
+        planSlotOpts('h');
       el.value = mode === 'end' ? 'h' + eh : mode;
     }
     function onPlanUntil() {
@@ -3648,21 +3653,28 @@
       renderPlan();
     }
 
-    // Suggested shift length from a start time: keep going while the best zone stays Medium or better.
-    // One quiet hour is allowed if it picks up again straight after. Max 8 hours (fatigue).
-    const MAX_SHIFT_H = 8;
+    // Demand for one half hour. Uber's trends are hourly, so each half leans 25% toward the
+    // neighbouring hour it touches: a drop at 8PM already shows in 7:30–8PM.
+    function slotVal(zone, t) {
+      const mid = new Date(t.getTime() + SLOT_MS / 2), v = demandAdj(zone, mid);
+      if (v === null) return null;
+      const nb = demandAdj(zone, new Date(mid.getTime() + (mid.getMinutes() < 30 ? -1 : 1) * 3600000));
+      return nb === null ? v : v * 0.75 + nb * 0.25;
+    }
+    // Suggested shift length (in half hours) from a start time: keep going while the zone stays Medium
+    // or better. A quiet spell of up to an hour is allowed if it picks up straight after. Max 8 hours.
+    const MAX_SHIFT_H = 8, MAX_SLOTS = MAX_SHIFT_H * 60 / SLOT;
     function suggestShift(start, zone) {
-      const at = k => { const t = new Date(start.getTime() + k * 3600000); return demandAdj(zone, t); };
+      const at = k => slotVal(zone, new Date(start.getTime() + k * SLOT_MS));
       let len = 0;
-      for (let k = 0; k < MAX_SHIFT_H; k++) {
-        const v = at(k);
-        if (v !== null && v >= OK) { len = k + 1; continue; }
-        const next = at(k + 1);
-        if (k > 0 && next !== null && next >= OK && k + 1 < MAX_SHIFT_H) continue;   // short dip
+      for (let k = 0; k < MAX_SLOTS; k++) {
+        if ((at(k) ?? -1) >= OK) { len = k + 1; continue; }
+        // short dip: up to 2 quiet half hours, then busy again
+        const back = [1, 2].find(d => k + d < MAX_SLOTS && (at(k + d) ?? -1) >= OK);
+        if (k > 0 && back) { k += back - 1; continue; }
         break;
       }
-      const stopV = at(len);
-      return { len, stopV };
+      return { len, stopV: at(len) };
     }
 
     function renderPlan() {
@@ -3672,31 +3684,33 @@
       const zones = Object.keys(loadTrends());
       if (!zones.length) { out.innerHTML = '<div class="empty">Import Uber trends to plan a shift.</div>'; return; }
       const dayOff = +document.getElementById('planDay').value;
-      const sh = +document.getElementById('planStart').value;
+      const sm = +document.getElementById('planStart').value;            // minutes after midnight
       const mode = document.getElementById('planMode').value;
-      let eh = +document.getElementById('planEnd').value;
+      let em = +document.getElementById('planEnd').value;
       const start = new Date(); start.setHours(0, 0, 0, 0);
-      start.setTime(start.getTime() + dayOff * 86400000 + sh * 3600000);
-      let len, suggestNote = '';
-      if (mode === 'end') len = ((eh - sh + 24) % 24) || 24;
-      else if (mode === 'two') len = 2;
+      start.setTime(start.getTime() + dayOff * 86400000 + sm * 60000);
+      let len, suggestNote = '';                                          // len = number of half hours
+      if (mode === 'end') len = (((em - sm + 1440) % 1440) || 1440) / SLOT;
+      else if (mode === 'two') len = 120 / SLOT;
       else {
         // Suggest: follow the best zone at the start time for as long as it stays worth it
         const b = bestZoneAt(start);
         const sug = b && b.v >= OK ? suggestShift(start, b.z) : { len: 0 };
         if (sug.len >= 1) {
-          len = Math.max(2, sug.len);
-          eh = (sh + len) % 24;
-          suggestNote = ` <b>Suggested end: ${fmtHour(eh)}</b> (${len} h)` +
-            (sug.len >= MAX_SHIFT_H ? `, the ${MAX_SHIFT_H}-hour limit for a safe shift; demand is still good after that.`
-              : sug.stopV !== null && sug.stopV !== undefined ? `, after that ${esc(b.z)} drops to ${demandName(sug.stopV).toLowerCase()}.` : '.');
-        } else len = 2;   // start is quiet: rank the next 2 hours and suggest a better time below
+          len = Math.max(120 / SLOT, sug.len);
+          em = (sm + len * SLOT) % 1440;
+          suggestNote = ` <b>Suggested end: ${fmtMin(em)}</b> (${fmtLen(len * SLOT)})` +
+            (sug.len >= MAX_SLOTS ? `, the ${MAX_SHIFT_H}-hour limit for a safe shift; demand is still good after that.`
+              : sug.stopV !== null && sug.stopV !== undefined ? `: from then ${esc(b.z)}, the busiest area at your start, drops to ${demandName(sug.stopV).toLowerCase()}.` : '.');
+        } else len = 120 / SLOT;   // start is quiet: rank the next 2 hours and suggest a better time below
       }
       const hasEnd = mode !== 'two';
-      const hrs = Array.from({ length: len }, (_, k) => new Date(start.getTime() + k * 3600000));
+      const hrs = Array.from({ length: len }, (_, k) => new Date(start.getTime() + k * SLOT_MS));   // half-hour slots
+      const endT = new Date(start.getTime() + len * SLOT_MS);
+      const winOf = r => `<span class="nw">${fmtTimeRange(hrs[r[0]], hrs[r[1]].getTime() + SLOT_MS)}</span>`;
 
       const rows = zones.map(z => {
-        const vals = hrs.map(t => demandAdj(z, t));
+        const vals = hrs.map(t => slotVal(z, t));
         const why = [...new Set(hrs.flatMap(t => boostAt(z, t).why))];
         const known = vals.filter(v => v !== null);
         const avg = known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
@@ -3715,12 +3729,12 @@
       const here = myZone(), mi = rows.findIndex(r => r.z === here);
       if (mi > 0 && rows[mi].avg >= OK && rows[0].avg - rows[mi].avg <= 0.26) rows.unshift(rows.splice(mi, 1)[0]);
 
-      const span = `${DAYS[dayIdx(hrs[0])]} ${hasEnd ? fmtRange(sh, eh) : fmtHour(sh)}`;
+      const span = `${DAYS[dayIdx(hrs[0])]} ${hasEnd ? fmtTimeRange(start, endT) : fmtTime(start)}`;
       if (!rows.length) { out.innerHTML = `<div class="empty">No Uber trend for ${span} yet.</div>`; return; }
       const top = rows[0], v = VERDICT(top.avg);
       let head;
       if (top.avg >= OK) {
-        const win = top.best ? ` Busiest ${fmtRange(hrs[top.best[0]].getHours(), hrs[top.best[1]].getHours() + 1)}.` : '';
+        const win = top.best ? ` Busiest ${winOf(top.best)}.` : '';
         head = `${v.c === 'yes' ? '🟢' : '🟡'} <b>${esc(top.z)}</b> is the best area for ${span}: ${demandName(top.avg).toLowerCase()} demand on average.${win}${suggestNote}`;
       } else {
         // Suggest the nearest better time on the same day
@@ -3733,15 +3747,15 @@
           }
         }
         head = `🔴 Not really recommended for ${span}: demand is low in every zone.` +
-          (alt ? ` Try <b>${fmtHour(alt.t.getHours())}</b> in <b>${esc(alt.b.z)}</b> instead.` : '');
+          (alt ? ` Try <b>${fmtTime(alt.t)}</b> in <b>${esc(alt.b.z)}</b> instead.` : '');
       }
       const hol = holidayOn(hrs[0]);
       if (hol) head += ` <br>📅 ${esc(hol)}: a public holiday, so the usual pattern may differ.`;
-      lastPlan = { start: hrs[0], end: new Date(hrs[0].getTime() + len * 3600000), zone: top.avg >= OK ? top.z : null, verdict: v.t };
+      lastPlan = { start: hrs[0], end: endT, zone: top.avg >= OK ? top.z : null, verdict: v.t };
       head += `<div class="cal-add"><button type="button" class="chip" onclick="addPlanToCalendar()">📅 Add to Calendar</button></div>`;
       out.innerHTML = `<div class="wn-head">${head}</div>` + rows.map(r => {
         const vv = VERDICT(r.avg);
-        const win = r.best ? `busiest ${fmtRange(hrs[r.best[0]].getHours(), hrs[r.best[1]].getHours() + 1)}` : 'no busy hours';
+        const win = r.best ? `busiest ${winOf(r.best)}` : 'no busy hours';
         return `<div class="rank-item"><div><div>${esc(r.z)}</div>` +
           `<div class="r-sub">${demandName(r.avg)} on average · ${win}${r.z === here ? ' · you’re here' : r.km !== null ? ` · ${r.km.toFixed(0)} km away` : ''}` +
           `${r.why.length ? '<br>' + esc(r.why.join(' · ')) : ''}</div></div>` +
@@ -5254,7 +5268,7 @@
       insights: ['🗓 Plan a Shift', [
         ['📍 Where to drive', 'The best area now, in 1 hour and in 2 hours; one box per area.'],
         ['📅 Calendar', 'Green dates are mostly recommended days for the area you choose; “9h” = recommended hours. ✈️ airport days, 🏟 events.'],
-        ['🕘 Choose your hours', 'Pick the day, the start and Until (Suggest, 2 hrs or an end time), all on one line. It ranks the zones for those hours. 📅 adds it to your calendar.'],
+        ['🕘 Choose your hours', 'Pick the day, the start and Until (Suggest, 2 hrs or an end time) in 30-minute steps. Suggested ends can land on the half hour. It ranks the zones for those hours. 📅 adds it to your calendar.'],
         ['✈️ Airport runs', 'City → airport and airport → city for that day, and whether you’ll likely get a ride back.'],
         ['⭐ Spots · 🏟 Events', 'Your best pickup suburbs, and events that raise demand (add your own).'],
         ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
@@ -5919,7 +5933,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.29.2';
+    const APP_VERSION = '1.30.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -6162,7 +6176,7 @@
       const dayOff = +document.getElementById('planDay').value;
       const base = new Date(); base.setHours(0, 0, 0, 0); base.setTime(base.getTime() + dayOff * 86400000);
       const hrsOfDay = Array.from({ length: 24 }, (_, k) => new Date(base.getTime() + (4 + k) * 3600000));   // 4am–3am
-      const sh = +document.getElementById('planStart').value;
+      const sm = +document.getElementById('planStart').value, sh = Math.floor(sm / 60);
       const strip = dir => hrsOfDay.map((t, k) => {
         const v = airportScore(dir, t), c = v >= GOOD ? 'yes' : v >= OK ? 'maybe' : 'no';
         return `<i class="ap-${c}${t.getHours() === sh ? ' sel' : ''}" title="${fmtHour(t.getHours())}"></i>`;
@@ -6178,16 +6192,16 @@
           .map(r => fmtRange(r.s.getHours(), r.e.getHours() + 1)).join(' and ');
       };
       // Your chosen start time
-      const st = new Date(base.getTime() + sh * 3600000 + (sh < 4 ? 86400000 : 0));
+      const st = new Date(base.getTime() + sm * 60000 + (sh < 4 ? 86400000 : 0));
       const run = airportRun(st), inNow = airportScore('in', st);
       const vo = VERDICT(run.both), vi = VERDICT(inNow);
       const peaks = allEvents().filter(e => e.zone === AIRPORT_ZONE && e.e > base.getTime() + 4 * 3600000 && e.s < base.getTime() + 28 * 3600000);
       const bo = best('out'), bi = best('in');
       box.innerHTML = `
-        <div class="rank-item"><div><div>🏙 → ✈️ City to airport at ${fmtHour(sh)}</div>
-          <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtHour(run.at.getHours())}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
+        <div class="rank-item"><div><div>🏙 → ✈️ City to airport at ${fmtMin(sm)}</div>
+          <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
           `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
-        <div class="rank-item"><div><div>✈️ → 🏙 Airport to city at ${fmtHour(sh)}</div>
+        <div class="rank-item"><div><div>✈️ → 🏙 Airport to city at ${fmtMin(sm)}</div>
           <div class="r-sub">Arrivals ${demandName(inNow).toLowerCase()} · wait in the airport queue, pick up at the Uber zone (T1, T2 or T4 car park)</div></div><i class="pill ${vi.c}">${vi.t}</i></div>
         <div class="ap-strip"><span>🏙→✈️</span><div>${strip('out')}</div></div>
         <div class="ap-strip"><span>✈️→🏙</span><div>${strip('in')}</div></div>
