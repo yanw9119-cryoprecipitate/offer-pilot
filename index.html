@@ -554,6 +554,9 @@
     .ac-sec { margin: 12px 0 4px; font-weight: 800; font-size: .88rem; }
     .ac-line { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font-size: .84rem; border-bottom: 1px dashed var(--line); }
     .ac-line span { color: var(--muted); } .ac-line b { font-variant-numeric: tabular-nums; white-space: nowrap; } .ac-line.tot { border-bottom: none; } .ac-line.tot span { color: var(--text); font-weight: 700; }
+    body:not(.show-help) .help { display: none !important; }
+    .show-help .help:not(span):not(small) { border-left: 2px solid var(--accent); padding-left: 6px; }
+    .show-help span.help, .show-help small.help { color: var(--accent); }
     .ac-note { font-size: .7rem; color: var(--muted); margin-top: 4px; line-height: 1.35; }
     .ac-hrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
     .ac-hrs div { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 10px; padding: 6px; text-align: center; display: flex; flex-direction: column; }
@@ -1699,7 +1702,7 @@
         <div class="demand-chart" id="demandChart"></div>
         <div class="demand-axis"><span>4am</span><span>12pm</span><span>8pm</span><span>3am</span></div>
       </div>
-      <div class="autoread-hint">Screenshot Uber Driver → Earnings trends (each day tab), then Import. Zone names and the day tab are read from the screenshot. You can also import a screenshot of Uber’s Discover tab to add its events and airport peaks.</div>
+      <div class="autoread-hint help">Screenshot Uber Driver → Earnings trends (each day tab), then Import. Zone names and the day tab are read from the screenshot. You can also import a screenshot of Uber’s Discover tab to add its events and airport peaks.</div>
       <div class="demand-card" style="margin-top:10px;">
         <div class="demand-title"><svg class="h-ic"><use href="#h-repeat"/></svg>Week-on-week changes</div>
         <div id="trendChanges" style="margin-top:6px;"></div>
@@ -1733,12 +1736,12 @@
       </div>
       <div class="demand-card">
         <div class="demand-title"><svg class="h-ic"><use href="#h-star"/></svg>Your best pickup spots</div>
-        <div class="demand-sub">Suburbs ranked by the $/hr of offers you got there. Turn on ⭐ Spots on the map to see them.</div>
+        <div class="demand-sub help">Suburbs ranked by the $/hr of offers you got there. Turn on ⭐ Spots on the map to see them.</div>
         <div id="spotList" style="margin-top:6px;"></div>
       </div>
       <div class="demand-card">
         <div class="demand-title"><svg class="h-ic"><use href="#h-ticket"/></svg>Events &amp; holidays · next 2 weeks</div>
-        <div class="demand-sub">Big events raise demand in their Uber zone as crowds arrive and leave. Rain raises it everywhere.</div>
+        <div class="demand-sub help">Big events raise demand in their Uber zone as crowds arrive and leave. Rain raises it everywhere.</div>
         <div id="eventList" style="margin-top:6px;"></div>
         <details class="ev-add"><summary>➕ Add your own event</summary>
           <div class="veh-grid" style="margin-top:8px;">
@@ -1754,12 +1757,12 @@
       </div>
       <div class="section-title"><svg class="h-ic"><use href="#h-trophy"/></svg>Best times to drive</div>
       <div class="rank" id="bestDrive"></div>
-      <div class="autoread-hint" style="margin-bottom:8px;">Ranked by Uber demand (60%), your offers' $/hr (25%) and surges you've seen (15%).</div>
+      <div class="autoread-hint help" style="margin-bottom:8px;">Ranked by Uber demand (60%), your offers' $/hr (25%) and surges you've seen (15%).</div>
       </div>
       <div id="planAirport">
       <div class="demand-card">
         <div class="demand-title"><svg class="h-ic"><use href="#h-plane"/></svg>Airport runs</div>
-        <div class="demand-sub">City ⇄ Melbourne Airport for the day and start time you picked in Plan.</div>
+        <div class="demand-sub help">City ⇄ Melbourne Airport for the day and start time you picked in Plan.</div>
         <div id="airportBox"></div>
       </div>
       </div>
@@ -1801,7 +1804,7 @@
           <span style="--c: var(--red)">Below</span>
           <span style="--c: rgba(148,163,184,0.25)">No data</span>
         </div>
-        <div class="detail" id="cellDetail">Tap a square for details. Brighter = more offers logged there.</div>
+        <div class="detail" id="cellDetail">Tap a square for details<span class="help">. Brighter = more offers logged there</span>.</div>
       </div>
 
       <div class="section-title"><svg class="h-ic"><use href="#h-star"/></svg>Top slots (3+ offers)</div>
@@ -1859,7 +1862,7 @@
         <span>Filled to full<small>Full-to-full fills give the most accurate economy. Partial top-ups are added to the next full one.</small></span></label>
       <div class="veh-cost" id="fillResult" hidden></div>
       <button class="pip-btn" id="fillSave" onclick="saveFill()">Save fill-up</button>
-      <div class="autoread-hint">The odometer is pre-filled from your last reading plus the distance tracked while the pilot was open. Correct it from your dashboard for exact results.</div>
+      <div class="autoread-hint help">The odometer is pre-filled from your last reading plus the distance tracked while the pilot was open. Correct it from your dashboard for exact results.</div>
     </div>
   </div>
 
@@ -1888,7 +1891,7 @@
         <h3 style="color: var(--accent);">🟣 From Uber Discover</h3>
         <button class="x-btn" onclick="closeDiscoverSheet()" aria-label="Close">✕</button>
       </div>
-      <div class="autoread-hint">Uber’s own busy windows. They raise demand in the zone (or at the airport) during that time.</div>
+      <div class="autoread-hint help">Uber’s own busy windows. They raise demand in the zone (or at the airport) during that time.</div>
       <div id="discoverList"></div>
       <button class="pip-btn" onclick="saveDiscover()">Save</button>
     </div>
@@ -1942,7 +1945,7 @@
         <button class="lvl lvl2" onclick="saveSnap(2)">🔥 Surge</button>
         <button class="lvl lvl3" onclick="saveSnap(3)">🔥🔥 Big surge</button>
       </div>
-      <div class="hint">Tap a level to save. Only use while parked.</div>
+      <div class="hint">Parked only.<span class="help"> Tap a level to save.</span></div>
     </div>
   </div>
 
@@ -1998,7 +2001,7 @@
               <input type="number" id="uberSpan" inputmode="decimal" min="1" max="50" step="0.5" onchange="saveUberCal()" /> km</label>
           </div>
           <div class="autoread-hint" id="calStatus"></div>
-          <div class="autoread-hint">Zoom the Uber map out so it shows about this many km across, and keep it centred on you. Tap “Set my car”, then tap your car on the preview. Boxes on the preview show the surge areas it can see.</div>
+          <div class="autoread-hint">Zoom out, centre on you, then Set my car.</div><div class="autoread-hint help">Zoom the Uber map out so it shows about this many km across, and keep it centred on you. Tap “Set my car”, then tap your car on the preview. Boxes on the preview show the surge areas it can see.</div>
         </div>
         <div class="tgl-list">
           <label class="tgl"><input type="checkbox" id="optAutoOutcome" onchange="saveAutoOpts()" checked />
@@ -2011,7 +2014,7 @@
           <button id="soundToggleBtn" class="active" onclick="toggleSound()">🔊 Sound: On</button>
         </div>
         <div class="autoread-hint" id="notifHelp" hidden></div>
-        <div class="autoread-hint">Share the screen showing the Uber Driver app. Each offer pops up ACCEPT or DECLINE and is logged automatically. You can close this panel while it runs.</div>
+        <div class="autoread-hint help">Share the screen showing the Uber Driver app. Each offer pops up ACCEPT or DECLINE and is logged automatically. You can close this panel while it runs.</div>
       </div>
       <div class="autoread-hint" id="ocrUnsupported" hidden>Auto-Read needs screen sharing, which iPhone browsers don't allow. It works in Chrome on Android or on a computer. On iPhone, use the keypad.</div>
     </div>
@@ -3451,7 +3454,7 @@
         const z = it.airport ? null : (it.lat != null ? zoneAt(it.lat, it.lng) : 'Melbourne City');
         return `<div class="tc-block"><label class="tc-inc"><input type="checkbox" id="dvInc${i}" checked /> ${it.airport ? '✈️' : '🏟'} <b>${esc(it.name)}</b></label>
           <div class="autoread-hint">${esc(it.place)} · ${fmt(it.start)} – ${fmtTime(it.end)}${it.level ? ' · ' + it.level + ' earnings' : it.tag ? ' · ' + esc(it.tag) : ''}</div>` +
-          (it.airport ? '<div class="autoread-hint">Raises airport pickups (' + dirIcon('in') + ') in Plan & Roster during this window.</div>'
+          (it.airport ? '<div class="autoread-hint help">Raises airport pickups (' + dirIcon('in') + ') in Plan & Roster during this window.</div>'
             : `<select id="dvZone${i}" class="sel-full" aria-label="Uber zone">${zones.map(n => `<option${n === z ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`) + '</div>';
       }).join('');
       document.getElementById('discoverSheet').style.display = 'flex';
@@ -4353,7 +4356,7 @@
       const sum = parts.length
         ? `<b>Next 7 days:</b> ${recN} of 7 recommended. Best ${parts.slice(0, 3).map((p, i) => `${i === 0 ? '' : i === parts.slice(0, 3).length - 1 ? ' and ' : ', '}<b>${p.name}</b> (${dayList(p.ds)})`).join('')}.`
         : '<b>Next 7 days:</b> no busy airport times expected.';
-      return `<div class="ap-out"><div class="ap-out-h"><svg class="h-ic"><use href="#h-cal"/></svg>Next 3 days from ${lbl(days[0].d)} <small>tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
+      return `<div class="ap-out"><div class="ap-out-h"><svg class="h-ic"><use href="#h-cal"/></svg>Next 3 days from ${lbl(days[0].d)} <small class="help">tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
     }
     function renderPlanCal() {
       const box = document.getElementById('planCal');
@@ -4718,7 +4721,7 @@
         ${n.car.items.map(x => line(`${CAR_TYPES[n.car.type].split(' ')[0]} ${x.k}`, acMoney(x.amt))).join('')}
         ${n.car.cash ? line('🏦 Loan repayments (cash, not all deductible)', acMoney(n.car.cash), 'muted') : ''}
         ${line(`Other (${n.exN})`, acMoney(n.exPaid))}
-        ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car (rental, lease, loan or own) in ⚙️ Account &amp; tax settings (below) to count its costs.</div>` : ''}
+        ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car in ⚙️ settings to count its costs.</div>` : ''}
         <div class="ac-acts one"><button type="button" class="rs-btn" onclick="openFuelCost()">＋ Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
         <div class="ac-sec"><svg class="h-ic"><use href="#h-bank"/></svg>GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
@@ -4728,7 +4731,7 @@
         ${cfg.other ? line('Other income (wages etc.)', acMoney(cfg.other)) : ''}
         ${line('Tax + Medicare on ride profit (year)', acMoney(taxRide), 'tot')}${line('Share for the year so far', acMoney(taxSoFar))}
         <div class="ac-save">Put aside about <b>${acMoney(setAside)}/week</b> for tax and GST.</div>
-        <div class="ac-note">Estimates only, not tax advice: 2026–27 resident rates (0 / 15 / 30 / 37 / 45%), 2% Medicare levy, low income tax offset. Check with a registered tax agent or the ATO.</div>
+        <div class="ac-note">Estimate only, not tax advice.</div><div class="ac-note help">2026–27 resident rates (0 / 15 / 30 / 37 / 45%), 2% Medicare levy, low income tax offset. Check with a registered tax agent or the ATO.</div>
         <button type="button" class="ac-setlink" onclick="toggleSettings(true); sxGo('acct')">⚙️ Account &amp; tax settings ›</button>`;
     }
     // Monday reminder: due once Monday's chosen time has passed and last week's statement isn't in yet
@@ -4767,7 +4770,7 @@
             <div id="acCarFields"></div>
           </div>
           <label>Monday reminder to add the statement<input type="time" id="acRemind" value="${cfg.remind || ''}"></label>
-          <div class="ac-note">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
+          <div class="ac-note help">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
           ${cfg.remind ? `<button type="button" class="rs-btn" onclick="remindToCalendar()">📅 Add the Monday reminder to my phone calendar</button>` : ''}`;
       syncCarFields();
     }
@@ -4788,7 +4791,7 @@
       if (t === 'own') h = money('acCarVal', 'Car value / price paid ($)', v('value'));
       if (t && !(t === 'rental')) h += money('acCarIns', 'Insurance per year ($)', v('ins')) + money('acCarRego', 'Rego per year ($)', v('rego'));
       if (t === 'rental') h += `<div id="acRentExtra"></div>`;
-      if (t) h += `<label>Since<input type="date" id="acCarSince" value="${c.since ? ymd(new Date(c.since)) : ''}"></label><div class="ac-note">Costs count from this date (empty = all periods).${t === 'loan' ? ' The interest part is on your loan statement; only interest and depreciation are deductible, not the whole repayment.' : ''}${t === 'loan' || t === 'own' ? ' Depreciation is an estimate (25% a year).' : ''}</div>`;
+      if (t) h += `<label>Since<input type="date" id="acCarSince" value="${c.since ? ymd(new Date(c.since)) : ''}"></label><div class="ac-note">Costs count from this date.<span class="help"> Empty = all periods.${t === 'loan' ? ' The interest part is on your loan statement; only interest and depreciation are deductible, not the whole repayment.' : ''}${t === 'loan' || t === 'own' ? ' Depreciation is an estimate (25% a year).' : ''}</span></div>`;
       box.innerHTML = h;
     }
     function saveAcctCfg() {
@@ -5204,7 +5207,7 @@
             : '<div class="autoread-hint">No busy stretches found in the next 7 days' + (Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)') + '.</div>');
       }
       box.innerHTML = `<div class="demand-title"><svg class="h-ic"><use href="#h-roster"/></svg>My roster</div>` +
-        `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}. Tap a day for Pilot's suggested shifts to take or adjust, or a shift below to change it.</div>` +
+        `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}<span class="help">. Tap a day for Pilot's suggested shifts to take or adjust, or a shift below to change it.</span></div>` +
         rosterCalHTML() +
         `<div class="rs-list">${up.length ? up.map(x => row(x)).join('') : '<div class="autoread-hint">No shifts planned yet.</div>'}</div>` +
         `<div class="rs-acts"><button type="button" class="rs-btn${rosterShowSug ? ' on' : ''}" onclick="rosterToggleSug()"><svg class="h-ic"><use href="#h-spark"/></svg>${rosterShowSug ? 'Hide suggestions' : 'Suggest shifts'}</button>` +
@@ -5443,7 +5446,7 @@
       if (!confirm('Delete all logged offers? This cannot be undone.')) return;
       saveLog([]);
       selectedCell = null;
-      document.getElementById('cellDetail').textContent = 'Tap a square for details. Brighter = more offers logged there.';
+      document.getElementById('cellDetail').textContent = 'Tap a square for details.';
       renderInsights();
     }
 
@@ -6503,7 +6506,7 @@
         const d = new Date(f.t);
         return `<div class="fl-row"><span>${f.type === 'ev' ? '⚡' : '⛽'} ${d.toLocaleDateString([], { day: 'numeric', month: 'short' })} · ${esc(f.station)}</span>` +
           `<span>${f.qty ? f.qty + ' ' + (f.type === 'ev' ? 'kWh' : 'L') : esc(f.grade || 'Fuel')}${f.paid ? ' · $' + f.paid.toFixed(2) : ''}${f.full && f.qty ? ' · full' : ''}</span></div>`;
-      }).join('') || '<div class="autoread-hint">No fill-ups yet. They’re detected when you stop at a station, or log one here.</div>';
+      }).join('') || '<div class="autoread-hint">No fill-ups yet.<span class="help"> They’re detected when you stop at a station, or log one here.</span></div>';
       box.innerHTML = html;
     }
     function applyRealEconomy() {
@@ -6807,7 +6810,7 @@
     // ---- Bottom bar: what each button does ----
     // Tap Pilot for a guide to every button; press and hold any button to see what it does without using it.
     const BAR_HELP = {
-      logo:  ['Pilot', 'Help for the page you’re on. Tap again, or anywhere, to close.'],
+      logo:  ['Pilot', 'Help for the page you’re on, and notes on every page. Tap again to hide them.'],
       gear:  ['⚙️ Settings', 'Your car and costs, offer targets, surge alerts, theme, backup, test run and your data.'],
       snap:  ['📸 Snap', 'Save a surge you see in Uber: its level, amount and where it is. Builds Live and Predicted surges.'],
       pad:   ['🔢 Keypad', 'Type an offer’s fare, time and km yourself. Opens the Drive tab; tap again to close.'],
@@ -6830,7 +6833,7 @@
       clearTimeout(barHelpT);
       const el = document.getElementById('barHelp');
       if (el) { el.hidden = true; delete el.dataset.page; }
-      const lg = document.querySelector('.side-logo'); if (lg) lg.classList.remove('on');
+      const lg = document.querySelector('.side-logo'); if (lg && !helpOn()) lg.classList.remove('on');
     }
     window.addEventListener('scroll', () => { const el = document.getElementById('barHelp'); if (el && !el.hidden) hideBarHelp(); }, { passive: true });
     // Press and hold: show the description and skip the button's action
@@ -6897,13 +6900,21 @@
         ['Good to know', 'Recommendations follow you: the page checks your location when opened and every minute.']]]
     };
     function currentTab() { const t = ['offer', 'drive', 'trends', 'insights', 'log'].find(t => document.getElementById('view-' + t).style.display !== 'none') || 'offer'; return t; }
+    // Pilot also switches on the guide notes inside each page (class "help"); off by default
+    function helpOn() { return document.body.classList.contains('show-help'); }
+    function setHelp(on) {
+      document.body.classList.toggle('show-help', on);
+      document.querySelector('.side-logo').classList.toggle('on', on);
+      if (!on) hideBarHelp();
+    }
     function togglePageHelp() {
       const el = document.getElementById('barHelp'), tab = currentTab();
-      if (!el.hidden && el.dataset.page === tab) { hideBarHelp(); return; }
+      if (helpOn()) { setHelp(false); return; }
+      setHelp(true);
       const [title, rows] = PAGE_HELP[tab];
       el.innerHTML = `<div class="bh-title">${title} <small>tap anywhere to close</small></div>` +
         rows.map(([a, b]) => `<div class="bh-row"><b>${a}</b><span>${b}</span></div>`).join('') +
-        `<div class="bh-foot">Press and hold a bottom button to see what it does.</div>`;
+        `<div class="bh-foot">Notes now show on every page (blue edge). Tap Pilot again to hide them. Press and hold a bottom button to see what it does.</div>`;
       el.dataset.page = tab;
       el.hidden = false;
       el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
@@ -6916,11 +6927,11 @@
       if (!el || !h) return;
       const stateless = ['zonesAll', 'zonesBusy', 'busy', 'city', 'locate'].includes(key);
       el.innerHTML = `<b>${h[0]}${stateless ? '' : on ? ' <span class="mh-on">ON</span>' : ' <span class="mh-off">OFF</span>'}</b>` +
-        `<div>${on || stateless ? h[1] : 'Hidden from the map. Tap again to show it.'}</div>`;
+        (helpOn() ? `<div>${on || stateless ? h[1] : 'Hidden from the map. Tap again to show it.'}</div>` : '');
       el.hidden = false;
       el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
       clearTimeout(mapHelpT);
-      mapHelpT = setTimeout(hideMapHelp, 4000);
+      mapHelpT = setTimeout(hideMapHelp, helpOn() ? 4000 : 1500);
     }
     function hideMapHelp() { clearTimeout(mapHelpT); const el = document.getElementById('mapHelp'); if (el) { el.hidden = true; el.classList.remove('show'); } }
     window.addEventListener('scroll', () => { const el = document.getElementById('mapHelp'); if (el && !el.hidden) hideMapHelp(); }, { passive: true });
@@ -7796,7 +7807,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.69.0';
+    const APP_VERSION = '1.70.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7922,7 +7933,7 @@
           <div class="autoread-hint">${st.pct >= 1 ? '🎯 Daily goal reached. Nice work.' : `$${(st.goal - st.net).toFixed(0)} to go at $${st.netHr.toFixed(0)}/hr net` +
             (st.etaH ? `: about ${fmtDur(st.etaH)} more (around ${fmtTime(Date.now() + st.etaH * 3600000)}).` : '.')}
             Started ${fmtTime(s.start)}.</div>`;
-      } else box.innerHTML = '<div class="autoread-hint">Tap Start when you go online. Trips you mark ✓ Took it (or that Auto-Read detects) count towards the goal; kilometres come from GPS while the pilot is open.</div>';
+      } else box.innerHTML = '<div class="autoread-hint">Tap Start when you go online.<span class="help"> Trips you mark ✓ Took it (or that Auto-Read detects) count towards the goal; kilometres come from GPS while the pilot is open.</span></div>';
       const hist = (() => { try { return JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) { return []; } })();
       document.getElementById('shiftHist').innerHTML = hist.length ? hist.slice(-8).reverse().map(h =>
         `<div class="fl-row"><span>${new Date(h.start).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtDur(h.hrs)} · ${h.trips} trips · ${h.km.toFixed(0)} km</span>` +
@@ -7978,7 +7989,7 @@
         `<div class="fl-row"><span>${c.diff > 0 ? '🔼' : '🔽'} <b>${DAYS[c.day]} ${c.period.toLowerCase()}</b> ${c.diff > 0 ? 'up' : 'down'} in ${esc(c.zone)}</span>` +
         `<b style="color:${c.diff > 0 ? 'var(--green)' : 'var(--red)'}">${c.diff > 0 ? '+' : ''}${(c.diff * 4).toFixed(1)} lvl</b></div>`).join('') +
         `<div class="autoread-hint">Compared with the week before · ${new Date(ch.at).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</div>`
-        : '<div class="autoread-hint">Import next week’s screenshots and changes of half a level or more show here.</div>';
+        : '<div class="autoread-hint">No changes yet.<span class="help"> Import next week’s screenshots and changes of half a level or more show here.</span></div>';
       // Refresh reminder: any day whose trend is over a week old
       const dayAt = (() => { try { return JSON.parse(lsGet('trendDayAt')) || {}; } catch (e) { return {}; } })();
       const seedAt = Math.min(...Object.values(loadTrends()).map(z => z.updated || Date.now()), Date.now());
@@ -8472,7 +8483,7 @@
             : '<div class="flr none">No passenger flights this hour</div>');
         rows.push(`<div class="flh${cls}${flPopKey === key ? ' sel' : ''}" role="button" tabindex="0" data-k="${key}" onclick="flOpenHour('${key}', this)"><div class="flh-s">${head}</div></div>`);
       }
-      return `<div class="fl-box fl-wide"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights by hour <small>${new Date(hStart).toDateString() !== new Date().toDateString() ? DAYS[dayIdx(new Date(hStart))] + ' ' : ''}${fmtHour(new Date(hStart).getHours())} to ${fmtHour(new Date(hrs[hrs.length - 1] + 3600000).getHours())} · boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · <b style="color:var(--green)">✓ Go</b> recommended, Skip not · tap an hour for every flight</small></div>` +
+      return `<div class="fl-box fl-wide"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights by hour <small>${new Date(hStart).toDateString() !== new Date().toDateString() ? DAYS[dayIdx(new Date(hStart))] + ' ' : ''}${fmtHour(new Date(hStart).getHours())} to ${fmtHour(new Date(hrs[hrs.length - 1] + 3600000).getHours())} <span class="help">· boxes: ⓝ flights, ${dirIcon('in')} arrivals or ${dirIcon('out')} departures, <b class="flc late">delayed</b> · coloured <b style="color:${AP_TIERS.high.c}">High</b> <b style="color:${AP_TIERS.med.c}">Medium</b> <b style="color:${AP_TIERS.low.c}">Low</b> · <b style="color:var(--green)">✓ Go</b> recommended, Skip not · tap an hour for every flight</span></small></div>` +
         `<div class="flh-list">${rows.join('')}</div><div class="fl-foot">${flFoot('MEL')}</div></div>`;
     }
     // Status of one flight: Cancelled, Delayed, On time, Arrived or Departed
@@ -8881,8 +8892,8 @@
         <div class="ap-strip"><span>${dirIcon('in')}</span><div>${strip('in')}</div></div>
         <div class="demand-axis ap-axis">${AXIS_HRS.map(h => `<span>${fmtHour(h)}</span>`).join('')}</div>
         ${peaks.map(e => `<div class="ap-peak">🟣 Uber: <b>${esc(e.name)}</b> ${fmtTimeRange(e.s, e.e)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}</div>`).join('')}
-        <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.
-          Estimated from typical Melbourne Airport flight times${lsGet('cfgFlightKey') ? ', live flights where loaded,' : ''} and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</div>` +
+        <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.<span class="help">
+          Estimated from typical Melbourne Airport flight times${lsGet('cfgFlightKey') ? ', live flights where loaded,' : ''} and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</span></div>` +
         flightPlanHTML(st);
       return { out: run, in: inNow };
     }
