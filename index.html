@@ -467,6 +467,18 @@
     .cal-key i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
     .cal-key i.yes { background: color-mix(in srgb, var(--green) 45%, var(--card-2)); } .cal-key i.maybe { background: color-mix(in srgb, var(--amber) 40%, var(--card-2)); } .cal-key i.no { background: var(--card-2); border: 1px solid var(--line-strong); }
     .cal-add { margin-top: 8px; }
+    .input-row { position: relative; }
+    .field-help { position: absolute; left: 0; right: 0; bottom: calc(100% + 9px); z-index: 20; background: var(--text); color: var(--bg); border-radius: 14px; padding: 9px 12px; font-size: .8rem; line-height: 1.35;
+      box-shadow: var(--shadow-strong); margin-bottom: 2px; cursor: pointer; }
+    .field-help[hidden] { display: none; }
+    .field-help::after { content: ""; position: absolute; bottom: -7px; left: var(--ax, 50%); transform: translateX(-50%); border: 7px solid transparent; border-bottom: 0; border-top-color: var(--text); }
+    .field-help b { font-size: .88rem; }
+    .field-help .fh-step { float: right; font-size: .66rem; font-weight: 800; opacity: .7; }
+    .field-help small { display: block; margin-top: 3px; opacity: .75; font-size: .7rem; }
+    .field-help.show { animation: fhIn .18s ease-out; }
+    @keyframes fhIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    :root[data-theme="contrast"] .field-help { background: var(--accent); color: #000; }
+    :root[data-theme="contrast"] .field-help::after { border-top-color: var(--accent); }
     .tn-sep { height: 1px; background: var(--line); margin: 12px 0; }
     #planResult .rank-item { background: var(--card-2); border: 1px solid var(--card-border); border-radius: 8px; margin-top: 6px; }
 
@@ -1063,15 +1075,16 @@
         </div>
       <!-- Inputs -->
       <div class="input-row">
-        <div class="input-box" onclick="setActiveField('fare'); toggleKeypad(true)" id="box-fare" style="border-color: var(--accent);">
+        <div class="field-help" id="fieldHelp" hidden onclick="event.stopPropagation(); hideFieldHelp()" role="status" aria-live="polite"></div>
+        <div class="input-box" onclick="setActiveField('fare', true); toggleKeypad(true)" id="box-fare" style="border-color: var(--accent);">
           <label>FARE ($ AUD)</label>
           <input type="text" id="fareVal" placeholder="0.00" readonly />
         </div>
-        <div class="input-box" onclick="setActiveField('mins'); toggleKeypad(true)" id="box-mins">
+        <div class="input-box" onclick="setActiveField('mins', true); toggleKeypad(true)" id="box-mins">
           <label>TIME (MIN)</label>
           <input type="text" id="minsVal" placeholder="0" readonly />
         </div>
-        <div class="input-box" onclick="setActiveField('kms'); toggleKeypad(true)" id="box-kms">
+        <div class="input-box" onclick="setActiveField('kms', true); toggleKeypad(true)" id="box-kms">
           <label>DIST (KM)</label>
           <input type="text" id="kmsVal" placeholder="0" readonly />
         </div>
@@ -1655,14 +1668,39 @@
       if (open) pad.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
-    function setActiveField(field) {
+    // What each box needs, shown as a small pop-up when you tap it (or tap it again) or press NEXT
+    const FIELD_HELP = {
+      fare: ['💵 Fare', 'The trip price on the Uber offer card, e.g. 18.50. Just the number, no $.'],
+      mins: ['⏱ Time', 'Total minutes on the offer: the pickup time plus the trip time added together, e.g. 6 + 18 = 24.'],
+      kms:  ['📏 Distance', 'Total kilometres on the offer: pickup distance plus trip distance, e.g. 2.1 + 9.4 = 11.5. Optional, but it checks $/km.']
+    };
+    function setActiveField(field, show) {
       activeField = field;
       ['fare', 'mins', 'kms'].forEach(f => {
         document.getElementById(`box-${f}`).style.borderColor = (f === field) ? 'var(--accent)' : 'var(--card-border)';
       });
+      if (show) showFieldHelp(field);
     }
+    let fieldHelpT = null;
+    function showFieldHelp(field) {
+      const tip = document.getElementById('fieldHelp'), box = document.getElementById('box-' + field);
+      if (!tip || !box) return;
+      const [title, text] = FIELD_HELP[field];
+      const step = ['fare', 'mins', 'kms'].indexOf(field) + 1;
+      tip.innerHTML = `<b>${title}</b> <span class="fh-step">${step} of 3</span><div>${text}</div>` +
+        `<small>${field === 'kms' ? 'Then check ACCEPT / DECLINE above.' : 'Type it on the keypad, then press NEXT ❯'}</small>`;
+      // Point the arrow at the box being filled
+      const row = tip.parentElement.getBoundingClientRect(), b = box.getBoundingClientRect();
+      tip.style.setProperty('--ax', `${Math.round(b.left - row.left + b.width / 2)}px`);
+      tip.hidden = false;
+      tip.classList.remove('show'); void tip.offsetWidth; tip.classList.add('show');
+      clearTimeout(fieldHelpT);
+      fieldHelpT = setTimeout(hideFieldHelp, 5000);
+    }
+    function hideFieldHelp() { const t = document.getElementById('fieldHelp'); if (t) { t.classList.remove('show'); t.hidden = true; } }
 
     function pressKey(key) {
+      clearTimeout(fieldHelpT); fieldHelpT = setTimeout(hideFieldHelp, 1500);
       if (key === '.' && data[activeField].includes('.')) return;
       data[activeField] += key;
       updateDisplay();
@@ -1674,9 +1712,9 @@
     }
 
     function nextField() {
-      if (activeField === 'fare') setActiveField('mins');
-      else if (activeField === 'mins') setActiveField('kms');
-      else setActiveField('fare');
+      if (activeField === 'fare') setActiveField('mins', true);
+      else if (activeField === 'mins') setActiveField('kms', true);
+      else setActiveField('fare', true);
     }
 
     // Adds minutes to the time field (was referenced but missing before)
@@ -5376,7 +5414,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.25.3';
+    const APP_VERSION = '1.25.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
