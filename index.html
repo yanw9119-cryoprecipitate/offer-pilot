@@ -6733,10 +6733,18 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       vecStyleNow = want; vmap.setStyle(VEC_STYLE[want]);
       document.getElementById('vecMap').classList.remove('night');
     }
+    // Street and location pills sit just under the layer buttons, however many rows those take, and never cover them
     function fitRoadPill() {
-      const rp = document.getElementById('roadPill'), lp = document.getElementById('locPill'); if (!rp || !lp || !lp.offsetWidth) return;
-      rp.style.maxWidth = Math.max(90, lp.offsetLeft - 16) + 'px';
+      const rp = document.getElementById('roadPill'), lp = document.getElementById('locPill'), ch = document.querySelector('#view-drive .map-chips');
+      if (!rp || !lp) return;
+      if (ch && map) {
+        const box = map.getContainer().getBoundingClientRect(), r = ch.getBoundingClientRect();
+        if (r.height) { const top = Math.max(8, Math.round(r.bottom - box.top + 6)) + 'px'; rp.style.top = top; lp.style.top = top; }
+      }
+      if (lp.offsetWidth) rp.style.maxWidth = Math.max(90, lp.offsetLeft - 16) + 'px';
     }
+    try { new ResizeObserver(() => fitRoadPill()).observe(document.querySelector('#view-drive .map-chips')); } catch (e) {}
+    window.addEventListener('resize', () => setTimeout(fitRoadPill, 100));
     let roadAt = null, roadBusy = false;
     async function updateRoadName(force) {
       const rp = document.getElementById('roadPill'); if (!rp || !lastFix || roadBusy) return;
@@ -7377,7 +7385,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       map.addControl(new Ctl());
       map.on('rotate', syncCompass);
       if (headUp) setHeadUp(true, true); else syncCompass();
-      syncTouchRotate(); map.on('rotate', syncCompass);
+      syncTouchRotate(); map.on('rotate', syncCompass); setTimeout(fitRoadPill, 300);
       nightMap = !wantNightMap(); setNightMap(wantNightMap());
       drawMe();
       map.on('dragstart', () => { setFollow(false); hideMapHelp(); });
@@ -8539,7 +8547,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.4';
+    const APP_VERSION = '1.78.5';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
