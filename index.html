@@ -8725,7 +8725,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.81.1';
+    const APP_VERSION = '1.81.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8874,7 +8874,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const sm = Math.floor((Date.now() - t.since) / 60000), since = t.stage !== 'idle' ? ` <small>${sm < 60 ? sm + ' min' : fmtDur(sm / 60)}</small>` : '';
       el.className = 'trip-bar ' + S.cls;
       const sub = t.stage === 'idle' ? lastTxt : [S.sub || '', t.fare ? `$${(+t.fare).toFixed(2)}` : '', t.queued ? '➕ next trip queued' : ''].filter(Boolean).join(' · ');
-      el.innerHTML = `<span class="tb-ic">${S.ic}</span><div class="tb-txt"><b>${t.stage === 'idle' ? (loadShift() || loadDrive() ? 'Waiting for offers' : 'Not on a trip') : S.txt}${since}</b>` +
+      el.innerHTML = `<span class="tb-ic">${S.ic}</span><div class="tb-txt"><b>${t.stage === 'idle' ? (loadShift() ? 'Waiting' : 'Day off') : S.txt}${since}</b>` +
         `<small>${sub}</small></div>` +
         (S.next ? `<button type="button" class="tb-next" onclick="tripAdvance()">${S.next} ›</button><button type="button" class="tb-x" onclick="tripCancel()" aria-label="Clear trip status">✕</button>` : '');
     }
