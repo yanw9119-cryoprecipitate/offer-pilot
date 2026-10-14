@@ -5167,6 +5167,9 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         <div class="ac-sec"><svg class="h-ic"><use href="#h-cash"/></svg>Pay · ${label}</div>
         ${line('Fares (incl. GST)', acMoney(n.gross))}${line('Uber service fee', '−' + acMoney(n.fee))}${n.tips ? line('Tips', acMoney(n.tips)) : ''}
         ${line('Paid to you', acMoney(n.payout), 'tot')}
+        ${(() => { const st = loadStatements().filter(x => x.trips && x.t >= a && x.t < b); if (!st.length) return '';
+          const tr = st.reduce((s2, x) => s2 + x.trips, 0), lg = st.reduce((s2, x) => { const ws = uberWeekStart(x.t); return s2 + loadLog().filter(e => e.took && e.t >= ws && e.t < ws + 7 * 86400000).length; }, 0);
+          return `<div class="ac-line ${tr > lg ? 'muted' : ''}"><span>Trips: Uber ${tr} · logged ${lg}</span><b>${tr > lg ? '⚠️ ' + (tr - lg) + ' not seen' : '✓ all logged'}</b></div>`; })()}
         <div class="ac-note">${n.sts ? `${n.sts} Uber statement${n.sts === 1 ? '' : 's'}` : ''}${n.sts && n.offers ? ' + ' : ''}${n.offers ? `${n.offers} accepted offer${n.offers === 1 ? '' : 's'} (estimate: fee taken as ${cfg.feePct}%)` : ''}${!n.sts && !n.offers ? 'No trips logged in this period.' : ''}</div>
         <div class="ac-sec"><svg class="h-ic"><use href="#h-bars"/></svg>Income · ${label}</div>
         ${line('Gross income (fares ex GST + tips)', acMoney(n.grossIncome))}${line(`Costs ex GST (fee + ${n.biz}% of fuel, car & other)`, '−' + acMoney(n.costsEx))}
@@ -5276,7 +5279,8 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     function parseStatement(text) {
       const lines = text.replace(/,(?=\d{3}\b)/g, '').split(/\n+/);
       const find = re => { for (const l of lines) { if (!re.test(l)) continue; const m = l.match(/-?\$?\s*(\d{1,6}\.\d{2})/g); if (m) return Math.abs(parseFloat(m[m.length - 1].replace(/[^\d.]/g, ''))); } return null; };
-      return { gross: find(/fares?\b|gross|trip earnings|total fare/i), fee: find(/service fee|uber fee|commission/i), tips: find(/\btips?\b/i), payout: find(/payout|total earnings|net|transferred/i) };
+      const tm = text.match(/(\d{1,4})\s+trips?\b/i);
+      return { gross: find(/fares?\b|gross|trip earnings|total fare/i), fee: find(/service fee|uber fee|commission/i), tips: find(/\btips?\b/i), payout: find(/payout|total earnings|net|transferred/i), trips: tm ? +tm[1] : null };
     }
     async function stAddPhoto(camera) {
       const r = await pickReceiptPhoto(camera); if (!r) return;
@@ -5285,6 +5289,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (p.gross) document.getElementById('stGross').value = p.gross;
       if (p.fee) document.getElementById('stFee').value = p.fee;
       if (p.tips) document.getElementById('stTips').value = p.tips;
+      if (p.trips) document.getElementById('stTrips').value = p.trips;
       document.getElementById('stPhotoBtn').innerHTML = '<span class="ok">✓ Statement added</span><button type="button" class="rs-btn" onclick="stAddPhoto(false)">📤 Upload another</button>';
       toast(p.gross ? `📄 Read fares $${p.gross}${p.fee ? ', fee $' + p.fee : ''}. Check and save.` : '📄 Saved. Type the amounts in from the statement.');
     }
@@ -5293,11 +5298,13 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const wk = weekOf(Date.now() - 7 * 86400000);
       acctSheet('💵 Uber weekly statement', `<div class="ex-photo" id="stPhotoBtn"><button type="button" class="rs-btn up" onclick="stAddPhoto(false)">📤 Upload</button></div>` +
         fld('stWeek', 'Week starting (Monday)', `type="date" value="${wk}"`) + fld('stGross', 'Gross fares incl. GST ($)', 'type="number" inputmode="decimal" step="0.01"') +
-        fld('stFee', 'Uber service fee ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTips', 'Tips ($)', 'type="number" inputmode="decimal" step="0.01"'), () => {
+        fld('stFee', 'Uber service fee ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTips', 'Tips ($)', 'type="number" inputmode="decimal" step="0.01"') + fld('stTrips', 'Trips that week', 'type="number" inputmode="numeric" step="1" min="0"'), () => {
         const w = document.getElementById('stWeek').value, g = num('stGross');
         if (!w || !(g > 0)) { toast('Enter the week and gross fares'); return false; }
         const t = uberWeekStart(new Date(w + 'T12:00').getTime()) + 3600000, list = loadStatements().filter(x => x.wk !== weekOf(t));
-        list.push({ t, wk: weekOf(t), gross: g, fee: num('stFee') || 0, tips: num('stTips') || 0, ...(stPhoto ? { imgId: stPhoto.imgId } : {}) });
+        list.push({ t, wk: weekOf(t), gross: g, fee: num('stFee') || 0, tips: num('stTips') || 0, trips: num('stTrips') > 0 ? num('stTrips') : null, ...(stPhoto ? { imgId: stPhoto.imgId } : {}) });
+        const tr = num('stTrips'), ws = uberWeekStart(t), logged = loadLog().filter(e => e.took && e.t >= ws && e.t < ws + 7 * 86400000).length;
+        if (tr > logged) setTimeout(() => toast(`📄 Uber counted ${tr} trips that week; the pilot logged ${logged}. ${tr - logged} weren’t seen by Auto-Read (pay is taken from the statement).`), 1200);
         stPhoto = null;
         lsSet('uberStatements', JSON.stringify(list)); toast('✓ Statement saved');
       });
@@ -6129,18 +6136,54 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (pendingOutcome.onTrip ? NEXT_RE.test(norm) : PICKUP_RE.test(norm)) return setOutcome(true);
       if (IDLE_RE.test(norm)) return setOutcome(false);
       // Neither seen after about 12 s: keep the pilot's verdict and ask (never guess "declined")
-      if (++pendingOutcome.goneCount >= 6) setOutcome(null);
+      if (++pendingOutcome.goneCount >= 6) { const w = { t: pendingOutcome.t, onTrip: pendingOutcome.onTrip, until: Date.now() + 120000 }; setOutcome(null); lateWatch = w; }
+    }
+    // After an unsure outcome, keep looking for 2 more minutes; a late pickup or waiting screen corrects the entry
+    let lateWatch = null;
+    function checkLate(n) {
+      if (!lateWatch) return;
+      if (Date.now() > lateWatch.until) { lateWatch = null; return; }
+      const acc = lateWatch.onTrip ? NEXT_RE.test(n) : PICKUP_RE.test(n), idle = !acc && IDLE_RE.test(n);
+      if (!acc && !idle) return;
+      const log = loadLog(), e = log.find(x => x.t === lateWatch.t); lateWatch = null;
+      if (!e) return;
+      e.took = acc; e.auto = true; saveLog(log); renderInsights();
+      toast(acc ? '🔎 Seen now: that offer was accepted ✓' : '🔎 Seen now: that offer was declined ✗');
+    }
+    // ---- Trip finished: confirm the offer it came from, or log a trip Auto-Read missed (back-dated to when it started) ----
+    const TRIP_DONE_RE = /(trip\s+(completed?|ended|finished)|you\s+earned|rate\s+(your\s+)?(rider|passenger|trip)|how\s+was\s+(your\s+)?(rider|trip)|trip\s+earnings|earnings\s+for\s+this\s+trip|fare\s+breakdown)/i;
+    function checkTripDone(n) {
+      if (!TRIP_DONE_RE.test(n)) return;
+      const m = n.match(/\$\s*(\d{1,3}(?:\.\d{1,2})?)(?!\s*\/)/); if (!m) return;
+      const fare = parseFloat(m[1]); if (!(fare >= 3 && fare <= 400)) return;
+      let seen = []; try { seen = JSON.parse(lsGet('tripDoneSeen')) || []; } catch (e) {}
+      if (seen.some(x => Math.abs(x.f - fare) < 0.01 && Date.now() - x.at < 20 * 60000)) return;   // same summary still on screen
+      seen = seen.filter(x => Date.now() - x.at < 6 * 3600000).concat([{ f: fare, at: Date.now() }]); lsSet('tripDoneSeen', JSON.stringify(seen));
+      const mins = (n.match(/(\d{1,3})\s*min/i) || [])[1], kms = (n.match(/(\d{1,3}(?:\.\d+)?)\s*km\b(?!\s*\/)/i) || [])[1];
+      const log = loadLog(), now = Date.now();
+      // the offer it came from: most recent in the last 3 h with a close fare (the final fare can differ a little: tolls, changes)
+      const near = log.filter(e => !e.completed && now - e.t < 3 * 3600000 && Math.abs(e.fare - fare) <= Math.max(3, fare * 0.15)).sort((a, b) => b.t - a.t)[0];
+      if (near) {
+        const was = near.took; near.took = true; near.completed = true; near.auto = true; saveLog(log); renderInsights();
+        toast(was ? `✓ Trip done: $${fare.toFixed(2)} confirmed` : `✓ Trip done: the $${near.fare.toFixed(2)} offer was accepted (corrected)`);
+        return;
+      }
+      const start = now - ((+mins || 20) + 3) * 60000;
+      const entry = stampLoc({ t: start, fare, mins: +mins || 0, kms: +kms || 0, took: true, src: 'completed', backfill: true, completed: true, auto: true });
+      log.push(entry); log.sort((a, b) => a.t - b.t); saveLog(log); renderInsights();
+      toast(`📝 Missed trip logged: $${fare.toFixed(2)}, back-dated to ${fmtTime(start)}`);
     }
     // While an outcome is pending and the offer has gone from the crop, also look at the whole shared screen:
     // the pickup or waiting screen is usually outside a tight crop around the offer card.
     async function outcomeFullFrame() {
-      if (!pendingOutcome || !ocrWorker || ocrVideo.readyState < 2) return;
+      if (!ocrWorker || ocrVideo.readyState < 2) return;
       const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight, w = Math.min(900, vw), h = Math.round(vh * w / vw);
       const c = outcomeFullFrame.c || (outcomeFullFrame.c = document.createElement('canvas')); c.width = w; c.height = h;
       c.getContext('2d').drawImage(ocrVideo, 0, 0, w, h);
       const { data: { text } } = await ocrWorker.recognize(c);
-      if (!pendingOutcome) return;
       const n = parseOfferText(text).norm;
+      checkTripDone(n); checkLate(n);
+      if (!pendingOutcome) return;
       if (pendingOutcome.onTrip ? NEXT_RE.test(n) : PICKUP_RE.test(n)) setOutcome(true);
       else if (IDLE_RE.test(n)) setOutcome(false);
     }
@@ -6397,7 +6440,9 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         ocrCtx.drawImage(ocrVideo, sx, sy, sw, sh, 0, 0, ocrCanvas.width, ocrCanvas.height);
         const { data: { text } } = await ocrWorker.recognize(ocrCanvas);
         applyOCRText(text);
-        if (pendingOutcome && !(data.fare && data.mins)) await outcomeFullFrame();
+        // Whole-screen look: every pass while an outcome is open, otherwise every other pass so trip-done screens aren't missed
+        fullPass = (fullPass + 1) % 2;
+        if (!(data.fare && data.mins) && (pendingOutcome || lateWatch || fullPass === 0)) await outcomeFullFrame();
         await autoSurgeSnapshot();
       } catch (e) {
         setOCRStatus(true, 'Retrying…');
@@ -6424,7 +6469,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const fare = (own || cents || any || [])[1] || null;
       return { norm, fare, mins: Math.round(mins * 10) / 10, kms: Math.round(kms * 10) / 10 };
     }
-    let offerCand = null, offerRecheckT = null, lastPickupAt = 0;
+    let offerCand = null, offerRecheckT = null, lastPickupAt = 0, fullPass = 0;
     function applyOCRText(rawText) {
       document.getElementById('ocrRawText').textContent = rawText.trim().slice(0, 300) || '(no text detected)';
       const o = parseOfferText(rawText), norm = o.norm, fareMatch = o.fare ? [o.fare, o.fare] : null;
@@ -6435,7 +6480,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const NOT_OFFER = /\b(earnings|online\s+\d|today|this week|weekly|fares|tips|promotions?|balance|cash ?out|wallet|statement|payout|trip history|activity)\b/i;
       const OFFER_WORDS = /\b(accept|match|request|uber ?x|comfort|uber ?xl|black|exclusive|pick ?up|away|trip|surge)\b/i;
       const fareVal = fareMatch ? parseFloat(fareMatch[1]) : 0;
-      const isOffer = !!fareMatch && totalMins > 0 && totalKms > 0 && fareVal >= 3 && fareVal <= 400 && totalMins <= 240 && totalKms <= 400 &&
+      const isOffer = !TRIP_DONE_RE.test(norm) && !!fareMatch && totalMins > 0 && totalKms > 0 && fareVal >= 3 && fareVal <= 400 && totalMins <= 240 && totalKms <= 400 &&
         (!NOT_OFFER.test(norm) || /\b(accept|match)\b/i.test(norm) || (OFFER_WORDS.test(norm) && !/\b(earnings|online\s+\d)\b/i.test(norm)));
       if (!isOffer && PICKUP_RE.test(norm)) lastPickupAt = Date.now();      // on a trip (pickup / navigation screen)
       // The card slides in and out, so a half-visible card can read wrong: only use an offer once two reads in a row agree.
@@ -6470,6 +6515,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         setOCRStatus(true, isOffer || pendingOutcome ? 'Watching' : fareMatch ? 'No offer on screen' : 'Watching');
       }
       checkOutcome(norm, isOffer && (confirmed || key === shownKey));
+      if (!isOffer) { checkLate(norm); checkTripDone(norm); }
       // No offer on screen: empty the boxes straight away so the verdict (and the Map pill) go back to waiting.
       // The logged offer stays; if the same offer comes back within 20 s it updates that entry instead of adding one.
       if (!isOffer && (data.fare || data.mins || data.kms)) {
@@ -8628,7 +8674,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.79.3';
+    const APP_VERSION = '1.80.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
