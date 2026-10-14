@@ -6392,9 +6392,16 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const totalMins = minMatches.reduce((s, m) => s + parseFloat(m[1]), 0);
       const totalKms = kmMatches.reduce((s, m) => s + parseFloat(m[1]), 0) + miMatches.reduce((s, m) => s + parseFloat(m[1]) * 1.60934, 0);
 
-      const newFare = fareMatch ? fareMatch[1] : null;
-      const newMins = totalMins > 0 ? String(Math.round(totalMins * 10) / 10) : null;
-      const newKms = totalKms > 0 ? String(Math.round(totalKms * 10) / 10) : null;
+      // Only a real offer card counts: a fare plus trip minutes and kilometres, at believable sizes, and not a screen that
+      // is plainly something else (Earnings, wallet, weekly summary…) unless it also shows offer words like Accept or Match.
+      const NOT_OFFER = /\b(earnings|online\s+\d|today|this week|weekly|fares|tips|promotions?|balance|cash ?out|wallet|statement|payout|trip history|activity)\b/i;
+      const OFFER_WORDS = /\b(accept|match|request|uber ?x|comfort|uber ?xl|black|exclusive|pick ?up|away|trip|surge)\b/i;
+      const fareVal = fareMatch ? parseFloat(fareMatch[1]) : 0;
+      const isOffer = !!fareMatch && totalMins > 0 && totalKms > 0 && fareVal >= 3 && fareVal <= 400 && totalMins <= 240 && totalKms <= 400 &&
+        (!NOT_OFFER.test(norm) || /\b(accept|match)\b/i.test(norm) || (OFFER_WORDS.test(norm) && !/\b(earnings|online\s+\d)\b/i.test(norm)));
+      const newFare = isOffer ? fareMatch[1] : null;
+      const newMins = isOffer ? String(Math.round(totalMins * 10) / 10) : null;
+      const newKms = isOffer ? String(Math.round(totalKms * 10) / 10) : null;
       let changed = false;
       if (newFare && newFare !== lastApplied.fare) { data.fare = newFare; lastApplied.fare = newFare; changed = true; }
       if (newMins && newMins !== lastApplied.mins) { data.mins = newMins; lastApplied.mins = newMins; changed = true; }
@@ -6406,9 +6413,9 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         const banner = document.getElementById('decisionBanner');
         banner.classList.remove('flash-update'); void banner.offsetWidth; banner.classList.add('flash-update');
       } else {
-        setOCRStatus(true, minMatches.length || kmMatches.length || miMatches.length ? 'Watching' : (pendingOutcome ? 'Watching' : 'Crop tighter'));
+        setOCRStatus(true, isOffer || pendingOutcome ? 'Watching' : fareMatch ? 'No offer on screen' : 'Watching');
       }
-      checkOutcome(norm, !!fareMatch && minMatches.length > 0);
+      checkOutcome(norm, isOffer);
     }
 
     // ================= ACCEPT / DECLINE ALERTS =================
@@ -8560,7 +8567,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.8';
+    const APP_VERSION = '1.78.9';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
