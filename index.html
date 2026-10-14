@@ -414,6 +414,20 @@
     .sb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; position: relative; }
     .sb-row span, .sb-row small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .sb-row small { color: var(--muted); font-size: .68rem; }
     .sb-go { font-size: .9rem; }
+    .shift-bar.idle { align-items: center; text-align: center; gap: 5px; padding: 10px 12px; }
+    .sb-punch { display: inline-flex; align-items: center; justify-content: center; min-width: 62%; padding: 11px 26px; border-radius: 999px;
+      background: var(--accent); color: var(--on-accent) !important; font-size: 1.12rem; font-weight: 900; letter-spacing: .2px; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+    .sb-punch:active { transform: scale(.97); }
+    .sb-meta { font-size: .72rem; color: var(--muted); font-weight: 600; }
+    .shift-bar.idle .sb-area { text-align: center; max-width: 100%; }
+    .sb-hot { font-size: .74rem; font-weight: 800; color: #ef4444; }
+    .shift-bar.beat { border-color: #ef4444; animation: sbBeat 1.2s ease-in-out infinite; }
+    .shift-bar.beat .sb-punch { background: #ef4444; animation: sbPulse 1.2s ease-in-out infinite; }
+    @keyframes sbBeat { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 14% { box-shadow: 0 0 0 4px rgba(239,68,68,.35); } 28% { box-shadow: 0 0 0 1px rgba(239,68,68,.15); } 42% { box-shadow: 0 0 0 6px rgba(239,68,68,.3); } 70% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+    @keyframes sbPulse { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.08); } 70% { transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) { .shift-bar.beat, .shift-bar.beat .sb-punch { animation: none; } }
+    .goal-line { display: flex; gap: 6px; align-items: center; } .goal-line input { flex: 1; min-width: 0; } .goal-line .rs-btn { white-space: nowrap; }
+    .goal-line .rs-btn.on { background: #7c3aed; border-color: #7c3aed; color: #fff; }
     .sb-prog { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; position: relative; }
     .sb-prog i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
     .sb-prog.time i { background: var(--accent); } .sb-prog.money i { background: var(--green); }
@@ -1893,8 +1907,9 @@
         <h3 style="color: var(--accent);">⏱ Shift</h3>
         <button class="x-btn" onclick="closeShift()" aria-label="Close">✕</button>
       </div>
-      <div class="setting-item"><label for="shiftGoal">Daily goal (take-home after car costs, $)</label>
-        <input type="number" id="shiftGoal" inputmode="decimal" step="10" min="0" oninput="onShiftGoal()" /></div>
+      <div class="setting-item"><label for="shiftGoal">Target (take-home after car costs, $)</label>
+        <div class="goal-line"><input type="number" id="shiftGoal" inputmode="decimal" step="10" min="0" oninput="onShiftGoal()" /><button type="button" class="rs-btn" id="goalAutoBtn" onclick="useAutoGoal()">✨ Auto</button></div>
+        <div class="ac-note" id="goalNote"></div></div>
       <div id="shiftNow"></div>
       <button class="pip-btn" id="shiftBtn" onclick="toggleShift()">⏱ Punch in</button>
       <div class="fl-head"><b>Past shifts</b></div>
@@ -2750,7 +2765,7 @@
       applyMapStyle();
       if (timePick) { const ch = timePick !== (is24() ? '24' : '12'); lsSet('timeFmt', timePick); timePick = null; if (ch) refreshTimes(); }
       const sg = parseFloat(document.getElementById('setShiftGoal').value);
-      if (sg > 0) { lsSet('shiftGoal', sg); const cur = loadShift(); if (cur) { cur.goal = sg; lsSet(SHIFT_KEY, JSON.stringify(cur)); } renderShiftBar(); }
+      if (sg > 0 && sg !== shiftGoal()) { setGoalMode(false, sg); renderShiftBar(); }
       toast('✓ Settings saved');
       devLockNow(true);
 
@@ -6982,7 +6997,7 @@
         ['Fare · Time · Km', 'From the Uber offer card. Time and km are pickup + trip together. Tap a box to see what goes in it.'],
         ['Gross · Per km · Net', 'Net is after fuel and servicing for those km, from your car in Settings.'],
         ['Took it / Passed', 'Logs the offer. It builds your best times and pickup spots, and counts towards your shift goal.'],
-        ['Start shift', 'Tracks time, trips, km and take-home against your daily goal.'],
+        ['⏱ Punch in', 'Tracks time, trips, km and take-home. The target ✨ follows demand over your planned hours (tap the box to set your own). The box beats red when it’s high demand where you are for 3 hours or more.'],
         ['Good to know', 'On the Map tab a green or red pill shows the same verdict, so you can keep the map open.']]],
       drive: ['🗺 Map', [
         ['🔥 number', 'Busy near you: surges, busy zones and events with drive times. Tap one to see it on the map.'],
@@ -7923,7 +7938,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.72.0';
+    const APP_VERSION = '1.73.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -7965,7 +7980,44 @@
     // Start a shift, and the pilot adds up trips you took, GPS kilometres and car costs since then.
     const SHIFT_KEY = 'shift', SHIFT_HIST_KEY = 'shiftHistory';
     function loadShift() { try { return JSON.parse(lsGet(SHIFT_KEY)); } catch (e) { return null; } }
-    function shiftGoal() { return parseFloat(lsGet('shiftGoal')) || 250; }
+    // Take-home target: Pilot suggests it from the demand over your planned hours (auto), or you set your own (manual)
+    const goalAuto = () => lsGet('shiftGoalMode') !== 'manual';
+    function setGoalMode(auto, val) {
+      lsSet('shiftGoalMode', auto ? 'auto' : 'manual');
+      if (!auto && val > 0) lsSet('shiftGoal', val);
+      const cur = loadShift(); if (cur) { cur.goalAuto = auto; if (!auto && val > 0) cur.goal = val; lsSet(SHIFT_KEY, JSON.stringify(cur)); }
+    }
+    // Your usual take-home per hour: past shifts of an hour or more (3+ of them), else your $/hr goal in Settings
+    function usualNetHr() {
+      let h = []; try { h = (JSON.parse(lsGet(SHIFT_HIST_KEY)) || []).filter(x => x.hrs >= 1 && x.net > 0); } catch (e) {}
+      if (h.length >= 3) { const t = h.slice(-20); return t.reduce((a, x) => a + x.net, 0) / t.reduce((a, x) => a + x.hrs, 0); }
+      return parseFloat(lsGet('goalHr')) || 30;
+    }
+    let goalMemo = { k: '', v: null };
+    function autoGoal(start, end, zone) {
+      const k = [Math.floor(Date.now() / 60000), start, end, zone].join('|');
+      if (goalMemo.k === k) return goalMemo.v;
+      const z = zone || myZone() || homeZone(), hrs = Math.max(1, (end - start) / 3600000);
+      const vals = []; for (let t = start; t < end; t += SLOT_MS) { const v = slotVal(z, new Date(t)); if (v !== null) vals.push(v); }
+      const avg = vals.length ? vals.reduce((a, c) => a + c, 0) / vals.length : 0.5;
+      const mult = 0.6 + 0.8 * avg;                                    // low ×0.8 · medium ×1 · high ×1.2 · very high ×1.4
+      const v = { goal: Math.max(50, Math.round(usualNetHr() * mult * hrs / 10) * 10), avg, z };
+      goalMemo = { k, v }; return v;
+    }
+    function shiftGoal(s) {
+      s = s || loadShift();
+      if (s ? s.goalAuto : goalAuto()) {
+        try { const p = s ? { start: s.start, end: s.planEnd || s.start + 4 * 3600000, zone: s.zone } : (() => { const q = shiftPlanNow(); return { start: Date.now(), end: q.end, zone: q.zone }; })();
+          return autoGoal(p.start, p.end, p.zone).goal; } catch (e) {}
+      }
+      return (s && s.goal) || parseFloat(lsGet('shiftGoal')) || 250;
+    }
+    // High demand where you are for the next 3 hours or more: the Punch in box beats
+    function highHereLong() {
+      const z = myZone() || homeZone(); let n = 0;
+      for (let t = Date.now(); n < 12; t += SLOT_MS, n++) { const v = slotVal(z, new Date(t)); if (v === null || v < GOOD) break; }
+      return n >= 6 ? { z, hrs: n / 2 } : null;
+    }
     function shiftStats(s) {
       const end = s.end || Date.now();
       const trips = loadLog().filter(e => e.t >= s.start && e.t <= end && e.took);
@@ -7973,7 +8025,7 @@
       const km = Math.max(0, (s.end ? s.km1 : trackedKm()) - s.km0);
       const cost = km * config.costPerKm, net = earn - cost;
       const hrs = Math.max((end - s.start) / 3600000, 1 / 60);
-      const goal = s.goal || shiftGoal();
+      const goal = shiftGoal(s);
       const left = Math.max(0, goal - net), netHr = net / hrs;
       return { trips: trips.length, earn, km, cost, net, hrs, netHr, goal, pct: Math.min(1, Math.max(0, net / goal)),
         etaH: left > 0 && netHr > 5 && hrs >= 0.5 ? left / netHr : null };
@@ -8003,8 +8055,11 @@
       const areaHtml = area ? `<div class="sb-area">📍 <b>${esc(area.z)}</b> ${demandName(area.v).toLowerCase()} · ${area.txt}</div>` : '';
       if (!s) {
         const p = shiftPlanNow();
-        bar.className = 'shift-bar idle';
-        bar.innerHTML = `<div class="sb-row"><span class="sb-go">⏱ Punch in</span><small>${p.src === 'roster' ? `🗓 Rostered until ${fmtTime(p.end)}` : p.src === 'pilot' ? `✨ Pilot suggests until ${fmtTime(p.end)}` : 'No suggestion yet'} · target $${shiftGoal().toFixed(0)}</small></div>` + areaHtml;
+        const hot = (() => { try { return highHereLong(); } catch (e) { return null; } })();
+        bar.className = 'shift-bar idle' + (hot ? ' beat' : '');
+        bar.innerHTML = (hot ? `<div class="sb-hot">🔥 High demand in ${esc(hot.z)} for ${hot.hrs >= 6 ? '6+' : hot.hrs} h</div>` : '') +
+          `<span class="sb-punch" role="button" onclick="event.stopPropagation(); toggleShift()">⏱ Punch in</span>` +
+          `<div class="sb-meta">${p.src === 'roster' ? `🗓 Rostered until ${fmtTime(p.end)}` : p.src === 'pilot' ? `✨ Until ${fmtTime(p.end)}` : 'No suggestion yet'} · 🎯 $${shiftGoal().toFixed(0)}${goalAuto() ? ' ✨' : ''}</div>` + areaHtml;
         return;
       }
       const st = shiftStats(s), now = Date.now(), end = s.planEnd || (s.start + 4 * 3600000);
@@ -8012,11 +8067,11 @@
       bar.className = 'shift-bar on' + (st.pct >= 1 ? ' done' : '') + (left < 0 ? ' over' : '');
       bar.innerHTML = `<div class="sb-row"><span>⏱ <b>${fmtDur(st.hrs)}</b> worked</span><small>${left >= 0 ? `${fmtDur(left)} left · ends ${fmtTime(end)}` : `${fmtDur(-left)} past ${fmtTime(end)}`}${s.planSrc === 'roster' ? ' 🗓' : s.planSrc === 'pilot' ? ' ✨' : ''}</small></div>` +
         `<div class="sb-prog time"><i style="width:${(tPct * 100).toFixed(0)}%"></i></div>` +
-        `<div class="sb-row"><span>${st.pct >= 1 ? '🎯 Target reached' : '💵'} <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}</span><small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr` : ''}${st.etaH ? ' · target ~' + fmtTime(now + st.etaH * 3600000) : ''}</small></div>` +
+        `<div class="sb-row"><span>${st.pct >= 1 ? '🎯 Target reached' : '💵'} <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}${s.goalAuto ? ' ✨' : ''}</span><small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr` : ''}${st.etaH ? ' · target ~' + fmtTime(now + st.etaH * 3600000) : ''}</small></div>` +
         `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>` + areaHtml;
     }
     function openShift() {
-      document.getElementById('shiftGoal').value = (loadShift() || {}).goal || shiftGoal();
+      document.getElementById('shiftGoal').value = shiftGoal();
       renderShiftSheet();
       document.getElementById('shiftSheet').style.display = 'flex';
     }
@@ -8030,12 +8085,23 @@
     function onShiftGoal() {
       const g = parseFloat(document.getElementById('shiftGoal').value);
       if (!(g > 0)) return;
-      lsSet('shiftGoal', g);
-      const s = loadShift(); if (s) { s.goal = g; lsSet(SHIFT_KEY, JSON.stringify(s)); }
+      setGoalMode(false, g);                                          // typing your own target switches Auto off
       renderShiftBar(); renderShiftSheet(true);
+    }
+    function useAutoGoal() {
+      setGoalMode(true); document.getElementById('shiftGoal').value = shiftGoal();
+      renderShiftBar(); renderShiftSheet(true); toast(`✨ Target follows demand: $${shiftGoal().toFixed(0)}`);
     }
     function renderShiftSheet(keepInput) {
       const s = loadShift(), box = document.getElementById('shiftNow');
+      const auto = s ? s.goalAuto : goalAuto(), gb = document.getElementById('goalAutoBtn');
+      if (gb) { gb.classList.toggle('on', !!auto); gb.textContent = auto ? '✨ Auto' : '✨ Use Pilot’s'; }
+      const gn = document.getElementById('goalNote');
+      if (gn) { try { const p = s ? { a: s.start, b: s.planEnd || s.start + 4 * 3600000, z: s.zone } : (() => { const q = shiftPlanNow(); return { a: Date.now(), b: q.end, z: q.zone }; })();
+        const g = autoGoal(p.a, p.b, p.z);
+        gn.innerHTML = auto ? `✨ From ${demandName(g.avg).toLowerCase()} demand in ${esc(g.z)} over ${fmtDur((p.b - p.a) / 3600000)} at about $${usualNetHr().toFixed(0)}/hr. Changes with demand.`
+          : `Your own target. Pilot would suggest $${g.goal}.`; } catch (e) { gn.textContent = ''; } }
+      if (!keepInput) document.getElementById('shiftGoal').value = shiftGoal(s);
       document.getElementById('shiftBtn').textContent = s ? '⏹ Punch out' : '⏱ Punch in';
       document.getElementById('shiftBtn').classList.toggle('stop', !!s);
       if (s) {
@@ -8049,7 +8115,7 @@
           <div class="autoread-hint">${st.pct >= 1 ? '🎯 Daily goal reached. Nice work.' : `$${(st.goal - st.net).toFixed(0)} to go at $${st.netHr.toFixed(0)}/hr net` +
             (st.etaH ? `: about ${fmtDur(st.etaH)} more (around ${fmtTime(Date.now() + st.etaH * 3600000)}).` : '.')}
             Started ${fmtTime(s.start)}.</div>`;
-      } else box.innerHTML = '<div class="autoread-hint">Tap Start when you go online.<span class="help"> Trips you mark ✓ Took it (or that Auto-Read detects) count towards the goal; kilometres come from GPS while the pilot is open.</span></div>';
+      } else box.innerHTML = '<div class="autoread-hint">Tap Punch in when you go online.<span class="help"> Trips you mark ✓ Took it (or that Auto-Read detects) count towards the goal; kilometres come from GPS while the pilot is open.</span></div>';
       const hist = (() => { try { return JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) { return []; } })();
       document.getElementById('shiftHist').innerHTML = hist.length ? hist.slice(-8).reverse().map(h =>
         `<div class="fl-row"><span>${new Date(h.start).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtDur(h.hrs)} · ${h.trips} trips · ${h.km.toFixed(0)} km</span>` +
@@ -8060,7 +8126,7 @@
       const s = loadShift();
       if (!s) {
         const p = shiftPlanNow();
-        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: parseFloat(document.getElementById('shiftGoal').value) || shiftGoal(), planEnd: p.end, planSrc: p.src }));
+        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: goalAuto() ? null : (parseFloat(document.getElementById('shiftGoal').value) || shiftGoal()), goalAuto: goalAuto(), zone: p.zone, planEnd: p.end, planSrc: p.src }));
         toast(`⏱ Punched in · finish around ${fmtTime(p.end)}${p.src === 'roster' ? ' (your roster)' : p.src === 'pilot' ? ' (Pilot’s suggestion)' : ''}`);
       } else {
         s.end = Date.now(); s.km1 = trackedKm();
