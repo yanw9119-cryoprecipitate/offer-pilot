@@ -6113,16 +6113,18 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     const PICKUP_RE = /(picking\s*up|pick\s*up\s+\w|heading\s+to|en\s*route|navigat|arriv|start\s*(uber)?\s*trip|swipe\s+to\s+start|waiting\s+for\s+rider|confirm\s+rider)/i;
     let pendingOutcome = null; // { t, goneCount, since }
 
+    // Accepted back-to-back (an offer arriving during a trip) shows as a queued next trip, not a new pickup screen
+    const NEXT_RE = /(next\s+(trip|pick\s*up|rider|stop|request)|up\s+next|after\s+(this|your)\s+(trip|drop)|queued|added to (your )?trip|then\s+pick)/i;
     function watchOutcome(entryT) {
       if (!autoOpt('optAutoOutcome')) return;
-      pendingOutcome = { t: entryT, goneCount: 0, since: Date.now() };
+      pendingOutcome = { t: entryT, goneCount: 0, since: Date.now(), onTrip: Date.now() - (typeof lastPickupAt === 'number' ? lastPickupAt : 0) < 45000 };
     }
 
     function checkOutcome(norm, offerVisible) {
       if (!pendingOutcome) return;
       if (Date.now() - pendingOutcome.since > 60000) { pendingOutcome = null; return; } // gave up: keep the verdict
       if (offerVisible) { pendingOutcome.goneCount = 0; return; }
-      if (PICKUP_RE.test(norm)) return setOutcome(true);
+      if (pendingOutcome.onTrip ? NEXT_RE.test(norm) : PICKUP_RE.test(norm)) return setOutcome(true);
       if (++pendingOutcome.goneCount >= 2) setOutcome(false);
     }
 
@@ -6403,6 +6405,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const fare = (own || cents || any || [])[1] || null;
       return { norm, fare, mins: Math.round(mins * 10) / 10, kms: Math.round(kms * 10) / 10 };
     }
+    let offerCand = null, offerRecheckT = null, lastPickupAt = 0;
     function applyOCRText(rawText) {
       document.getElementById('ocrRawText').textContent = rawText.trim().slice(0, 300) || '(no text detected)';
       const o = parseOfferText(rawText), norm = o.norm, fareMatch = o.fare ? [o.fare, o.fare] : null;
@@ -6415,9 +6418,25 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const fareVal = fareMatch ? parseFloat(fareMatch[1]) : 0;
       const isOffer = !!fareMatch && totalMins > 0 && totalKms > 0 && fareVal >= 3 && fareVal <= 400 && totalMins <= 240 && totalKms <= 400 &&
         (!NOT_OFFER.test(norm) || /\b(accept|match)\b/i.test(norm) || (OFFER_WORDS.test(norm) && !/\b(earnings|online\s+\d)\b/i.test(norm)));
-      const newFare = isOffer ? fareMatch[1] : null;
-      const newMins = isOffer ? String(Math.round(totalMins * 10) / 10) : null;
-      const newKms = isOffer ? String(Math.round(totalKms * 10) / 10) : null;
+      if (!isOffer && PICKUP_RE.test(norm)) lastPickupAt = Date.now();      // on a trip (pickup / navigation screen)
+      // The card slides in and out, so a half-visible card can read wrong: only use an offer once two reads in a row agree.
+      // After a new reading, a quick second read follows 0.4 s later so the confirmed numbers show within about a second.
+      const key = isOffer ? [fareMatch[1], Math.round(totalMins * 10) / 10, Math.round(totalKms * 10) / 10].join('|') : '';
+      const shownKey = [lastApplied.fare, lastApplied.mins, lastApplied.kms].join('|');
+      let confirmed = false;
+      if (isOffer && key !== shownKey) {
+        if (offerCand === key) confirmed = true;
+        else {
+          offerCand = key; setOCRStatus(true, 'Reading offer…'); clearTimeout(offerRecheckT); offerRecheckT = setTimeout(runOCRPass, 400);
+          if (data.fare || data.mins || data.kms) { data = { fare: '', mins: '', kms: '' }; document.getElementById('decisionToast').classList.remove('show'); updateDisplay(); }   // old numbers off at once
+        }
+      }
+      if (!isOffer) offerCand = null;
+      // A different offer replacing one still waiting for its outcome (back-to-back or a quick new request): the first one was passed
+      if (confirmed && pendingOutcome && lastApplied.fare && lastApplied.fare !== fareMatch[1]) setOutcome(false);
+      const newFare = confirmed ? fareMatch[1] : null;
+      const newMins = confirmed ? String(Math.round(totalMins * 10) / 10) : null;
+      const newKms = confirmed ? String(Math.round(totalKms * 10) / 10) : null;
       let changed = false;
       if (newFare && newFare !== lastApplied.fare) { data.fare = newFare; lastApplied.fare = newFare; changed = true; }
       if (newMins && newMins !== lastApplied.mins) { data.mins = newMins; lastApplied.mins = newMins; changed = true; }
@@ -6428,10 +6447,10 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         setOCRStatus(true, 'Offer ✓');
         const banner = document.getElementById('decisionBanner');
         banner.classList.remove('flash-update'); void banner.offsetWidth; banner.classList.add('flash-update');
-      } else {
+      } else if (!(isOffer && !confirmed && key !== shownKey)) {
         setOCRStatus(true, isOffer || pendingOutcome ? 'Watching' : fareMatch ? 'No offer on screen' : 'Watching');
       }
-      checkOutcome(norm, isOffer);
+      checkOutcome(norm, isOffer && (confirmed || key === shownKey));
       // No offer on screen: empty the boxes straight away so the verdict (and the Map pill) go back to waiting.
       // The logged offer stays; if the same offer comes back within 20 s it updates that entry instead of adding one.
       if (!isOffer && (data.fare || data.mins || data.kms)) {
@@ -8590,7 +8609,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.79.1';
+    const APP_VERSION = '1.79.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
