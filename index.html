@@ -426,9 +426,15 @@
     @keyframes sbBeat { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 14% { box-shadow: 0 0 0 4px rgba(239,68,68,.35); } 28% { box-shadow: 0 0 0 1px rgba(239,68,68,.15); } 42% { box-shadow: 0 0 0 6px rgba(239,68,68,.3); } 70% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
     @keyframes sbPulse { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.08); } 70% { transform: scale(1); } }
     @media (prefers-reduced-motion: reduce) { .shift-bar.beat, .shift-bar.beat .sb-punch { animation: none; } }
+    .sb-drv { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; position: relative; }
+    .sb-drv small { font-size: .68rem; color: var(--muted); font-weight: 600; }
+    .sb-dbtn { font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--green); color: var(--green); background: var(--card); }
+    .sb-dbtn.on { background: color-mix(in srgb, var(--green) 14%, var(--card)); }
+    .shift-bar.on .sb-drv { justify-content: flex-start; }
+    .req { font-size: .62rem; color: #ef4444; font-weight: 800; margin-left: 4px; } #vehOdo.need { outline: 2px solid #ef4444; }
     .sb-car { align-self: center; font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); }
     .shift-bar.on .sb-car { align-self: flex-start; }
-    .rg-acts { display: flex; gap: 6px; margin-top: 8px; } .rg-acts .rs-btn { flex: 1; }
+    .rg-acts { display: flex; gap: 6px; margin-top: 8px; } .rg-acts .rs-btn { flex: 1; white-space: nowrap; padding: 7px 6px; font-size: .74rem; }
     .rg-info { font-size: .8rem; color: var(--muted); margin-top: 6px; cursor: pointer; }
     .rg-one .veh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; } .rg-one .veh-grid > .ac-note, .rg-one .veh-grid > .setting-item:first-of-type { grid-column: 1 / -1; }
     .rg-auto input, .rg-auto select { background: color-mix(in srgb, #7c3aed 10%, var(--card-2)) !important; border-color: #a78bfa !important; }
@@ -2185,6 +2191,8 @@
         <div class="sx-field"><label for="vehRego">Number plate (rego)</label><input id="vehRego" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. ABC123" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,''); if (garCar()) { garCar().rego = this.value; garChips(); }" />
           <div class="rg-acts"><button type="button" class="rs-btn" onclick="regoCheck()">🔎 Rego check</button><button type="button" class="rs-btn" onclick="regoUpload()">📤 Upload</button><button type="button" class="rs-btn" onclick="regoSheet()">✏️ Enter</button></div>
           <div class="rg-info" id="regoInfo"></div></div>
+        <div class="sx-field"><label for="vehOdo">Odometer now (km) <b class="req">required</b></label><input id="vehOdo" type="number" inputmode="numeric" min="0" step="1" placeholder="from the dashboard" oninput="garOdoEdited = true; this.classList.remove('need')" />
+          <div class="rg-info" id="odoInfo"></div></div>
         <div class="sx-field"><label for="vehKind">Type</label><input id="vehKind" type="text" autocomplete="off" placeholder="e.g. Hybrid SUV, Electric" oninput="syncKindLabels()" /></div>
         <div class="sx-field" hidden><label for="vehModel">Model</label>
           <select id="vehModel" onchange="onVehicleChange()">
@@ -2777,6 +2785,7 @@
     };
 
     function saveSettings() {
+      if (!garValid()) return;
       config.minGrossHr = parseFloat(document.getElementById('cfgMinHr').value) || 42.0;
       config.minRateKm = parseFloat(document.getElementById('cfgMinKm').value) || 1.20;
       config.costPerKm = parseFloat(document.getElementById('cfgCostKm').value) || 0.14;
@@ -4722,7 +4731,9 @@
     }
     function setActiveCar(id) {
       const c = loadCars().find(x => x.id === id); if (!c) return;
+      const dr = loadDrive(); if (dr && dr.car !== id) { endDrive(true); }
       lsSet('carActive', id); applyCarToVeh(c);
+      if (dr && dr.car !== id) startDrive(false);
       const cur = loadShift(); if (cur && !cur.car) { cur.car = id; lsSet(SHIFT_KEY, JSON.stringify(cur)); }
       try { updateDisplay(); } catch (e) {} try { renderShiftBar(); } catch (e) {} try { renderAccount(); } catch (e) {} syncDriveFuelBtn();
       toast(`🚗 Driving ${carLabel(c)} · $${config.costPerKm.toFixed(2)}/km`);
@@ -4757,6 +4768,7 @@
     function garStore() {
       const c = garCar(); if (!c) return;
       c.rego = document.getElementById('vehRego').value.trim().toUpperCase();
+      const od = vv('vehOdo'); if (od > 0 && (garOdoEdited || !(c.odo > 0))) { c.odo = Math.round(od); c.odoAt = Date.now(); c.odoKm = carKm(c.id); }
       c.kind = document.getElementById('vehKind').value.trim(); c.model = 'custom';
       c.name = document.getElementById('vehName').value.trim();
       c.l100 = vv('vehL100') || c.l100; c.maint = isNaN(vv('vehMaint')) ? c.maint : vv('vehMaint'); c.fuel = vv('vehFuel') || c.fuel;
@@ -4766,6 +4778,9 @@
     function garLoad() {
       const c = garCar(); if (!c) return;
       document.getElementById('vehRego').value = c.rego || '';
+      document.getElementById('vehOdo').value = carOdo(c) || ''; garOdoEdited = false; document.getElementById('vehOdo').classList.remove('need');
+      const oi = document.getElementById('odoInfo');
+      if (oi) oi.textContent = c.odo > 0 ? `Last reading ${Math.round(c.odo).toLocaleString()} km on ${new Date(c.odoAt || Date.now()).toLocaleDateString([], { day: 'numeric', month: 'short' })}${carOdo(c) > c.odo ? ` · +${(carOdo(c) - c.odo).toLocaleString()} km tracked since` : ''}` : 'Needed to keep your kilometre records.';
       document.getElementById('vehKind').value = c.kind || '';
       document.getElementById('vehModel').value = 'custom';
       document.getElementById('vehName').value = c.name || '';
@@ -4787,13 +4802,22 @@
       garStore();
       const c = { id: 'c' + Date.now().toString(36), rego: '', kind: '', model: 'custom', name: '', l100: veh.l100, maint: veh.maint, fuel: veh.fuel, arr: null };
       garDraft.cars.push(c); garDraft.active = c.id; garLoad();
-      setTimeout(() => document.getElementById('vehRego').focus(), 50);
+      setTimeout(() => document.getElementById('vehOdo').focus(), 50);
     }
     function garRemove(btn) {
       if (garDraft.cars.length < 2) return;
       if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Tap again to remove'; return; }
       garDraft.cars = garDraft.cars.filter(c => c.id !== garDraft.active); garDraft.active = garDraft.cars[0].id; garLoad();
       toast('Car removed. Its fuel, costs and shifts stay in your records.');
+    }
+    // Every car needs an odometer reading before Save
+    function garValid() {
+      if (!garDraft.cars.length) return true;
+      garStore();
+      const miss = garDraft.cars.find(c => !(c.odo > 0)); if (!miss) return true;
+      if (miss.id !== garDraft.active) { garDraft.active = miss.id; garLoad(); }
+      sxGo('vehicle'); setTimeout(() => { const el = document.getElementById('vehOdo'); el.focus(); el.classList.add('need'); }, 120);
+      toast(`Enter the odometer for ${carShort(miss)} to save`); return false;
     }
     function garSave() {
       if (!garDraft.cars.length) return;
@@ -4948,12 +4972,14 @@
       const shifts = hist.filter(h => mine(h) && h.start >= a && h.start < b);
       const offers = loadLog().filter(e => e.took && mine(e) && e.t >= a && e.t < b);
       const arr = carCosts(a, b, id);
+      const drives = loadDriveLog().filter(x => x.car === id && x.s >= a && x.s < b);
       const fuelPaid = fuel.reduce((s, f) => s + (f.paid || 0), 0), fuelGst = fuel.reduce((s, f) => s + (f.paid ? (f.gst != null && f.gst !== '' ? +f.gst : f.paid / 11) : 0), 0);
       const exPaid = ex.reduce((s, x) => s + x.amt, 0), exGst = ex.reduce((s, x) => s + (x.gst ? (+x.gstAmt || x.amt / 11) : 0), 0);
       const total = fuelPaid + exPaid + arr.total, gst = fuelGst + exGst + arr.gst;
       return { c, fuel, ex, shifts, offers, arr, fuelPaid, fuelGst, exPaid, exGst, total, gst, biz: cfg.biz,
         credits: gst * biz, deduct: (total - gst) * biz, km: shifts.reduce((s, h) => s + (h.km || 0), 0), hrs: shifts.reduce((s, h) => s + (h.hrs || 0), 0),
-        fares: offers.reduce((s, e) => s + e.fare, 0), litres: fuel.reduce((s, f) => s + (f.qty || 0), 0) };
+        fares: offers.reduce((s, e) => s + e.fare, 0), litres: fuel.reduce((s, f) => s + (f.qty || 0), 0),
+        drives, allKm: drives.reduce((s, x) => s + x.km, 0), odoS: (drives.find(x => x.odoS) || {}).odoS, odoE: ([...drives].reverse().find(x => x.odoE) || {}).odoE };
     }
     function carStatementSheet(id) {
       if (document.getElementById('settingsModal').style.display === 'block' && garDraft.cars.length) { garStore(); }
@@ -4980,6 +5006,8 @@
         rows.push([], ['Arrangement costs', 'Amount', 'GST']); d.arr.items.forEach(x => rows.push([x.k, m2(x.amt), m2(x.gst ? x.amt / 11 : 0)]));
         rows.push([], ['Fuel / charging', 'Date', 'Station', 'Grade', 'Qty', 'Paid', 'GST', 'Receipt photo']); d.fuel.forEach(f => rows.push(['', day(f.t), f.station || '', f.grade || f.type, f.qty || '', m2(f.paid), m2(f.gst != null ? f.gst : (f.paid || 0) / 11), f.imgId ? 'yes' : 'no']));
         rows.push([], ['Other costs', 'Date', 'What', 'Amount', 'GST', 'Receipt photo']); d.ex.forEach(x => rows.push(['', day(x.t), x.what || '', m2(x.amt), m2(x.gst ? (x.gstAmt || x.amt / 11) : 0), x.imgId ? 'yes' : 'no']));
+        rows.push([], ['Kilometres', 'Odometer start', 'Odometer end', 'All km (GPS)', 'On-shift km', 'Business %'], ['', d.odoS || '', d.odoE || '', m2(d.allKm), m2(d.km), d.allKm > 1 ? Math.min(100, d.km / d.allKm * 100).toFixed(0) : '']);
+        rows.push([], ['Driving log', 'Date', 'Start', 'End', 'Km', 'Odometer start', 'Odometer end']); d.drives.forEach(x => rows.push(['', day(x.s), fmtTime(x.s), fmtTime(x.e), m2(x.km), x.odoS || '', x.odoE || '']));
         rows.push([], ['Shifts', 'Date', 'Start', 'End', 'Hours', 'Km', 'Trips', 'Take-home']); d.shifts.forEach(h => rows.push(['', day(h.start), fmtTime(h.start), h.end ? fmtTime(h.end) : '', m2(h.hrs), m2(h.km), h.trips || 0, m2(h.net)]));
         saveFile(file + '.csv', rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv'); toast('📊 Car statement saved'); return;
       }
@@ -4990,13 +5018,15 @@
 .m{color:#666}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:4px 6px;border-bottom:1px solid #ddd}th{background:#f3f4f6}td{white-space:nowrap}td:nth-child(2){white-space:normal}
 .kv td:first-child{width:55%}.kv td:last-child{text-align:right;font-weight:600}.tot td{font-weight:800;border-top:2px solid #111}@media print{body{margin:10mm}}</style></head><body>
 <h1>Vehicle statement · ${esc(c.rego || 'no rego')}</h1><div class="m">${esc(carName(c))}${c.year ? ' (' + esc(c.year) + ')' : ''} · ${esc(c.kind || c.body || '')}${c.colour ? ' · ' + esc(c.colour) : ''} · ${esc(arrName)}${c.regoExp ? ' · rego to ' + day(c.regoExp) : ''} · ${esc(label)} (${day(a || from)} – ${day(to)}) · made ${day(Date.now())} with Offer Pilot</div>
-<h2>Summary</h2><table class="kv">${[['Shifts', d.shifts.length], ['Hours worked', d.hrs.toFixed(1) + ' h'], ['Kilometres on shift (GPS)', d.km.toFixed(1) + ' km'], [/electric|\bev\b/i.test(c.kind || '') ? 'Energy added' : 'Fuel added', d.litres.toFixed(1) + (/electric|\bev\b/i.test(c.kind || '') ? ' kWh' : ' L')],
+<h2>Summary</h2><table class="kv">${[['Shifts', d.shifts.length], ['Hours worked', d.hrs.toFixed(1) + ' h'], ['Odometer (start → end of period)', d.odoS ? `${d.odoS.toLocaleString()} → ${(d.odoE || d.odoS).toLocaleString()} km` : '—'],
+  ['All kilometres driven (GPS)', d.allKm.toFixed(1) + ' km'], ['Kilometres on shift (GPS)', d.km.toFixed(1) + ' km'], ['Business share by kilometres', d.allKm > 1 ? Math.min(100, d.km / d.allKm * 100).toFixed(0) + '%' : '—'], [/electric|\bev\b/i.test(c.kind || '') ? 'Energy added' : 'Fuel added', d.litres.toFixed(1) + (/electric|\bev\b/i.test(c.kind || '') ? ' kWh' : ' L')],
   ['Accepted offers (your share, estimate)', '$' + m2(d.fares)], ['Car costs incl. GST', '$' + m2(d.total)], ['GST included in car costs', '$' + m2(d.gst)],
   [`GST credits (${d.biz}% business use)`, '$' + m2(d.credits)]].map(r => tr(r)).join('')}<tr class="tot"><td>Deductible car costs ex GST (${d.biz}% business use)</td><td>$${m2(d.deduct)}</td></tr></table>
 <h2>Arrangement · ${esc(arrName)}</h2>${tbl(['Item', 'Amount', 'GST'], d.arr.items.map(x => [esc(x.k), '$' + m2(x.amt), '$' + m2(x.gst ? x.amt / 11 : 0)]), 'No arrangement costs in this period (set it in Settings → Vehicle).')}
 ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deductible): $${m2(d.arr.cash)}</p>` : ''}
 <h2>Fuel &amp; charging</h2>${tbl(['Date', 'Station', 'Grade', 'Qty', 'Paid', 'GST', 'Receipt'], d.fuel.map(f => [day(f.t), esc(f.station || ''), esc(f.grade || f.type || ''), f.qty ? f.qty + (f.type === 'ev' ? ' kWh' : ' L') : '', '$' + m2(f.paid), '$' + m2(f.gst != null ? f.gst : (f.paid || 0) / 11), f.imgId ? '✓' : '']), 'No fuel or charging receipts.')}
 <h2>Other costs</h2>${tbl(['Date', 'What', 'Amount', 'GST', 'Receipt'], d.ex.map(x => [day(x.t), esc(x.what || ''), '$' + m2(x.amt), '$' + m2(x.gst ? (x.gstAmt || x.amt / 11) : 0), x.imgId ? '✓' : '']), 'No other costs.')}
+<h2>Driving log (all trips with this car)</h2>${tbl(['Date', 'Start', 'End', 'Km', 'Odometer'], d.drives.map(x => [day(x.s), fmtTime(x.s), fmtTime(x.e), x.km.toFixed(1), x.odoS ? `${x.odoS.toLocaleString()} → ${(x.odoE || x.odoS).toLocaleString()}` : '']), 'No drives recorded with this car.')}
 <h2>Shifts (log of business use)</h2>${tbl(['Date', 'Start', 'End', 'Hours', 'Km', 'Trips', 'Take-home'], d.shifts.map(h => [day(h.start), fmtTime(h.start), h.end ? fmtTime(h.end) : '', (h.hrs || 0).toFixed(1), (h.km || 0).toFixed(1), h.trips || 0, '$' + m2(h.net)]), 'No shifts recorded with this car.')}
 <p class="m" style="margin-top:20px">Estimates from the records on this phone, not tax advice. Receipt photos: Settings → Your data → download receipts. Business use is ${d.biz}% (Settings → Account &amp; tax); a logbook may be needed to claim it. Check with a registered tax agent or the ATO.</p>
 </body></html>`;
@@ -6848,7 +6878,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         const d = distM(lastKmFix.lat, lastKmFix.lng, fix.lat, fix.lng);
         const dt = (fix.t - lastKmFix.t) / 1000;
         if (d < 15) return;                    // jitter: wait for real movement
-        if (dt > 0 && d / dt < 45) lsSet('gpsKm', (trackedKm() + d / 1000).toFixed(3)); // < 160 km/h
+        if (dt > 0 && d / dt < 45) { lsSet('gpsKm', (trackedKm() + d / 1000).toFixed(3)); try { countCarKm(d / 1000); } catch (e) {} } // < 160 km/h
       }
       lastKmFix = { lat: fix.lat, lng: fix.lng, t: fix.t };
     }
@@ -6921,7 +6951,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       document.getElementById('fillQty').value = '';
       document.getElementById('fillPaid').value = '';
       // Odometer guess: last reading + km tracked since then
-      const guess = last && last.odo ? Math.round(last.odo + (trackedKm() - (last.gpsKm || 0))) : '';
+      const guess = carOdo(activeCar()) || (last && last.odo ? Math.round(last.odo + (trackedKm() - (last.gpsKm || 0))) : '');
       document.getElementById('fillOdo').value = guess;
       document.getElementById('fillFull').checked = true;
       syncFillLabels();
@@ -6991,6 +7021,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         paid: paid > 0 ? paid : null, odo: odo > 0 ? odo : null, full: document.getElementById('fillFull').checked, gpsKm: trackedKm(),
         ...(rc ? { gst: rc.gst ? +rc.gst : null, imgId: rc.imgId, rcDate: rc.date } : {}) });
       saveFills(fills);
+      if (odo > 0) setCarOdo(activeCarId(), odo);                      // a dashboard reading keeps the car's odometer right
       try { renderAccount(); } catch (e) {}                             // the fill-up (and its receipt) shows in Account straight away
       const mineF = fills.filter(f => carOf(f) === activeCarId()), e = economyFor(mineF, mineF.length - 1);
       const unit = type === 'ev' ? 'kWh' : 'L';
@@ -7043,6 +7074,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m${compassOn ? ' · 🧭' : ''}`);
       addTrackedKm(lastFix);
       checkFuelStop(lastFix);
+      try { detectDriving(lastFix); } catch (e) {}
       glideTo(lastFix);
       if (!map) return;
       drawMe();
@@ -7381,6 +7413,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         ['Verdict', 'ACCEPT or DECLINE using your targets: gross $/hr and $/km (Settings → Offer targets).'],
         ['Fare · Time · Km', 'From the Uber offer card. Time and km are pickup + trip together. Tap a box to see what goes in it.'],
         ['Gross · Per km · Net', 'Net is after fuel and servicing for those km, from your car in Settings.'],
+        ['🚗 ▶ Start driving', 'Counts kilometres for the car you’re driving, punched in or not (it also starts by itself once you’re moving, and stops after 15 min parked). The odometer stays up to date from them; enter a dashboard reading on a fill-up to correct it.'],
         ['Accepted / Declined', 'Logs the offer. It builds your best times and pickup spots, and counts towards your shift goal.'],
         ['⛽ Fuel / ⚡ Charge', 'Log a fill-up or charge by hand (stops at a servo are still detected). Upload the receipt to fill it in; it shows in Account too.'],
         ['⏱ Punch in', 'Tracks time, trips, km and take-home. The target ✨ follows demand over your planned hours (tap the box to set your own). The box beats red when it’s high demand where you are for 3 hours or more.'],
@@ -8324,7 +8357,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.76.0';
+    const APP_VERSION = '1.77.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8435,9 +8468,65 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       return { z: b.z, v: b.v, txt: `🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min · ${q.r.km.toFixed(1)} km` };
     }
     // The car you're driving, on the Drive page; tap to switch (shown once you have more than one car, or a rego)
+
+    // ---- 🛣 Odometer and kilometre log for each car. GPS kilometres count for the car you're driving whenever the pilot
+    // is open and a drive is on (tap Start driving, or it starts by itself once you're moving), punched in or not. ----
+    let garOdoEdited = false;
+    const carKm = id => parseFloat(lsGet('carKm:' + id)) || 0;               // GPS km counted for this car, ever
+    function carOdo(c) { return c && c.odo > 0 ? Math.round(c.odo + Math.max(0, carKm(c.id) - (c.odoKm || 0))) : null; }
+    function setCarOdo(id, odo) {                                             // a new dashboard reading recalibrates the count
+      const cars = loadCars(), c = cars.find(x => x.id === id); if (!c || !(odo > 0)) return;
+      c.odo = Math.round(odo); c.odoAt = Date.now(); c.odoKm = carKm(id); saveCars(cars);
+      const d = loadDrive(); if (d && d.car === id) { d.odoS = d.odoS || c.odo; lsSet('drive', JSON.stringify(d)); }
+    }
+    const loadDrive = () => { try { return JSON.parse(lsGet('drive')) || null; } catch (e) { return null; } };
+    const loadDriveLog = () => { try { return JSON.parse(lsGet('driveLog')) || []; } catch (e) { return []; } };
+    function startDrive(auto) {
+      const c = activeCar(); if (!c) return;
+      if (!(c.odo > 0)) { toast(`Enter ${carShort(c)}’s odometer first`, 'Enter', () => { toggleSettings(true); sxGo('vehicle'); setTimeout(() => document.getElementById('vehOdo').focus(), 200); }); return; }
+      const cur = loadDrive(); if (cur && cur.car === c.id) return;
+      if (cur) endDrive(true);
+      lsSet('drive', JSON.stringify({ car: c.id, s: Date.now(), km: 0, odoS: carOdo(c), auto: !!auto, lastMove: Date.now() }));
+      try { renderShiftBar(); } catch (e) {}
+      toast(auto ? `🚗 Moving: counting km for ${carShort(c)}` : `▶ Driving ${carShort(c)} · odometer ${carOdo(c).toLocaleString()} km`, auto ? 'Change car' : null, auto ? pickCar : null);
+    }
+    function endDrive(quiet, at) {
+      const d = loadDrive(); if (!d) return;
+      const c = loadCars().find(x => x.id === d.car), e = at || Date.now();
+      if (d.km >= 0.2 || e - d.s > 5 * 60000) {
+        const log = loadDriveLog(); log.push({ car: d.car, s: d.s, e, km: +d.km.toFixed(2), odoS: d.odoS, odoE: carOdo(c) });
+        lsSet('driveLog', JSON.stringify(log.slice(-2000)));
+      }
+      lsDel('drive'); try { renderShiftBar(); } catch (x) {}
+      if (!quiet) toast(`■ Drive saved · ${d.km.toFixed(1)} km · odometer ${(carOdo(c) || 0).toLocaleString()} km`);
+    }
+    function toggleDrive() { if (loadDrive()) { endDrive(); lsSet('driveOffAt', Date.now()); } else startDrive(false); }
+    // Called with each GPS step the pilot counts (metres → km)
+    function countCarKm(kmStep) {
+      const d = loadDrive(); if (!d) return;
+      lsSet('carKm:' + d.car, (carKm(d.car) + kmStep).toFixed(3));
+      d.km += kmStep; d.lastMove = Date.now(); lsSet('drive', JSON.stringify(d));
+    }
+    // Detect driving: moving faster than 15 km/h for about 45 s starts a drive; parked for 15 min ends it
+    let movingSince = 0;
+    function detectDriving(fix) {
+      const fast = (fix.speed || 0) > 4.2, d = loadDrive();
+      if (d) {
+        if (fast) { d.lastMove = Date.now(); lsSet('drive', JSON.stringify(d)); }
+        else if (Date.now() - (d.lastMove || d.s) > 15 * 60000) endDrive(false, d.lastMove || Date.now());
+        return;
+      }
+      if (!fast) { movingSince = 0; return; }
+      if (!movingSince) movingSince = Date.now();
+      if (Date.now() - movingSince > 45000 && Date.now() - (parseFloat(lsGet('driveOffAt')) || 0) > 20 * 60000) { movingSince = 0; startDrive(true); }
+    }
+    setInterval(() => { const d = loadDrive(); if (d && Date.now() - (d.lastMove || d.s) > 15 * 60000) endDrive(false, d.lastMove); }, 60000);
     function carPill(id) {
-      try { const c = id ? loadCars().find(x => x.id === id) : activeCar(); if (!c || (loadCars().length < 2 && !c.rego)) return '';
-        return `<span class="sb-car" role="button" onclick="event.stopPropagation(); pickCar()">🚗 ${esc(carShort(c))}${loadCars().length > 1 ? ' ▾' : ''}</span>`; } catch (e) { return ''; }
+      try { const c = id ? loadCars().find(x => x.id === id) : activeCar(); if (!c) return '';
+        const d = loadDrive(), on = d && d.car === c.id;
+        return `<div class="sb-drv"><span class="sb-car" role="button" onclick="event.stopPropagation(); pickCar()">🚗 ${esc(carShort(c))}${loadCars().length > 1 ? ' ▾' : ''}</span>` +
+          `<span class="sb-dbtn${on ? ' on' : ''}" role="button" onclick="event.stopPropagation(); toggleDrive()">${on ? `🟢 ${d.km.toFixed(1)} km · ■ Stop` : '▶ Start driving'}</span>` +
+          `<small>${carOdo(c) ? carOdo(c).toLocaleString() + ' km' : 'odometer not set'}</small></div>`; } catch (e) { return ''; }
     }
     function renderShiftBar() {
       const bar = document.getElementById('shiftBar');
@@ -8518,6 +8607,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (!s) {
         const p = shiftPlanNow();
         lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: goalAuto() ? null : (parseFloat(document.getElementById('shiftGoal').value) || shiftGoal()), goalAuto: goalAuto(), zone: p.zone, car: activeCarId(), planEnd: p.end, planSrc: p.src }));
+        if (!loadDrive()) startDrive(false);
         toast(`⏱ Punched in · finish around ${fmtTime(p.end)}${p.src === 'roster' ? ' (your roster)' : p.src === 'pilot' ? ' (Pilot’s suggestion)' : ''}`);
       } else {
         s.end = Date.now(); s.km1 = trackedKm();
