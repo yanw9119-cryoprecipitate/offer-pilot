@@ -4811,6 +4811,13 @@
       window.open(REGO_CHECK_URL, '_blank', 'noopener');
       toast(plate ? `📋 ${plate} copied: paste it in, then screenshot the result and tap Upload` : 'Enter the plate, then screenshot the result and tap Upload');
     }
+    // Body types used for rideshare (UberX: sedan, hatch, wagon, SUV; UberXL: people mover). VicRoads words map onto them.
+    const BODY_TYPES = ['Sedan', 'Hatchback', 'Wagon', 'SUV', 'People mover'];
+    function bodyType(t) {
+      const x = (t || '').toLowerCase(); if (!x) return '';
+      return /sedan/.test(x) ? 'Sedan' : /hatch/.test(x) ? 'Hatchback' : /suv|sport\s*util/.test(x) ? 'SUV' : /people|mpv|multi|bus/.test(x) ? 'People mover'
+        : /wagon|station/.test(x) ? 'Wagon' : t.replace(/\b[a-z]/g, m => m.toUpperCase());
+    }
     const titleCase = t => t.toLowerCase().replace(/\b[a-z]/g, m => m.toUpperCase());
     function parseDateAU(t) {
       let m = t.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
@@ -4857,13 +4864,14 @@
       const model = mm && c.make && mm.toLowerCase().startsWith(c.make.toLowerCase()) ? mm.slice(c.make.length).trim() : (c.make ? '' : mm);
       const warn = scan && g.plate && plateNow && g.plate !== plateNow ? `<div class="ac-note rg-warn">⚠️ The screenshot is for ${esc(g.plate)}, not ${esc(plateNow)}. Check it’s the right car.</div>` : '';
       const filled = k => scan && g[k] ? ' rg-auto' : '';
+      const bodyNow = bodyType(g.body || c.body || '');
       const f = (id, label, val, k, extra = '') => `<div class="setting-item${filled(k)}"><label for="${id}">${label}</label><input id="${id}" value="${val}" ${extra} /></div>`;
       acctSheet(scan ? '🔎 Check and confirm' : '✏️ Rego details', warn + (scan ? '<div class="ac-note">Read from your screenshot (highlighted). Fix anything that’s wrong, then Confirm.</div>' : '') +
         f('rgPlate', 'Number plate', esc(g.plate || plateNow), 'plate', 'type="text" autocapitalize="characters" autocomplete="off"') +
         f('rgMake', 'Make', v('make'), 'make', 'type="text" placeholder="e.g. Toyota" autocomplete="off"') +
         f('rgModel', 'Model', esc(model), '', 'type="text" list="vehNames2" placeholder="e.g. Camry" autocomplete="off"') +
         `<datalist id="vehNames2"><option value="Camry Hybrid"></option><option value="RAV4 Hybrid"></option></datalist>` +
-        f('rgBody', 'Body type', v('body'), 'body', 'type="text" placeholder="e.g. Sedan" autocomplete="off"') +
+        `<div class="setting-item${filled('body')}"><label for="rgBody">Body type</label><select id="rgBody"><option value="">—</option>${BODY_TYPES.concat(bodyNow && !BODY_TYPES.includes(bodyNow) ? [bodyNow] : []).map(x => `<option${x === bodyNow ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></div>` +
         f('rgYear', 'Year', v('year'), 'year', 'type="number" inputmode="numeric" min="1980" max="2100" placeholder="e.g. 2022"') +
         f('rgColour', 'Colour', v('colour'), 'colour', 'type="text" autocomplete="off"') +
         f('rgExp', 'Rego expiry', exp ? ymd(new Date(exp)) : '', 'exp', 'type="date"') +
@@ -8277,7 +8285,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.75.2';
+    const APP_VERSION = '1.75.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
