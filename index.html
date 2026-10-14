@@ -6664,15 +6664,15 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (!map || !baseLayers) return;
       if (vectorOn && vecReady !== false) {                              // vector map: no picture tiles; names stay upright, so no street pill
         Object.values(baseLayers).forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
-        const rp = document.getElementById('roadPill'); if (rp) rp.hidden = !headUp || !rp.textContent;
-        if (headUp) updateRoadName(true);
+        const rp = document.getElementById('roadPill'); if (rp) rp.hidden = !rp.textContent;
+        updateRoadName(true);
         vecStyle(); return;
       }
       const want = headUp ? (nightMap ? baseLayers.plainDark : baseLayers.plainLight) : (nightMap ? baseLayers.dark : baseLayers.streets);
       Object.values(baseLayers).forEach(l => { if (l !== want && map.hasLayer(l)) map.removeLayer(l); });
       if (!map.hasLayer(want)) want.addTo(map);
-      const rp = document.getElementById('roadPill'); if (rp) rp.hidden = !headUp || !rp.textContent;
-      if (headUp) updateRoadName(true);
+      const rp = document.getElementById('roadPill'); if (rp) rp.hidden = !rp.textContent;
+      updateRoadName(true);
     }
     // The street you're on (OpenStreetMap's Nominatim, at most every 15 s and only after moving 60 m; Esri as a fallback)
     // ---- 🧪 Vector base map (MapLibre + OpenFreeMap, free, no key) under the Leaflet layers, kept in step with it.
@@ -6739,7 +6739,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     }
     let roadAt = null, roadBusy = false;
     async function updateRoadName(force) {
-      const rp = document.getElementById('roadPill'); if (!rp || !headUp || !lastFix || roadBusy) return;
+      const rp = document.getElementById('roadPill'); if (!rp || !lastFix || roadBusy) return;
       if (!force && roadAt && (Date.now() - roadAt.t < 15000 || distM(roadAt.lat, roadAt.lng, lastFix.lat, lastFix.lng) < 60)) return;
       roadBusy = true; const { lat, lng } = lastFix;
       let name = '';
@@ -6755,7 +6755,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         } catch (e) {}
       }
       roadAt = { lat, lng, t: Date.now() }; roadBusy = false;
-      if (name) { rp.textContent = '🛣 ' + name; rp.hidden = !headUp; fitRoadPill(); }
+      if (name) { rp.textContent = '🛣 ' + name; rp.hidden = false; fitRoadPill(); }
     }
     const MELB = [-37.8136, 144.9631];
 
@@ -7246,7 +7246,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       checkFuelStop(lastFix);
       try { detectDriving(lastFix); } catch (e) {}
       try { learnCompass(lastFix); } catch (e) {}
-      if (headUp) updateRoadName();
+      updateRoadName();
       glideTo(lastFix);
       if (!map) return;
       drawMe();
@@ -7532,7 +7532,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.'],
       wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 raining now, 🌦 rain due within 2 hours, ☁️ cloudy, 🌫 fog, and ☀️ when it’s 30° or hotter.'],
       city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
-      headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Street names are hidden so none are upside down; the street you’re on shows at the top. Tap again for north up.'],
+      headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Street names are hidden so none are upside down; the street you’re on shows at the top left. Tap again for north up.'],
       north: ['🧭 North up', 'North is at the top. Twist with two fingers to turn the map; within 8° of north it snaps back. Tap the compass for north again, or again for direction up.'],
       locate: ['➤ Follow me', 'The map stays centred on you and turns your arrow with the compass. Dragging the map stops following.']
     };
@@ -8539,7 +8539,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.3';
+    const APP_VERSION = '1.78.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
