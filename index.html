@@ -437,6 +437,16 @@
     @keyframes sbBeat { 0%, 100% { opacity: 0; transform: scale(.99); } 14% { opacity: .9; transform: scale(1); } 28% { opacity: .2; } 42% { opacity: 1; transform: scale(1.01); } 70% { opacity: 0; } }
     @keyframes sbPulse { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.08); } 70% { transform: scale(1); } }
     @media (prefers-reduced-motion: reduce) { .shift-bar.beat::after, .shift-bar.beat .sb-punch { animation: none; } }
+    .trip-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 7px 10px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--card-border); }
+    .trip-bar:empty { display: none; }
+    .tb-ic { font-size: 1.2rem; flex: none; } .tb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .tb-txt b { font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tb-txt b small { font-weight: 600; color: var(--muted); font-size: .7rem; margin-left: 4px; }
+    .tb-txt > small { font-size: .7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tb-next { flex: none; border: none; border-radius: 999px; padding: 8px 11px; white-space: nowrap; font: inherit; font-size: .78rem; font-weight: 800; background: var(--accent); color: var(--on-accent); cursor: pointer; }
+    .tb-x { flex: none; border: none; background: none; color: var(--muted); font-size: .9rem; padding: 4px; cursor: pointer; }
+    .trip-bar.go { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card-2)); }
+    .trip-bar.trip { border-color: var(--green); background: color-mix(in srgb, var(--green) 10%, var(--card-2)); } .trip-bar.trip .tb-next { background: var(--green); color: #fff; }
+    .trip-bar.done { border-color: #a78bfa; }
     .drive-box { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; padding: 8px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--card-border); }
     .drive-box:empty { display: none; } .drive-box.on { border-color: var(--green); }
     .db-car { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; text-align: left; padding: 4px 6px;
@@ -1714,6 +1724,7 @@
       <div class="drive-bottom offer-panel">
           <button type="button" class="shift-bar idle" id="shiftBar" onclick="openShift()"></button>
           <div class="drive-box" id="driveBox"></div>
+          <div class="trip-bar" id="tripBar"></div>
           <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)">ENTER OFFER DETAILS</div>
         <div class="mini-stats">
           <div><span>Gross</span><b id="grossHr">$0/hr</b></div>
@@ -2902,6 +2913,7 @@
       else log.push(stampLoc({ t: Date.now(), fare, mins, kms, took, src: 'manual' }));
       saveLog(log);
       toast(took ? '✓ Logged as accepted' : '✗ Logged as declined');
+      if (took) { const tr = loadTrip(); if (tr.stage === 'onTrip') setTripStage('onTrip', { queued: true, force: true }); else setTripStage('toPickup', { fare }); }
       clearInputs();
     }
 
@@ -6140,6 +6152,14 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     }
     // After an unsure outcome, keep looking for 2 more minutes; a late pickup or waiting screen corrects the entry
     let lateWatch = null;
+    // Uber's own trip screens move the status bar along
+    const ONTRIP_RE = /(drop(ping)?\s*off|heading\s+to\s+(the\s+)?destination|end\s+(uber\s*)?trip|complete\s+trip|slide\s+to\s+(end|complete)|swipe\s+to\s+(end|complete)|on\s+trip)/i;
+    const TOPICK_RE = /(go\s+to\s+pick|picking\s*up|pick\s*up\s+(in|at|\w)|arriv|meet\s+(the\s+|your\s+)?rider|waiting\s+for\s+rider|rider\s+(is\s+)?waiting|swipe\s+to\s+start|start\s+(uber\s*)?trip|confirm\s+rider)/i;
+    function tripStageFromScreen(n) {
+      const st = loadTrip().stage;
+      if (ONTRIP_RE.test(n)) { if (st !== 'onTrip') setTripStage('onTrip'); }
+      else if (TOPICK_RE.test(n)) { if (st === 'idle' || st === 'done') setTripStage('toPickup'); }
+    }
     function checkLate(n) {
       if (!lateWatch) return;
       if (Date.now() > lateWatch.until) { lateWatch = null; return; }
@@ -6148,6 +6168,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const log = loadLog(), e = log.find(x => x.t === lateWatch.t); lateWatch = null;
       if (!e) return;
       e.took = acc; e.auto = true; saveLog(log); renderInsights();
+      if (acc && loadTrip().stage === 'idle') setTripStage('toPickup', { fare: e.fare });
       toast(acc ? '🔎 Seen now: that offer was accepted ✓' : '🔎 Seen now: that offer was declined ✗');
     }
     // ---- Trip finished: confirm the offer it came from, or log a trip Auto-Read missed (back-dated to when it started) ----
@@ -6165,12 +6186,14 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const near = log.filter(e => !e.completed && now - e.t < 3 * 3600000 && Math.abs(e.fare - fare) <= Math.max(3, fare * 0.15)).sort((a, b) => b.t - a.t)[0];
       if (near) {
         const was = near.took; near.took = true; near.completed = true; near.auto = true; saveLog(log); renderInsights();
+        setTripStage('done', { fare });
         toast(was ? `✓ Trip done: $${fare.toFixed(2)} confirmed` : `✓ Trip done: the $${near.fare.toFixed(2)} offer was accepted (corrected)`);
         return;
       }
       const start = now - ((+mins || 20) + 3) * 60000;
       const entry = stampLoc({ t: start, fare, mins: +mins || 0, kms: +kms || 0, took: true, src: 'completed', backfill: true, completed: true, auto: true });
       log.push(entry); log.sort((a, b) => a.t - b.t); saveLog(log); renderInsights();
+      setTripStage('done', { fare });
       toast(`📝 Missed trip logged: $${fare.toFixed(2)}, back-dated to ${fmtTime(start)}`);
     }
     // While an outcome is pending and the offer has gone from the crop, also look at the whole shared screen:
@@ -6182,7 +6205,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       c.getContext('2d').drawImage(ocrVideo, 0, 0, w, h);
       const { data: { text } } = await ocrWorker.recognize(c);
       const n = parseOfferText(text).norm;
-      checkTripDone(n); checkLate(n);
+      checkTripDone(n); checkLate(n); if (!(data.fare && data.mins)) tripStageFromScreen(n);
       if (!pendingOutcome) return;
       if (pendingOutcome.onTrip ? NEXT_RE.test(n) : PICKUP_RE.test(n)) setOutcome(true);
       else if (IDLE_RE.test(n)) setOutcome(false);
@@ -6200,6 +6223,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (!e) return;
       const sure = took !== null;
       if (sure) { e.took = took; e.auto = true; }
+      if (e.took) { const tr = loadTrip(); if (tr.stage === 'onTrip' || tr.stage === 'toPickup') setTripStage(tr.stage, { queued: tr.stage === 'onTrip', force: true }); else setTripStage('toPickup', { fare: e.fare }); }
       saveLog(log);
       toast(sure ? (took ? '🔎 Detected: accepted ✓' : '🔎 Detected: declined ✗') : `🔎 Couldn’t see your choice: logged as ${e.took ? 'accepted ✓' : 'declined ✗'}`, 'Flip', () => {
         const l = loadLog(); const x = l.find(y => y.t === t);
@@ -6515,7 +6539,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         setOCRStatus(true, isOffer || pendingOutcome ? 'Watching' : fareMatch ? 'No offer on screen' : 'Watching');
       }
       checkOutcome(norm, isOffer && (confirmed || key === shownKey));
-      if (!isOffer) { checkLate(norm); checkTripDone(norm); }
+      if (!isOffer) { checkLate(norm); checkTripDone(norm); tripStageFromScreen(norm); }
       // No offer on screen: empty the boxes straight away so the verdict (and the Map pill) go back to waiting.
       // The logged offer stays; if the same offer comes back within 20 s it updates that entry instead of adding one.
       if (!isOffer && (data.fare || data.mins || data.kms)) {
@@ -7731,6 +7755,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         ['Fare · Time · Km', 'From the Uber offer card. Time and km are pickup + trip together. Tap a box to see what goes in it.'],
         ['Gross · Per km · Net', 'Net is after fuel and servicing for those km, from your car in Settings.'],
         ['🚗 ▶ Start driving', 'Counts kilometres for the car you’re driving, punched in or not (it also starts by itself once you’re moving, and stops after 15 min parked). The odometer stays up to date from them; enter a dashboard reading on a fill-up to correct it.'],
+        ['🚦 Trip status', 'Accepted → on the way to pickup → picked up → on the way to drop-off → done, with the last offer and its time. Auto-Read moves it along from Uber’s screens; the button on the bar moves it by hand.'],
         ['Accepted / Declined', 'Logs the offer. It builds your best times and pickup spots, and counts towards your shift goal.'],
         ['⛽ Fuel / ⚡ Charge', 'Log a fill-up or charge by hand (stops at a servo are still detected). Upload the receipt to fill it in; it shows in Account too.'],
         ['⏱ Punch in', 'Tracks time, trips, km and take-home. The target ✨ follows demand over your planned hours (tap the box to set your own). The box beats red when it’s high demand where you are for 3 hours or more.'],
@@ -8674,7 +8699,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.80.0';
+    const APP_VERSION = '1.81.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8784,6 +8809,50 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const q = routeNow(from, nearestOnRing(from.lat, from.lng, UBER_ZONE_SHAPES[b.z]));
       return { z: b.z, v: b.v, txt: `🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min · ${q.r.km.toFixed(1)} km` };
     }
+
+    // ================= 🚦 TRIP STATUS: accepted → on the way to pickup → picked up → on the way to drop-off → done =================
+    // Moved along by Auto-Read (Uber's screens) or by hand with the button on the bar (iPhone, or when Auto-Read can't see).
+    const TRIP_STAGES = {
+      idle: { ic: '🕓', cls: 'idle' },
+      toPickup: { ic: '🚗', cls: 'go', txt: 'Accepted', sub: 'to pickup', next: 'Picked up' },
+      onTrip: { ic: '🧍', cls: 'trip', txt: 'Picked up', sub: 'to drop-off', next: 'Dropped off' },
+      done: { ic: '🏁', cls: 'done', txt: 'Trip done' }
+    };
+    const loadTrip = () => { try { return JSON.parse(lsGet('tripState')) || { stage: 'idle' }; } catch (e) { return { stage: 'idle' }; } };
+    function setTripStage(stage, extra = {}) {
+      const cur = loadTrip();
+      if (cur.stage === stage && !extra.force) return;
+      const next = Object.assign({}, cur, extra, { stage, since: Date.now() }); delete next.force;
+      if (stage === 'idle') { delete next.fare; delete next.queued; }
+      lsSet('tripState', JSON.stringify(next)); renderTripBar();
+    }
+    function tripAdvance() {
+      const st = loadTrip().stage;
+      if (st === 'toPickup') setTripStage('onTrip');
+      else if (st === 'onTrip') { setTripStage('done'); const t = loadTrip(); markTripDone(t.fare); }
+      else if (st === 'done') setTripStage('idle');
+    }
+    function tripCancel() { setTripStage('idle'); toast('Trip status cleared'); }
+    // Dropped off by hand: mark the accepted offer it belongs to as finished
+    function markTripDone(fare) {
+      const log = loadLog(), e = [...log].reverse().find(x => x.took && !x.completed && Date.now() - x.t < 3 * 3600000 && (!fare || Math.abs(x.fare - fare) < 0.01));
+      if (e) { e.completed = true; saveLog(log); }
+    }
+    function renderTripBar() {
+      const el = document.getElementById('tripBar'); if (!el) return;
+      let t = loadTrip();
+      // tidy up stale states: done shows for 3 min; a pickup or trip left on for 3 h is cleared
+      if ((t.stage === 'done' && Date.now() - t.since > 3 * 60000) || (t.stage !== 'idle' && t.stage !== 'done' && Date.now() - t.since > 3 * 3600000)) { lsSet('tripState', JSON.stringify({ stage: 'idle' })); t = { stage: 'idle' }; }
+      const S = TRIP_STAGES[t.stage] || TRIP_STAGES.idle, last = loadLog().slice(-1)[0];
+      const lastTxt = last ? `Last offer ${fmtTime(last.t)} · $${(+last.fare).toFixed(2)} · ${last.took ? 'accepted ✓' : 'declined ✗'}` : 'No offers yet';
+      const sm = Math.floor((Date.now() - t.since) / 60000), since = t.stage !== 'idle' ? ` <small>${sm < 60 ? sm + ' min' : fmtDur(sm / 60)}</small>` : '';
+      el.className = 'trip-bar ' + S.cls;
+      const sub = t.stage === 'idle' ? lastTxt : [S.sub || '', t.fare ? `$${(+t.fare).toFixed(2)}` : '', t.queued ? '➕ next trip queued' : ''].filter(Boolean).join(' · ');
+      el.innerHTML = `<span class="tb-ic">${S.ic}</span><div class="tb-txt"><b>${t.stage === 'idle' ? (loadShift() || loadDrive() ? 'Waiting for offers' : 'Not on a trip') : S.txt}${since}</b>` +
+        `<small>${sub}</small></div>` +
+        (S.next ? `<button type="button" class="tb-next" onclick="tripAdvance()">${S.next} ›</button><button type="button" class="tb-x" onclick="tripCancel()" aria-label="Clear trip status">✕</button>` : '');
+    }
+    setInterval(renderTripBar, 30000);
     // The car you're driving, on the Drive page; tap to switch (shown once you have more than one car, or a rego)
 
     // ---- 🛣 Odometer and kilometre log for each car. GPS kilometres count for the car you're driving whenever the pilot
@@ -8870,6 +8939,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     }
     function renderShiftBar() {
       try { renderDriveBox(); } catch (e) {}
+      try { renderTripBar(); } catch (e) {}
       const bar = document.getElementById('shiftBar');
       if (!bar) return;
       const s = loadShift(), area = (() => { try { return suggestedArea(); } catch (e) { return null; } })();
