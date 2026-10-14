@@ -288,8 +288,12 @@
       font-size: 1.1rem; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35); cursor: pointer;
     }
     .map-fab.on { color: #1a73e8; }
-    .road-pill { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 650; max-width: 80%; padding: 6px 14px; border-radius: 999px;
-      background: var(--glass-strong, rgba(255,255,255,.92)); color: var(--text); font-weight: 800; font-size: .86rem; box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+    .vec-map { position: absolute !important; inset: 0; z-index: 0; pointer-events: none; }
+    .vec-map.night canvas { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.7); }
+    #surgeMap.vec-on, .leaflet-container.vec-on { background: transparent !important; } .vec-on .leaflet-map-pane { z-index: 1; }
+    .road-pill { position: absolute; left: 8px; top: 48px; z-index: 600; max-width: calc(100% - 150px); padding: 5px 10px; border-radius: 999px;
+      background: var(--glass); border: 1px solid var(--card-border); color: var(--text); font-weight: 800; font-size: .72rem; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
     .road-pill[hidden] { display: none; }
     .plain-tiles { filter: contrast(1.25) brightness(.97); }
     .night-tiles { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.7); }
@@ -2378,6 +2382,9 @@
         <button type="button" class="th-opt" data-ms="dark" onclick="pickMapStyle('dark')"><span class="th-sw" style="--a:#2a2d35;--b:#16181d"><i></i><i></i></span>
           <span class="sx-rt"><b>Dark streets</b><small>Always the night map, easier on the eyes at night</small></span><span class="th-chk"><svg><use href="#i-check"/></svg></span></button>
       </div>
+      <div class="sx-card sx-pad">
+        <label class="tgl"><input type="checkbox" id="optVectorMap" /><span>🧪 Vector map (test)<small>Drawn live, so street names stay upright when the map turns with you. Free OpenFreeMap tiles, no key. The pilot reloads to switch.</small></span></label>
+      </div>
       <button type="button" class="sx-primary" onclick="saveSettings()">Save changes</button>
     </section>
 
@@ -2795,7 +2802,7 @@
         document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
         devLockNow(true);                  // keys are filled in only after the passcode
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
-        fillVehicleUI(); garOpen();
+        fillVehicleUI(); garOpen(); document.getElementById('optVectorMap').checked = vectorOn;
         renderFillLog();
       }
     }
@@ -2838,6 +2845,8 @@
       routeCache.clear();
       if (themePick) { lsSet('theme', themePick); themePick = null; }
       if (mapStylePick) { lsSet('mapStyle', mapStylePick); mapStylePick = null; }
+      const vecWant = document.getElementById('optVectorMap').checked;
+      if (vecWant !== vectorOn) { lsSet('vectorMap', vecWant ? '1' : '0'); setTimeout(() => location.reload(), 600); }
       applyMapStyle();
       if (timePick) { const ch = timePick !== (is24() ? '24' : '12'); lsSet('timeFmt', timePick); timePick = null; if (ch) refreshTimes(); }
       const sg = parseFloat(document.getElementById('setShiftGoal').value);
@@ -6651,6 +6660,11 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     // Which map picture: street map (names printed) when north is up, names-free roads when the map turns with you
     function syncBase() {
       if (!map || !baseLayers) return;
+      if (vectorOn && vecReady !== false) {                              // vector map: no picture tiles; names stay upright, so no street pill
+        Object.values(baseLayers).forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+        const rp = document.getElementById('roadPill'); if (rp) rp.hidden = true;
+        vecStyle(); return;
+      }
       const want = headUp ? (nightMap ? baseLayers.plainDark : baseLayers.plainLight) : (nightMap ? baseLayers.dark : baseLayers.streets);
       Object.values(baseLayers).forEach(l => { if (l !== want && map.hasLayer(l)) map.removeLayer(l); });
       if (!map.hasLayer(want)) want.addTo(map);
@@ -6658,6 +6672,60 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (headUp) updateRoadName(true);
     }
     // The street you're on (OpenStreetMap's Nominatim, at most every 15 s and only after moving 60 m; Esri as a fallback)
+    // ---- 🧪 Vector base map (MapLibre + OpenFreeMap, free, no key) under the Leaflet layers, kept in step with it.
+    // Leaflet still draws zones, pins, heat and radar; MapLibre only draws the streets, so labels turn upright. ----
+    const vectorOn = lsGet('vectorMap') === '1';
+    let vmap = null, vecReady = null, vecStyleNow = '';
+    const VEC_STYLE = { light: 'https://tiles.openfreemap.org/styles/liberty', dark: 'https://tiles.openfreemap.org/styles/dark', backup: 'https://tiles.openfreemap.org/styles/positron' };
+    function loadVecLib() {
+      if (window.maplibregl) return Promise.resolve();
+      return new Promise((res, rej) => {
+        const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.css'; document.head.appendChild(css);
+        const add = (src, next) => { const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = next; document.head.appendChild(sc); };
+        add('https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.min.js', () => add('https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js', rej));
+      });
+    }
+    function vecFail(why) {
+      vecReady = false; const el = document.getElementById('vecMap'); if (el) el.remove();
+      map.getContainer().classList.remove('vec-on'); syncBase(); toast('🧪 Vector map unavailable (' + why + '). Using the normal map.');
+    }
+    async function initVectorBase() {
+      const box = map.getContainer(), el = document.createElement('div'); el.id = 'vecMap'; el.className = 'vec-map'; box.insertBefore(el, box.firstChild);
+      box.classList.add('vec-on');
+      try { await loadVecLib(); } catch (e) { vecFail('couldn’t load'); return; }
+      const gl = (() => { try { const cv = document.createElement('canvas'); return !!(cv.getContext('webgl2') || cv.getContext('webgl')); } catch (e) { return false; } })();
+      if (!gl) { vecFail('no WebGL'); return; }
+      const c = map.getCenter();
+      try {
+        vmap = new maplibregl.Map({ container: el, style: nightMap ? VEC_STYLE.dark : VEC_STYLE.light, interactive: false, attributionControl: false,
+          center: [c.lng, c.lat], zoom: map.getZoom() - 1, bearing: -map.getBearing(), fadeDuration: 0 });
+      } catch (e) { vecFail('no WebGL'); return; }
+      vecStyleNow = nightMap ? 'dark' : 'light';
+      vmap.on('error', e => { if (e && e.error && /style/i.test(String(e.error.message || '')) && vecStyleNow !== 'backup') { vecStyleNow = 'backup'; vmap.setStyle(VEC_STYLE.backup); el.classList.toggle('night', nightMap); } });
+      vecReady = true;
+      // Follow every Leaflet move, zoom (also mid-pinch) and turn
+      map.on('move zoom rotate viewreset', vecSync);
+      map.on('zoomanim', e => { if (vmap) vmap.easeTo({ center: [e.center.lng, e.center.lat], zoom: e.zoom - 1, bearing: -map.getBearing(), duration: 250, easing: t => t }); });
+      map.on('resize', () => { if (vmap) { vmap.resize(); vecSync(); } });
+      vecSync(); syncBase();
+    }
+    function vecSync() {
+      if (!vmap) return;
+      const el = vmap.getContainer(), cv = vmap.getCanvas(); if (el.clientWidth && (Math.abs(cv.clientWidth - el.clientWidth) > 1 || Math.abs(cv.clientHeight - el.clientHeight) > 1)) vmap.resize();
+      const c = map.getCenter();
+      vmap.jumpTo({ center: [c.lng, c.lat], zoom: map.getZoom() - 1, bearing: -map.getBearing() });
+    }
+    function vecStyle() {
+      if (!vmap) return;
+      const want = nightMap ? 'dark' : 'light';
+      if (vecStyleNow === want || (vecStyleNow === 'backup' && !nightMap)) return;
+      vecStyleNow = want; vmap.setStyle(VEC_STYLE[want]);
+      document.getElementById('vecMap').classList.remove('night');
+    }
+    function fitRoadPill() {
+      const rp = document.getElementById('roadPill'), lp = document.getElementById('locPill'); if (!rp || !lp || !lp.offsetWidth) return;
+      rp.style.maxWidth = Math.max(90, lp.offsetLeft - 16) + 'px';
+    }
     let roadAt = null, roadBusy = false;
     async function updateRoadName(force) {
       const rp = document.getElementById('roadPill'); if (!rp || !headUp || !lastFix || roadBusy) return;
@@ -6676,7 +6744,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         } catch (e) {}
       }
       roadAt = { lat, lng, t: Date.now() }; roadBusy = false;
-      if (name) { rp.textContent = '📍 ' + name; rp.hidden = !headUp; }
+      if (name) { rp.textContent = '🛣 ' + name; rp.hidden = !headUp || (vectorOn && vecReady); fitRoadPill(); }
     }
     const MELB = [-37.8136, 144.9631];
 
@@ -7234,13 +7302,15 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       // upside down); the street you're on shows in a pill at the top instead
       const plainLight = fallbackBase([{ url: ESRI + 'Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri', className: 'plain-tiles' } }]);
       const plainDark = fallbackBase([{ url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' } }]);
-      streets.addTo(map); // default: standard street map
+      if (!vectorOn) streets.addTo(map); // default: standard street map
+      else initVectorBase();
       map.attributionControl.addAttribution('Suburbs © Geoscape / Vicmap, CC BY 4.0');
       map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
       // Credits on one small line; tap to read them all
       const attr = map.attributionControl.getContainer();
       attr.addEventListener('click', e => { if (e.target.tagName !== 'A') attr.classList.toggle('open'); });
       baseLayers = { streets, dark, plainLight, plainDark };
+      if (vectorOn) map.attributionControl.addAttribution('<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © OpenMapTiles © OpenStreetMap contributors');
       const rp = document.createElement('div'); rp.id = 'roadPill'; rp.className = 'road-pill'; rp.hidden = true; map.getContainer().appendChild(rp);
 
       // Locate / follow-me button (bottom right, like map apps) + Melbourne overview
@@ -8431,7 +8501,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.77.4';
+    const APP_VERSION = '1.78.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
