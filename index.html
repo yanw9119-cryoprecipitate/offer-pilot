@@ -288,6 +288,10 @@
       font-size: 1.1rem; display: grid; place-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.35); cursor: pointer;
     }
     .map-fab.on { color: #1a73e8; }
+    .road-pill { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); z-index: 650; max-width: 80%; padding: 6px 14px; border-radius: 999px;
+      background: var(--glass-strong, rgba(255,255,255,.92)); color: var(--text); font-weight: 800; font-size: .86rem; box-shadow: var(--shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+    .road-pill[hidden] { display: none; }
+    .plain-tiles { filter: contrast(1.25) brightness(.97); }
     .night-tiles { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.7); }
     .nw { white-space: nowrap; }
     .map-compass { padding: 0; }
@@ -6641,11 +6645,38 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     function setNightMap(on) {
       if (nightMap === on && map && baseLayers && map.hasLayer(on ? baseLayers.dark : baseLayers.streets)) return;
       nightMap = on;
-      if (!map || !baseLayers) return;
-      const add = on ? baseLayers.dark : baseLayers.streets, drop = on ? baseLayers.streets : baseLayers.dark;
-      if (map.hasLayer(drop)) map.removeLayer(drop);
-      if (!map.hasLayer(add)) add.addTo(map);
+      syncBase();
       if (areaLayer) renderMap();
+    }
+    // Which map picture: street map (names printed) when north is up, names-free roads when the map turns with you
+    function syncBase() {
+      if (!map || !baseLayers) return;
+      const want = headUp ? (nightMap ? baseLayers.plainDark : baseLayers.plainLight) : (nightMap ? baseLayers.dark : baseLayers.streets);
+      Object.values(baseLayers).forEach(l => { if (l !== want && map.hasLayer(l)) map.removeLayer(l); });
+      if (!map.hasLayer(want)) want.addTo(map);
+      const rp = document.getElementById('roadPill'); if (rp) rp.hidden = !headUp || !rp.textContent;
+      if (headUp) updateRoadName(true);
+    }
+    // The street you're on (OpenStreetMap's Nominatim, at most every 15 s and only after moving 60 m; Esri as a fallback)
+    let roadAt = null, roadBusy = false;
+    async function updateRoadName(force) {
+      const rp = document.getElementById('roadPill'); if (!rp || !headUp || !lastFix || roadBusy) return;
+      if (!force && roadAt && (Date.now() - roadAt.t < 15000 || distM(roadAt.lat, roadAt.lng, lastFix.lat, lastFix.lng) < 60)) return;
+      roadBusy = true; const { lat, lng } = lastFix;
+      let name = '';
+      try {
+        const j = await fetchJSON(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=17&lat=${lat.toFixed(5)}&lon=${lng.toFixed(5)}`, 8000);
+        const a = (j && j.address) || {}; name = a.road || a.pedestrian || a.highway || '';
+        if (name && (a.suburb || a.town || a.city_district)) name += ` · ${a.suburb || a.town || a.city_district}`;
+      } catch (e) {}
+      if (!name) {
+        try {
+          const j = await fetchJSON(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lng.toFixed(5)},${lat.toFixed(5)}`, 8000);
+          const a = (j && j.address) || {}; name = (a.Address || '').replace(/^[\d\-\/A-Z]*\d[\dA-Z\-\/]*\s+/, '') + (a.Neighborhood || a.City ? ` · ${a.Neighborhood || a.City}` : '');
+        } catch (e) {}
+      }
+      roadAt = { lat, lng, t: Date.now() }; roadBusy = false;
+      if (name) { rp.textContent = '📍 ' + name; rp.hidden = !headUp; }
     }
     const MELB = [-37.8136, 144.9631];
 
@@ -6870,6 +6901,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         if (lastFix) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 16));
         const h = currentHeading(); if (h !== null && map.setBearing) map.setBearing(-h);
       } else if (map && map.setBearing) map.setBearing(0);
+      syncBase();
       const arrow = document.getElementById('meArrow');
       if (arrow) arrow.style.transform = `rotate(${((currentHeading() || 0) + mapBearing()).toFixed(1)}deg)`;
       syncCompass(); startMeLoop();
@@ -7109,6 +7141,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       checkFuelStop(lastFix);
       try { detectDriving(lastFix); } catch (e) {}
       try { learnCompass(lastFix); } catch (e) {}
+      if (headUp) updateRoadName();
       glideTo(lastFix);
       if (!map) return;
       drawMe();
@@ -7197,13 +7230,18 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       }
       const streets = fallbackBase(STREET_SOURCES);
       const dark = fallbackBase(NIGHT_SOURCES);
+      // Direction up: the same roads without printed names (picture tiles turn with the map, so their names would end up
+      // upside down); the street you're on shows in a pill at the top instead
+      const plainLight = fallbackBase([{ url: ESRI + 'Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri', className: 'plain-tiles' } }]);
+      const plainDark = fallbackBase([{ url: ESRI + 'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', opt: { maxZoom: 19, maxNativeZoom: 16, attribution: 'Tiles &copy; Esri' } }]);
       streets.addTo(map); // default: standard street map
       map.attributionControl.addAttribution('Suburbs © Geoscape / Vicmap, CC BY 4.0');
       map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
       // Credits on one small line; tap to read them all
       const attr = map.attributionControl.getContainer();
       attr.addEventListener('click', e => { if (e.target.tagName !== 'A') attr.classList.toggle('open'); });
-      baseLayers = { streets, dark };
+      baseLayers = { streets, dark, plainLight, plainDark };
+      const rp = document.createElement('div'); rp.id = 'roadPill'; rp.className = 'road-pill'; rp.hidden = true; map.getContainer().appendChild(rp);
 
       // Locate / follow-me button (bottom right, like map apps) + Melbourne overview
       const Ctl = L.Control.extend({
@@ -7386,7 +7424,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       busy: ['🔥 Busy near you', 'Surges, busy zones and events with drive times. Tap one to see it on the map.'],
       wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 raining now, 🌦 rain due within 2 hours, ☁️ cloudy, 🌫 fog, and ☀️ when it’s 30° or hotter.'],
       city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
-      headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Red needle shows north. Tap again for north up.'],
+      headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Street names are hidden so none are upside down; the street you’re on shows at the top. Tap again for north up.'],
       north: ['🧭 North up', 'North is back at the top. Tap the compass to turn the map with your direction.'],
       locate: ['➤ Follow me', 'The map stays centred on you and turns your arrow with the compass. Dragging the map stops following.']
     };
@@ -8393,7 +8431,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.77.3';
+    const APP_VERSION = '1.77.4';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
