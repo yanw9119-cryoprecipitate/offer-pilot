@@ -7320,7 +7320,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     function ensureMap() {
       if (map || typeof L === 'undefined') return !!map;
-      map = L.map('surgeMap', { zoomControl: false, zoomSnap: vectorOn ? 0 : 1, rotate: true, bearing: 0, rotateControl: false, touchRotate: false, shiftKeyRotate: false, compassBearing: false }).setView(MELB, 12);
+      map = L.map('surgeMap', { zoomControl: false, rotate: true, bearing: 0, rotateControl: false, touchRotate: false, shiftKeyRotate: false, compassBearing: false }).setView(MELB, 12);
       // Each base map tries several tile providers and falls back if one is blocked.
       const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
       // Key-free map pictures only. CARTO now answers with "API KEY REQUIRED" tiles, so it isn't used.
@@ -8558,7 +8558,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.6';
+    const APP_VERSION = '1.78.7';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
