@@ -437,6 +437,11 @@
     @keyframes sbBeat { 0%, 100% { opacity: 0; transform: scale(.99); } 14% { opacity: .9; transform: scale(1); } 28% { opacity: .2; } 42% { opacity: 1; transform: scale(1.01); } 70% { opacity: 0; } }
     @keyframes sbPulse { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.08); } 70% { transform: scale(1); } }
     @media (prefers-reduced-motion: reduce) { .shift-bar.beat::after, .shift-bar.beat .sb-punch { animation: none; } }
+    .banner-wrap { position: relative; }
+    .offer-type { position: absolute; top: -8px; left: 12px; z-index: 2; padding: 2px 9px; border-radius: 999px; font-size: .7rem; font-weight: 800;
+      background: #2563eb; color: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); white-space: nowrap; }
+    .offer-type.prem { background: #111827; } :root[data-theme="dark"] .offer-type.prem { background: #e5e7eb; color: #111; }
+    .offer-type[hidden] { display: none; }
     .trip-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 7px 10px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--card-border); }
     .trip-bar:empty { display: none; }
     .tb-ic { font-size: 1.2rem; flex: none; } .tb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1725,7 +1730,7 @@
           <button type="button" class="shift-bar idle" id="shiftBar" onclick="openShift()"></button>
           <div class="drive-box" id="driveBox"></div>
           <div class="trip-bar" id="tripBar"></div>
-          <div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)">ENTER OFFER DETAILS</div>
+          <div class="banner-wrap"><span class="offer-type" id="offerType" hidden></span><div id="decisionBanner" class="decision-banner waiting" onclick="toggleKeypad(true)">ENTER OFFER DETAILS</div></div>
         <div class="mini-stats">
           <div><span>Gross</span><b id="grossHr">$0/hr</b></div>
           <div><span>Per km</span><b id="rateKm">$0/km</b></div>
@@ -2458,7 +2463,7 @@
     };
 
     let activeField = 'fare';
-    let data = { fare: '', mins: '', kms: '' };
+    let data = { fare: '', mins: '', kms: '', type: '' };
 
     const canvas = document.getElementById('pipCanvas');
     const ctx = canvas.getContext('2d');
@@ -2560,13 +2565,20 @@
     }
 
     function clearInputs() {
-      data = { fare: '', mins: '', kms: '' };
+      data = { fare: '', mins: '', kms: '', type: '' };
       curEntryT = null;
       setActiveField('fare');
       updateDisplay();
     }
 
+    function syncOfferType() {
+      const el = document.getElementById('offerType'); if (!el) return;
+      const t = data.fare ? (data.type || '') : '';
+      el.hidden = !t; el.textContent = t ? '🚘 ' + t : '';
+      el.className = 'offer-type' + (/black|xl|comfort/i.test(t) ? ' prem' : '');
+    }
     function updateDisplay(notify = false) {
+      try { syncOfferType(); } catch (e) {}
       document.getElementById('fareVal').value = data.fare;
       document.getElementById('minsVal').value = data.mins;
       document.getElementById('kmsVal').value = data.kms;
@@ -2583,10 +2595,10 @@
       const prev = curEntryT && Date.now() - curEntryT < 20000 ? log.find(x => x.t === curEntryT) : null;
       const existing = prev && prev.fare === fare ? prev : null;
       if (existing) {
-        Object.assign(existing, { fare, mins, kms });
+        Object.assign(existing, { fare, mins, kms }); if (data.type) existing.type = data.type;
         existing.took = isGoodOffer(existing);
       } else {
-        const entry = stampLoc({ t: Date.now(), fare, mins, kms, src: 'auto' });
+        const entry = stampLoc({ t: Date.now(), fare, mins, kms, src: 'auto', ...(data.type ? { type: data.type } : {}) });
         entry.took = isGoodOffer(entry);
         log.push(entry);
         curEntryT = entry.t;
@@ -2910,7 +2922,7 @@
       const log = loadLog();
       const existing = curEntryT ? log.find(x => x.t === curEntryT) : null;
       if (existing) { existing.took = took; stampLoc(existing); }  // Auto-Read already logged it: just set the outcome
-      else log.push(stampLoc({ t: Date.now(), fare, mins, kms, took, src: 'manual' }));
+      else log.push(stampLoc({ t: Date.now(), fare, mins, kms, took, src: 'manual', ...(data.type ? { type: data.type } : {}) }));
       saveLog(log);
       toast(took ? '✓ Logged as accepted' : '✗ Logged as declined');
       if (took) { const tr = loadTrip(); if (tr.stage === 'onTrip') setTripStage('onTrip', { queued: true, force: true }); else setTripStage('toPickup', { fare }); }
@@ -3911,9 +3923,9 @@
     const csv = (head, rows) => [head.join(',')].concat(rows.map(r => r.map(csvQ).join(','))).join('\n');
     const tIso = t => t ? new Date(t).toLocaleString('en-AU', { hour12: false }) : '';
     const DATA_CSV = {
-      offers: () => csv(['time', 'fare', 'minutes', 'km', 'gross_per_hr', 'per_km', 'net_per_hr', 'pilot_said', 'you', 'suburb', 'zone', 'lat', 'lng', 'source'],
+      offers: () => csv(['time', 'type', 'fare', 'minutes', 'km', 'gross_per_hr', 'per_km', 'net_per_hr', 'pilot_said', 'you', 'suburb', 'zone', 'lat', 'lng', 'source'],
         loadLog().map(e => { const a = e.lat != null ? areaOf(e.lat, e.lng) : null;
-          return [tIso(e.t), e.fare, e.mins, e.kms || '', (e.fare / e.mins * 60).toFixed(2), e.kms ? (e.fare / e.kms).toFixed(2) : '',
+          return [tIso(e.t), e.type || '', e.fare, e.mins, e.kms || '', (e.fare / e.mins * 60).toFixed(2), e.kms ? (e.fare / e.kms).toFixed(2) : '',
             ((e.fare - (e.kms || 0) * config.costPerKm) / e.mins * 60).toFixed(2), isGoodOffer(e) ? 'accept' : 'decline', e.took ? 'accepted' : 'declined',
             a ? a.name : '', e.lat != null ? zoneAt(e.lat, e.lng) || '' : '', e.lat ?? '', e.lng ?? '', e.src || '']; })),
       shifts: () => { let h = []; try { h = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
@@ -5973,7 +5985,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
             <div class="log-item">
               <div>${DAYS[(dt.getDay() + 6) % 7]} ${time} · $${e.fare.toFixed(2)} · ${e.mins}m${e.kms ? ' · ' + e.kms + 'km' : ''}<br>
               <span style="color:${isGoodOffer(e) ? 'var(--green)' : 'var(--red)'}">$${gph.toFixed(0)}/hr</span>
-              <span style="color:var(--muted)">· ${e.took ? '✓ accepted' : '✗ declined'}${e.src === 'auto' ? ' · 🔎 auto-read' : ''}</span></div>
+              <span style="color:var(--muted)">· ${e.took ? '✓ accepted' : '✗ declined'}${e.type ? ' · ' + esc(e.type) : ''}${e.src === 'auto' ? ' · 🔎 auto-read' : ''}</span></div>
               <button class="del" onclick="deleteEntry(${i})">🚮</button>
             </div>`);
         }
@@ -6216,7 +6228,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       pendingOutcome = null;
       curEntryT = null;                                    // this offer is finished
       lastApplied = { fare: null, mins: null, kms: null }; // ready for the next offer
-      data = { fare: '', mins: '', kms: '' }; updateDisplay();   // accepted, passed or expired: empty boxes, verdict back to waiting
+      data = { fare: '', mins: '', kms: '', type: '' }; updateDisplay();   // accepted, passed or expired: empty boxes, verdict back to waiting
       document.getElementById('decisionToast').classList.remove('show');
       const log = loadLog();
       const e = log.find(x => x.t === t);
@@ -6491,7 +6503,20 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const own = lines.map(l => l.trim().match(/^\$\s*(\d{1,3}(?:\.\d{1,2})?)$/)).find(Boolean);
       const cents = norm.match(/\$\s*(\d{1,3}\.\d{2})(?!\s*\/)/), any = norm.match(/\$\s*(\d{1,3}(?:\.\d{1,2})?)(?!\s*\/)/);
       const fare = (own || cents || any || [])[1] || null;
-      return { norm, fare, mins: Math.round(mins * 10) / 10, kms: Math.round(kms * 10) / 10 };
+      return { norm, fare, mins: Math.round(mins * 10) / 10, kms: Math.round(kms * 10) / 10, type: offerTypeFrom(norm) };
+    }
+    // Ride type on the offer card (most specific first). "Exclusive" is added when the card says so.
+    const OFFER_TYPES = [
+      [/black\s*suv/i, 'Black SUV'], [/uber\s*black|\bblack\b/i, 'Black'], [/uber\s*xl|\bxl\b/i, 'XL'], [/comfort/i, 'Comfort'],
+      [/uber\s*pet|\bpet\b/i, 'Pet'], [/uber\s*green|\bgreen\b/i, 'Green'], [/assist/i, 'Assist'], [/access|wav\b/i, 'Access'],
+      [/connect|package|parcel|deliver/i, 'Connect'], [/taxi/i, 'Taxi'], [/reserve|scheduled/i, 'Reserve'], [/uber\s*x\b|\bx\s*share|uberx/i, 'UberX'],
+      [/^\s*uber\s*[^\w\s]{0,3}\s*$/im, 'UberX']   // white-on-blue "UberX" badge often reads as just "Uber ®)"
+    ];
+    function offerTypeFrom(n) {
+      // the badge sits above the price, before the pickup/trip lines; addresses below can contain words like Green or Reserve
+      const lines = n.split('\n'), cut = lines.findIndex(l => /\d\s*mins?\b/i.test(l)), top = (cut > 0 ? lines.slice(0, cut) : lines.slice(0, 3)).join('\n');
+      const hit = OFFER_TYPES.find(([re]) => re.test(top)); if (!hit) return '';
+      return hit[1] + (/exclusive/i.test(top) ? ' · Exclusive' : '');
     }
     let offerCand = null, offerRecheckT = null, lastPickupAt = 0, fullPass = 0;
     function applyOCRText(rawText) {
@@ -6516,7 +6541,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         if (offerCand === key) confirmed = true;
         else {
           offerCand = key; setOCRStatus(true, 'Reading offer…'); clearTimeout(offerRecheckT); offerRecheckT = setTimeout(runOCRPass, 400);
-          if (data.fare || data.mins || data.kms) { data = { fare: '', mins: '', kms: '' }; document.getElementById('decisionToast').classList.remove('show'); updateDisplay(); }   // old numbers off at once
+          if (data.fare || data.mins || data.kms) { data = { fare: '', mins: '', kms: '', type: '' }; document.getElementById('decisionToast').classList.remove('show'); updateDisplay(); }   // old numbers off at once
         }
       }
       if (!isOffer) offerCand = null;
@@ -6526,6 +6551,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const newMins = confirmed ? String(Math.round(totalMins * 10) / 10) : null;
       const newKms = confirmed ? String(Math.round(totalKms * 10) / 10) : null;
       let changed = false;
+      if (confirmed) data.type = o.type || '';
       if (newFare && newFare !== lastApplied.fare) { data.fare = newFare; lastApplied.fare = newFare; changed = true; }
       if (newMins && newMins !== lastApplied.mins) { data.mins = newMins; lastApplied.mins = newMins; changed = true; }
       if (newKms && newKms !== lastApplied.kms) { data.kms = newKms; lastApplied.kms = newKms; changed = true; }
@@ -6543,7 +6569,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       // No offer on screen: empty the boxes straight away so the verdict (and the Map pill) go back to waiting.
       // The logged offer stays; if the same offer comes back within 20 s it updates that entry instead of adding one.
       if (!isOffer && (data.fare || data.mins || data.kms)) {
-        data = { fare: '', mins: '', kms: '' }; lastApplied = { fare: null, mins: null, kms: null };
+        data = { fare: '', mins: '', kms: '', type: '' }; lastApplied = { fare: null, mins: null, kms: null };
         document.getElementById('decisionToast').classList.remove('show');
         updateDisplay();
       }
@@ -8699,7 +8725,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.81.0';
+    const APP_VERSION = '1.81.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
