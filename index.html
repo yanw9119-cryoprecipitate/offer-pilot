@@ -4826,15 +4826,17 @@
         for (let i = 0; i < lines.length; i++) {
           const m = lines[i].match(re); if (!m) continue;
           const rest = lines[i].slice(m.index + m[0].length).replace(/^[\s:–-]+/, '').trim();
-          return rest || (lines[i + 1] || '').trim();
+          // VicRoads puts each value on the line under its label ("Registration status & expiry date" / "Current - 15/06/2027");
+          // anything after the label that still reads like the label (&, /, lower-case words) means the value is on the next line
+          return rest && (/\d/.test(rest) || !/^[&\/(]|^[a-z]/.test(rest)) ? rest : (lines[i + 1] || '').trim();
         }
         return '';
       };
-      const make = get(/\bmake\b/i), body = get(/body\s*type|\bbody\b/i), colour = get(/colou?r/i);
-      const year = (get(/year(\s+of\s+manufacture)?|manufactur/i).match(/(19|20)\d{2}/) || [])[0] || '';
+      const make = get(/^make\b/i), body = get(/^body\s*type|^body\b/i), colour = get(/^colou?r\b/i);
+      const year = (get(/^year(\s+of\s+manufacture)?\b|^manufactur/i).match(/(19|20)\d{2}/) || [])[0] || '';
       const status = (get(/registration\s+status|\bstatus\b/i).match(/current|expired|suspended|cancell?ed/i) || [])[0] || '';
       const exp = parseDateAU(get(/expiry|expires/i));
-      const plate = (get(/registration\s*(number|no\.?)|\bplate\b/i).match(/[A-Z0-9]{2,8}/i) || [])[0] || '';
+      const plate = (get(/^registration\s*(number|no\.?)|^(number\s+)?plate\b/i).match(/[A-Z0-9]{2,8}/i) || [])[0] || '';
       return { make: make && titleCase(make.split(/\s{2,}/)[0]), body: body && titleCase(body.split(/\s{2,}/)[0]), colour: colour && titleCase(colour.split(/\s{2,}/)[0]),
         year, status: status && titleCase(status), exp, plate: plate.toUpperCase() };
     }
@@ -8275,7 +8277,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.75.1';
+    const APP_VERSION = '1.75.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
