@@ -439,11 +439,11 @@
     @media (prefers-reduced-motion: reduce) { .shift-bar.beat::after, .shift-bar.beat .sb-punch { animation: none; } }
     .drive-box { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; padding: 8px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--card-border); }
     .drive-box:empty { display: none; } .drive-box.on { border-color: var(--green); }
-    .db-car { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; text-align: left; padding: 4px 6px;
+    .db-car { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; text-align: left; padding: 4px 6px;
       border: none; background: none; color: var(--text); font: inherit; cursor: pointer; }
-    .db-car b { font-size: .98rem; white-space: nowrap; } .db-car b span { color: var(--muted); font-size: .8rem; }
+    .db-car b { font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; } .db-car b span { color: var(--muted); font-size: .8rem; }
     .db-car small { font-size: .7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-    .db-go { flex: 1.25; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 10px 8px; border-radius: 999px;
+    .db-go { flex: 0 0 46%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 10px 8px; border-radius: 999px;
       border: none; background: var(--green); color: #fff; font: inherit; cursor: pointer; box-shadow: 0 3px 10px rgba(34,197,94,.3); }
     .db-go b { font-size: 1.02rem; font-weight: 900; } .db-go small { font-size: .66rem; opacity: .9; font-weight: 600; }
     .db-go.on { background: var(--card); color: var(--text); border: 1.5px solid var(--green); box-shadow: none; } .db-go.on small { color: var(--green); opacity: 1; }
@@ -2218,7 +2218,7 @@
         <div class="sx-field"><label for="vehRego">Number plate (rego)</label><input id="vehRego" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. ABC123" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,''); if (garCar()) { garCar().rego = this.value; garChips(); }" />
           <div class="rg-acts"><button type="button" class="rs-btn" onclick="regoCheck()">🔎 Rego check</button><button type="button" class="rs-btn" onclick="regoUpload()">📤 Upload</button><button type="button" class="rs-btn" onclick="regoSheet()">✏️ Enter</button></div>
           <div class="rg-info" id="regoInfo"></div></div>
-        <div class="sx-field"><label for="vehOdo">Odometer now (km) <b class="req">required</b></label><input id="vehOdo" type="number" inputmode="numeric" min="0" step="1" placeholder="from the dashboard" oninput="garOdoEdited = true; this.classList.remove('need')" />
+        <div class="sx-field"><label for="vehOdo">Odometer now (km) <b class="req" id="odoReq">required</b></label><input id="vehOdo" type="number" inputmode="numeric" min="0" step="1" placeholder="from the dashboard" oninput="garOdoEdited = true; this.classList.remove('need')" />
           <div class="rg-info" id="odoInfo"></div></div>
         <div class="sx-field"><label for="vehKind">Type</label><input id="vehKind" type="text" autocomplete="off" placeholder="e.g. Hybrid SUV, Electric" oninput="syncKindLabels()" /></div>
         <div class="sx-field" hidden><label for="vehModel">Model</label>
@@ -4810,9 +4810,10 @@
     function garLoad() {
       const c = garCar(); if (!c) return;
       document.getElementById('vehRego').value = c.rego || '';
-      document.getElementById('vehOdo').value = carOdo(c) || ''; garOdoEdited = false; document.getElementById('vehOdo').classList.remove('need');
+      document.getElementById('vehOdo').value = carOdo(c) || ''; garOdoEdited = false;
+      document.getElementById('odoReq').hidden = loadCars().some(x => x.id === c.id);   // required only for a car being added document.getElementById('vehOdo').classList.remove('need');
       const oi = document.getElementById('odoInfo');
-      if (oi) oi.textContent = c.odo > 0 ? `Last reading ${Math.round(c.odo).toLocaleString()} km on ${new Date(c.odoAt || Date.now()).toLocaleDateString([], { day: 'numeric', month: 'short' })}${carOdo(c) > c.odo ? ` · +${(carOdo(c) - c.odo).toLocaleString()} km tracked since` : ''}` : 'Needed to keep your kilometre records.';
+      if (oi) oi.textContent = c.odo > 0 ? `Last reading ${Math.round(c.odo).toLocaleString()} km on ${new Date(c.odoAt || Date.now()).toLocaleDateString([], { day: 'numeric', month: 'short' })}${carOdo(c) > c.odo ? ` · +${(carOdo(c) - c.odo).toLocaleString()} km tracked since` : ''}` : 'Optional: add it to keep the odometer up to date.';
       document.getElementById('vehKind').value = c.kind || '';
       document.getElementById('vehModel').value = 'custom';
       document.getElementById('vehName').value = c.name || '';
@@ -4846,7 +4847,8 @@
     function garValid() {
       if (!garDraft.cars.length) return true;
       garStore();
-      const miss = garDraft.cars.find(c => !(c.odo > 0)); if (!miss) return true;
+      const saved = new Set(loadCars().map(c => c.id));                // only cars added now must have a reading
+      const miss = garDraft.cars.find(c => !saved.has(c.id) && !(c.odo > 0)); if (!miss) return true;
       if (miss.id !== garDraft.active) { garDraft.active = miss.id; garLoad(); }
       sxGo('vehicle'); setTimeout(() => { const el = document.getElementById('vehOdo'); el.focus(); el.classList.add('need'); }, 120);
       toast(`Enter the odometer for ${carShort(miss)} to save`); return false;
@@ -6676,7 +6678,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     // Leaflet still draws zones, pins, heat and radar; MapLibre only draws the streets, so labels turn upright. ----
     const vectorOn = lsGet('vectorMap') === '1';
     let vmap = null, vecReady = null, vecStyleNow = '';
-    const VEC_STYLE = { light: 'https://tiles.openfreemap.org/styles/liberty', dark: 'https://tiles.openfreemap.org/styles/dark', backup: 'https://tiles.openfreemap.org/styles/positron' };
+    const VEC_STYLE = { light: 'https://tiles.openfreemap.org/styles/positron', dark: 'https://tiles.openfreemap.org/styles/dark', backup: 'https://tiles.openfreemap.org/styles/liberty' };
     function loadVecLib() {
       if (window.maplibregl) return Promise.resolve();
       return new Promise((res, rej) => {
@@ -6705,7 +6707,8 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       vecReady = true;
       // Follow every Leaflet move, zoom (also mid-pinch) and turn
       map.on('move zoom rotate viewreset', vecSync);
-      map.on('zoomanim', e => { if (vmap) vmap.easeTo({ center: [e.center.lng, e.center.lat], zoom: e.zoom - 1, bearing: -map.getBearing(), duration: 250, easing: t => t }); });
+      // Leaflet animates zooms over 250 ms with cubic-bezier(0, 0, .25, 1); follow the same curve so layers stay on the streets
+      map.on('zoomanim', e => { if (vmap) vmap.easeTo({ center: [e.center.lng, e.center.lat], zoom: e.zoom - 1, bearing: -map.getBearing(), duration: 250, easing: leafletEase }); });
       map.on('resize', () => { if (vmap) { vmap.resize(); vecSync(); } });
       vecSync(); syncBase();
     }
@@ -6714,6 +6717,13 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const el = vmap.getContainer(), cv = vmap.getCanvas(); if (el.clientWidth && (Math.abs(cv.clientWidth - el.clientWidth) > 1 || Math.abs(cv.clientHeight - el.clientHeight) > 1)) vmap.resize();
       const c = map.getCenter();
       vmap.jumpTo({ center: [c.lng, c.lat], zoom: map.getZoom() - 1, bearing: -map.getBearing() });
+      try { vmap.redraw(); } catch (e) {}                                  // draw now, in the same frame as the pins and zones
+    }
+    // cubic-bezier(0, 0, .25, 1) as a function of time (solved for x by Newton steps)
+    function leafletEase(t) {
+      const bx = u => 3 * (1 - u) * u * u * .25 + u * u * u, by = u => 3 * (1 - u) * u * u * 1 + u * u * u;
+      let u = t; for (let i = 0; i < 6; i++) { const x = bx(u) - t, d = 3 * (1 - u) * (1 - u) * 0 + 6 * (1 - u) * u * .25 + 3 * u * u * (1 - .25); if (Math.abs(d) < 1e-6) break; u -= x / d; u = Math.min(1, Math.max(0, u)); }
+      return by(u);
     }
     function vecStyle() {
       if (!vmap) return;
@@ -6941,7 +6951,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
           if (headShown === null) headShown = h;
           const diff = ((h - headShown + 540) % 360) - 180;
           headShown = (headShown + diff * 0.18 + 360) % 360;
-          if (headUp && map.setBearing) map.setBearing(-headShown);
+          if (headUp && followMe && map.setBearing) map.setBearing(-headShown);
           arrow.style.transform = `rotate(${(headShown + mapBearing()).toFixed(1)}deg)`;
         } else if (arrow && h === null) { headShown = null; arrow.style.transform = `rotate(${mapBearing().toFixed(1)}deg)`; }
         meLoop = requestAnimationFrame(frame);
@@ -8501,7 +8511,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.0';
+    const APP_VERSION = '1.78.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8640,12 +8650,11 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     const loadDriveLog = () => { try { return JSON.parse(lsGet('driveLog')) || []; } catch (e) { return []; } };
     function startDrive(auto) {
       const c = activeCar(); if (!c) return;
-      if (!(c.odo > 0)) { toast(`Enter ${carShort(c)}’s odometer first`, 'Enter', () => { toggleSettings(true); sxGo('vehicle'); setTimeout(() => document.getElementById('vehOdo').focus(), 200); }); return; }
       const cur = loadDrive(); if (cur && cur.car === c.id) return;
       if (cur) endDrive(true);
       saveDrive({ car: c.id, s: Date.now(), km: 0, odoS: carOdo(c), auto: !!auto, lastMove: Date.now() }, true);
       try { renderShiftBar(); } catch (e) {}
-      toast(auto ? `🚗 Moving: counting km for ${carShort(c)}` : `▶ Driving ${carShort(c)} · odometer ${carOdo(c).toLocaleString()} km`, auto ? 'Change car' : null, auto ? pickCar : null);
+      toast(auto ? `🚗 Moving: counting km for ${carShort(c)}` : `▶ Driving ${carShort(c)}${carOdo(c) ? ` · odometer ${carOdo(c).toLocaleString()} km` : ''}`, auto ? 'Change car' : null, auto ? pickCar : null);
     }
     function endDrive(quiet, at) {
       const d = loadDrive(); if (!d) return;
@@ -8656,7 +8665,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         lsSet('driveLog', JSON.stringify(log.slice(-2000)));
       }
       saveDrive(null, true); try { renderShiftBar(); } catch (x) {}
-      if (!quiet) toast(`■ Drive saved · ${d.km.toFixed(1)} km · odometer ${(carOdo(c) || 0).toLocaleString()} km`);
+      if (!quiet) toast(`■ Drive saved · ${d.km.toFixed(1)} km${carOdo(c) ? ` · odometer ${carOdo(c).toLocaleString()} km` : ''}`);
     }
     function toggleDrive() { if (loadDrive()) { endDrive(); lsSet('driveOffAt', Date.now()); } else startDrive(false); }
     // Called with each GPS step the pilot counts (metres → km)
@@ -8693,7 +8702,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const d = loadDrive(), on = d && d.car === c.id, odo = carOdo(c);
       box.className = 'drive-box' + (on ? ' on' : '');
       box.innerHTML = `<button type="button" class="db-car" onclick="pickCar()"><b>🚗 ${esc(carShort(c))} <span>▾</span></b>` +
-        `<small>${esc(c.rego ? carName(c) : (c.kind || ''))}</small><small>${odo ? odo.toLocaleString() + ' km' : '⚠️ odometer not set'}</small></button>` +
+        `<small>${esc(c.rego ? carName(c) : (c.kind || ''))}</small><small>${odo >= 100 ? odo.toLocaleString() + ' km' : odo ? `${odo} km · check odometer` : 'odometer not set'}</small></button>` +
         `<button type="button" class="db-go${on ? ' on' : ''}" onclick="toggleDrive()">${on ? `<b>■ Stop</b><small>🟢 ${d.km.toFixed(1)} km · since ${fmtTime(d.s)}</small>` : '<b>▶ Start driving</b><small>counts km for this car</small>'}</button>`;
     }
     function renderShiftBar() {
