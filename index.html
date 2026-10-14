@@ -1524,13 +1524,15 @@
       .app-container { max-width: 1500px; }
       .tabs { max-width: 640px; margin-left: auto; margin-right: auto; }
       #view-offer { max-width: 640px; margin: 0 auto; }
-      #view-trends, #view-insights { column-count: 2; column-gap: 14px; }
-      #view-trends > *, #view-insights > * { break-inside: avoid; -webkit-column-break-inside: avoid; display: inline-block; width: 100%; vertical-align: top; }
-      #view-trends > [hidden], #view-insights > [hidden] { display: none !important; }
+      /* Pages sit in a centred column like on the phone, just a little wider */
+      #view-trends, #view-insights, #view-log { max-width: 760px; margin-left: auto; margin-right: auto; }
       .busy-panel { width: min(320px, 40%); }
     }
     @media (min-width: 1200px) {
-      #view-trends, #view-insights { column-count: 3; }
+      /* Uber Trends has many cards: two centred columns */
+      #view-trends { max-width: 1180px; column-count: 2; column-gap: 16px; }
+      #view-trends > * { break-inside: avoid; -webkit-column-break-inside: avoid; display: inline-block; width: 100%; vertical-align: top; }
+      #view-trends > [hidden] { display: none !important; }
     }
     .ver-badge { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 890; }
     /* Map tab fills the screen between the tabs and the bottom bar */
@@ -8558,7 +8560,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.7';
+    const APP_VERSION = '1.78.8';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
