@@ -428,6 +428,9 @@
     @media (prefers-reduced-motion: reduce) { .shift-bar.beat, .shift-bar.beat .sb-punch { animation: none; } }
     .sb-car { align-self: center; font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); }
     .shift-bar.on .sb-car { align-self: flex-start; }
+    .rg-acts { display: flex; gap: 6px; margin-top: 8px; } .rg-acts .rs-btn { flex: 1; }
+    .rg-info { font-size: .8rem; color: var(--muted); margin-top: 6px; } .rg-info:empty { display: none; } .rg-info b { color: var(--text); }
+    .rg-info b.warn { color: #f59e0b; } .rg-info b.neg { color: #ef4444; } .rg-info .rs-btn { padding: 2px 8px; margin-left: 4px; }
     .gar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .gar-chip { border: 1.5px solid var(--sx-line, var(--card-border)); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
     .gar-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); } .gar-chip.add { border-style: dashed; color: var(--accent); }
@@ -2168,7 +2171,9 @@
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">Your cars</h3>
         <div class="gar-chips" id="garChips"></div>
-        <div class="sx-field"><label for="vehRego">Number plate (rego)</label><input id="vehRego" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. ABC123" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,''); if (garCar()) { garCar().rego = this.value; garChips(); }" /></div>
+        <div class="sx-field"><label for="vehRego">Number plate (rego)</label><input id="vehRego" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. ABC123" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,''); if (garCar()) { garCar().rego = this.value; garChips(); }" />
+          <div class="rg-acts"><button type="button" class="rs-btn" onclick="regoCheck()">🔎 Rego check</button><button type="button" class="rs-btn" onclick="regoUpload()">📤 Upload result</button></div>
+          <div class="rg-info" id="regoInfo"></div></div>
         <div class="sx-field"><label for="vehKind">Type</label><input id="vehKind" type="text" autocomplete="off" placeholder="e.g. Hybrid SUV, Electric" oninput="syncKindLabels()" /></div>
         <div class="sx-field" hidden><label for="vehModel">Model</label>
           <select id="vehModel" onchange="onVehicleChange()">
@@ -4758,7 +4763,7 @@
       if (c.fuel > 0) document.getElementById('vehFuel').value = (+c.fuel).toFixed(2);
       document.getElementById('vehNote').textContent = '';
       document.getElementById('acCarType').value = (c.arr && c.arr.type) || '';
-      syncCarFields(); syncKindLabels(); garChips(); onVehicleEdit();
+      syncCarFields(); syncKindLabels(); garChips(); regoInfo(); onVehicleEdit();
     }
     function garChips() {
       const box = document.getElementById('garChips'); if (!box) return;
@@ -4791,6 +4796,88 @@
       document.getElementById('vehL100').value = VEHICLES[k].l100; document.getElementById('vehMaint').value = VEHICLES[k].maint.toFixed(2);
       if (!document.getElementById('vehKind').value.trim()) document.getElementById('vehKind').value = 'Hybrid';
       document.getElementById('vehNote').textContent = VEHICLES[k].note; syncKindLabels(); onVehicleEdit();
+    }
+
+    // ---- 🔎 Rego check (Service Victoria, free): open the check with your plate copied, screenshot the result,
+    // upload it and the make, body type, year, colour and expiry are read on the phone for you to confirm ----
+    const REGO_CHECK_URL = 'https://service.vic.gov.au/checkrego';
+    function regoCheck() {
+      const plate = document.getElementById('vehRego').value.trim();
+      if (plate) { try { navigator.clipboard.writeText(plate); } catch (e) {} }
+      window.open(REGO_CHECK_URL, '_blank', 'noopener');
+      toast(plate ? `📋 ${plate} copied: paste it in, then screenshot the result and tap Upload` : 'Enter the plate, then screenshot the result and tap Upload');
+    }
+    const titleCase = t => t.toLowerCase().replace(/\b[a-z]/g, m => m.toUpperCase());
+    function parseDateAU(t) {
+      let m = t.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+      if (m) { const y = m[3].length === 2 ? 2000 + +m[3] : +m[3]; return new Date(y, +m[2] - 1, +m[1], 12).getTime(); }
+      m = t.match(/(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/);
+      if (m) { const mi = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(m[2].slice(0, 3).toLowerCase()); if (mi >= 0) return new Date(+m[3], mi, +m[1], 12).getTime(); }
+      return null;
+    }
+    // The result page lists "Label  Value" pairs (sometimes the value is on the next line)
+    function parseRegoCheck(text) {
+      const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+      const get = re => {
+        for (let i = 0; i < lines.length; i++) {
+          const m = lines[i].match(re); if (!m) continue;
+          const rest = lines[i].slice(m.index + m[0].length).replace(/^[\s:–-]+/, '').trim();
+          return rest || (lines[i + 1] || '').trim();
+        }
+        return '';
+      };
+      const make = get(/\bmake\b/i), body = get(/body\s*type|\bbody\b/i), colour = get(/colou?r/i);
+      const year = (get(/year(\s+of\s+manufacture)?|manufactur/i).match(/(19|20)\d{2}/) || [])[0] || '';
+      const status = (get(/registration\s+status|\bstatus\b/i).match(/current|expired|suspended|cancell?ed/i) || [])[0] || '';
+      const exp = parseDateAU(get(/expiry|expires/i));
+      const plate = (get(/registration\s*(number|no\.?)|\bplate\b/i).match(/[A-Z0-9]{2,8}/i) || [])[0] || '';
+      return { make: make && titleCase(make.split(/\s{2,}/)[0]), body: body && titleCase(body.split(/\s{2,}/)[0]), colour: colour && titleCase(colour.split(/\s{2,}/)[0]),
+        year, status: status && titleCase(status), exp, plate: plate.toUpperCase() };
+    }
+    async function regoUpload() {
+      const c = garCar(); if (!c) return;
+      const r = await pickReceiptPhoto(false); if (!r) return;
+      const g = parseRegoCheck(r.text || ''), rego = document.getElementById('vehRego');
+      if (!g.make && !g.exp && !g.body) { toast('Couldn’t read the rego check. Try a clearer screenshot of the result.'); return; }
+      if (g.plate && rego.value && g.plate !== rego.value) toast(`⚠️ The screenshot is for ${g.plate}, not ${rego.value}. Check it’s the right car.`);
+      if (g.plate && !rego.value) { rego.value = g.plate; c.rego = g.plate; }
+      Object.assign(c, { make: g.make || c.make, body: g.body || c.body, colour: g.colour || c.colour, year: g.year || c.year,
+        regoStatus: g.status || c.regoStatus, regoExp: g.exp || c.regoExp, regoImg: r.imgId, regoAt: Date.now() });
+      const nm = document.getElementById('vehName'), kd = document.getElementById('vehKind');
+      if (g.make && !nm.value.toLowerCase().startsWith(g.make.toLowerCase())) nm.value = g.make + ' ';    // add the model after it
+      if (g.body && !kd.value.trim()) kd.value = g.body;
+      garChips(); regoInfo(); syncKindLabels();
+      toast(`🔎 Read ${[g.make, g.body, g.year, g.exp ? 'expires ' + new Date(g.exp).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : ''].filter(Boolean).join(' · ')}. Add the model and Save changes.`);
+      if (g.make) setTimeout(() => { nm.focus(); nm.setSelectionRange(nm.value.length, nm.value.length); }, 60);
+    }
+    function regoInfo() {
+      const el = document.getElementById('regoInfo'), c = garCar(); if (!el || !c) return;
+      const bits = [c.make, c.body, c.year, c.colour].filter(Boolean);
+      const left = c.regoExp ? Math.ceil((c.regoExp - Date.now()) / 86400000) : null;
+      el.innerHTML = bits.length || c.regoExp ? `${esc(bits.join(' · '))}${c.regoExp ? `${bits.length ? ' · ' : ''}<b class="${left < 0 ? 'neg' : left <= 30 ? 'warn' : ''}">rego ${left < 0 ? 'expired' : 'to'} ${new Date(c.regoExp).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</b>` +
+        ` <button type="button" class="rs-btn" onclick="regoToCalendar()" aria-label="Add the rego expiry to my phone calendar">📅</button>` : ''}` : '';
+    }
+    // Rego due: a reminder 14 days before (and when it has expired), once a day while you open the pilot
+    function checkRegoReminder() {
+      const today = ymd(new Date());
+      loadCars().forEach(c => {
+        if (!c.regoExp) return;
+        const left = Math.ceil((c.regoExp - Date.now()) / 86400000), key = 'regoRemind:' + c.id;
+        if (left > 14 || left < -30 || lsGet(key) === today) return;
+        lsSet(key, today);
+        const msg = left < 0 ? `Rego for ${carShort(c)} expired ${-left} day${left === -1 ? '' : 's'} ago` : left === 0 ? `Rego for ${carShort(c)} expires today` : `Rego for ${carShort(c)} is due in ${left} day${left === 1 ? '' : 's'}`;
+        sendNotice('🚗 ' + msg, 'Renew at vicroads.vic.gov.au, then do a rego check and upload it to update the date.');
+        toast('🚗 ' + msg, 'Check', () => window.open(REGO_CHECK_URL, '_blank', 'noopener'));
+      });
+    }
+    function regoToCalendar() {
+      const c = garCar() || activeCar(); if (!c || !c.regoExp) return;
+      const d = new Date(c.regoExp), dt = x => `${x.getFullYear()}${pad2(x.getMonth() + 1)}${pad2(x.getDate())}`, nx = new Date(c.regoExp + 86400000);
+      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Offer Pilot//EN', 'BEGIN:VEVENT', `UID:rego-${c.id}-${dt(d)}@offer-pilot`, `DTSTAMP:${dt(new Date())}T000000`,
+        `DTSTART;VALUE=DATE:${dt(d)}`, `DTEND;VALUE=DATE:${dt(nx)}`, `SUMMARY:Rego due · ${carShort(c)}`, 'DESCRIPTION:Renew at vicroads.vic.gov.au',
+        'BEGIN:VALARM', 'TRIGGER:-P14D', 'ACTION:DISPLAY', `DESCRIPTION:Rego due in 2 weeks · ${carShort(c)}`, 'END:VALARM',
+        'BEGIN:VALARM', 'TRIGGER:-P1D', 'ACTION:DISPLAY', `DESCRIPTION:Rego due tomorrow · ${carShort(c)}`, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+      saveFile(`rego-${(c.rego || 'car').replace(/\W+/g, '')}.ics`, ics, 'text/calendar'); toast('📅 Rego reminder ready: tap Add');
     }
     function syncKindLabels() {
       const ev = /electric|\bev\b/i.test(document.getElementById('vehKind').value);
@@ -4838,7 +4925,7 @@
       const arrName = c.arr && c.arr.type ? CAR_TYPES[c.arr.type].replace(/^\S+\s/, '') : 'Not set';
       if (fmt === 'csv') {
         const q = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v, rows = [];
-        rows.push(['Car statement', label], ['Rego', c.rego || ''], ['Car', carName(c)], ['Type', c.kind || ''], ['Arrangement', arrName], ['Business use %', d.biz], []);
+        rows.push(['Car statement', label], ['Rego', c.rego || ''], ['Car', carName(c)], ['Type', c.kind || c.body || ''], ['Year', c.year || ''], ['Colour', c.colour || ''], ['Rego expiry', c.regoExp ? day(c.regoExp) : ''], ['Arrangement', arrName], ['Business use %', d.biz], []);
         rows.push(['Summary', 'Amount']); [['Shifts', d.shifts.length], ['Hours worked', m2(d.hrs)], ['Kilometres (GPS, on shift)', m2(d.km)], ['Fuel/charging (litres or kWh)', m2(d.litres)],
           ['Accepted offers (your share, est.)', m2(d.fares)], ['Car costs incl GST', m2(d.total)], ['GST in car costs', m2(d.gst)], [`GST credits (${d.biz}% business)`, m2(d.credits)], [`Deductible ex GST (${d.biz}% business)`, m2(d.deduct)]].forEach(r => rows.push(r));
         rows.push([], ['Arrangement costs', 'Amount', 'GST']); d.arr.items.forEach(x => rows.push([x.k, m2(x.amt), m2(x.gst ? x.amt / 11 : 0)]));
@@ -4853,7 +4940,7 @@
 <style>body{font:14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;color:#111;margin:24px;max-width:820px}h1{font-size:20px;margin:0}h2{font-size:15px;margin:22px 0 6px;border-bottom:2px solid #111;padding-bottom:3px}
 .m{color:#666}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:4px 6px;border-bottom:1px solid #ddd}th{background:#f3f4f6}td{white-space:nowrap}td:nth-child(2){white-space:normal}
 .kv td:first-child{width:55%}.kv td:last-child{text-align:right;font-weight:600}.tot td{font-weight:800;border-top:2px solid #111}@media print{body{margin:10mm}}</style></head><body>
-<h1>Vehicle statement · ${esc(c.rego || 'no rego')}</h1><div class="m">${esc(carName(c))} · ${esc(c.kind || '')} · ${esc(arrName)} · ${esc(label)} (${day(a || from)} – ${day(to)}) · made ${day(Date.now())} with Offer Pilot</div>
+<h1>Vehicle statement · ${esc(c.rego || 'no rego')}</h1><div class="m">${esc(carName(c))}${c.year ? ' (' + esc(c.year) + ')' : ''} · ${esc(c.kind || c.body || '')}${c.colour ? ' · ' + esc(c.colour) : ''} · ${esc(arrName)}${c.regoExp ? ' · rego to ' + day(c.regoExp) : ''} · ${esc(label)} (${day(a || from)} – ${day(to)}) · made ${day(Date.now())} with Offer Pilot</div>
 <h2>Summary</h2><table class="kv">${[['Shifts', d.shifts.length], ['Hours worked', d.hrs.toFixed(1) + ' h'], ['Kilometres on shift (GPS)', d.km.toFixed(1) + ' km'], [/electric|\bev\b/i.test(c.kind || '') ? 'Energy added' : 'Fuel added', d.litres.toFixed(1) + (/electric|\bev\b/i.test(c.kind || '') ? ' kWh' : ' L')],
   ['Accepted offers (your share, estimate)', '$' + m2(d.fares)], ['Car costs incl. GST', '$' + m2(d.total)], ['GST included in car costs', '$' + m2(d.gst)],
   [`GST credits (${d.biz}% business use)`, '$' + m2(d.credits)]].map(r => tr(r)).join('')}<tr class="tot"><td>Deductible car costs ex GST (${d.biz}% business use)</td><td>$${m2(d.deduct)}</td></tr></table>
@@ -8156,7 +8243,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.74.0';
+    const APP_VERSION = '1.75.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8765,6 +8852,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { setTimeout(flAutoCheck, 1500); setTimeout(checkStatementReminder, 2500); setTimeout(() => { try { checkRosterReminder(); } catch (e) {} }, 4000); } });
     setTimeout(() => { try { checkStatementReminder(); } catch (e) {} }, 6000);
     setTimeout(() => { try { checkRosterReminder(); } catch (e) {} }, 9000);
+    setTimeout(() => { try { checkRegoReminder(); } catch (e) {} }, 12000);
     setTimeout(flAutoCheck, 4000);
     // Live counts for a time window, or null when there is no live data covering it
     function flCount(code, dir, s, e) {
