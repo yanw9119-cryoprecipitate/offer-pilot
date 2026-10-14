@@ -460,7 +460,7 @@
     .db-car small { font-size: .7rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
     .db-go { flex: 0 0 46%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 10px 8px; border-radius: 999px;
       border: none; background: var(--green); color: #fff; font: inherit; cursor: pointer; box-shadow: 0 3px 10px rgba(34,197,94,.3); }
-    .db-go b { font-size: 1.02rem; font-weight: 900; } .db-go small { font-size: .66rem; opacity: .9; font-weight: 600; }
+    .db-go b { font-size: 1.02rem; font-weight: 900; } .db-go small { font-size: .66rem; opacity: .9; font-weight: 600; white-space: nowrap; }
     .db-go.on { background: var(--card); color: var(--text); border: 1.5px solid var(--green); box-shadow: none; } .db-go.on small { color: var(--green); opacity: 1; }
     .db-go:active { transform: scale(.97); }
     .sb-drv { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; position: relative; }
@@ -469,6 +469,10 @@
     .sb-dbtn.on { background: color-mix(in srgb, var(--green) 14%, var(--card)); }
     .shift-bar.on .sb-drv { justify-content: flex-start; }
     .req { font-size: .62rem; color: #ef4444; font-weight: 800; margin-left: 4px; } #vehOdo.need { outline: 2px solid #ef4444; }
+    .sb-main { display: flex; align-items: center; gap: 8px; } .sb-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .sb-out { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 62px; align-self: stretch; border-radius: 12px;
+      border: 1.5px solid #ef4444; color: #ef4444; background: var(--card); font-size: 1rem; font-weight: 900; cursor: pointer; }
+    .shift-bar .sb-out small { font-size: .6rem; font-weight: 800; white-space: nowrap; color: inherit; } .sb-out.armed { background: #ef4444; color: #fff; }
     .sb-car { align-self: center; font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); }
     .shift-bar.on .sb-car { align-self: flex-start; }
     .rg-acts { display: flex; gap: 6px; margin-top: 8px; } .rg-acts .rs-btn { flex: 1; white-space: nowrap; padding: 7px 6px; font-size: .74rem; }
@@ -6217,7 +6221,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       c.getContext('2d').drawImage(ocrVideo, 0, 0, w, h);
       const { data: { text } } = await ocrWorker.recognize(c);
       const n = parseOfferText(text).norm;
-      checkTripDone(n); checkLate(n); if (!(data.fare && data.mins)) tripStageFromScreen(n);
+      checkTripDone(n); checkLate(n); if (!(data.fare && data.mins)) { tripStageFromScreen(n); checkOnline(n); }
       if (!pendingOutcome) return;
       if (pendingOutcome.onTrip ? NEXT_RE.test(n) : PICKUP_RE.test(n)) setOutcome(true);
       else if (IDLE_RE.test(n)) setOutcome(false);
@@ -6565,7 +6569,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         setOCRStatus(true, isOffer || pendingOutcome ? 'Watching' : fareMatch ? 'No offer on screen' : 'Watching');
       }
       checkOutcome(norm, isOffer && (confirmed || key === shownKey));
-      if (!isOffer) { checkLate(norm); checkTripDone(norm); tripStageFromScreen(norm); }
+      if (!isOffer) { checkLate(norm); checkTripDone(norm); tripStageFromScreen(norm); checkOnline(norm); }
       // No offer on screen: empty the boxes straight away so the verdict (and the Map pill) go back to waiting.
       // The logged offer stays; if the same offer comes back within 20 s it updates that entry instead of adding one.
       if (!isOffer && (data.fare || data.mins || data.kms)) {
@@ -7784,6 +7788,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         ['🚦 Trip status', 'Accepted → on the way to pickup → picked up → on the way to drop-off → done, with the last offer and its time. Auto-Read moves it along from Uber’s screens; the button on the bar moves it by hand.'],
         ['Accepted / Declined', 'Logs the offer. It builds your best times and pickup spots, and counts towards your shift goal.'],
         ['⛽ Fuel / ⚡ Charge', 'Log a fill-up or charge by hand (stops at a servo are still detected). Upload the receipt to fill it in; it shows in Account too.'],
+        ['⏹ Punch out', 'On the Drive page beside the progress bars; tap twice. With Auto-Read on, tapping Go online in Uber punches you in.'],
         ['⏱ Punch in', 'Tracks time, trips, km and take-home. The target ✨ follows demand over your planned hours (tap the box to set your own). The box beats red when it’s high demand where you are for 3 hours or more.'],
         ['Good to know', 'On the Map tab a green or red pill shows the same verdict, so you can keep the map open.']]],
       drive: ['🗺 Map', [
@@ -8725,7 +8730,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.81.2';
+    const APP_VERSION = '1.82.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8982,10 +8987,29 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const st = shiftStats(s), now = Date.now(), end = s.planEnd || (s.start + 4 * 3600000);
       const tPct = Math.min(1, Math.max(0, (now - s.start) / Math.max(1, end - s.start))), left = (end - now) / 3600000;
       bar.className = 'shift-bar on' + (st.pct >= 1 ? ' done' : '') + (left < 0 ? ' over' : '');
-      bar.innerHTML = `<div class="sb-row"><span>⏱ <b>${fmtDur(st.hrs)}</b> worked</span><small>${left >= 0 ? `${fmtDur(left)} left · ends ${fmtTime(end)}` : `${fmtDur(-left)} past ${fmtTime(end)}`}${s.planSrc === 'roster' ? ' 🗓' : s.planSrc === 'pilot' ? ' ✨' : ''}</small></div>` +
+      const armed = Date.now() - punchArmAt < 3000;
+      bar.innerHTML = `<div class="sb-main"><div class="sb-col"><div class="sb-row"><span>⏱ <b>${fmtDur(st.hrs)}</b></span><small>${left >= 0 ? `${fmtDur(left)} left · ends ${fmtTime(end)}` : `${fmtDur(-left)} past ${fmtTime(end)}`}${s.planSrc === 'roster' ? ' 🗓' : s.planSrc === 'pilot' ? ' ✨' : ''}</small></div>` +
         `<div class="sb-prog time"><i style="width:${(tPct * 100).toFixed(0)}%"></i></div>` +
         `<div class="sb-row"><span>${st.pct >= 1 ? '🎯 Target reached' : '💵'} <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}${s.goalAuto ? ' ✨' : ''}</span><small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr` : ''}${st.etaH ? ' · target ~' + fmtTime(now + st.etaH * 3600000) : ''}</small></div>` +
-        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>` + areaHtml;
+        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div></div>` +
+        `<span class="sb-out${armed ? ' armed' : ''}" role="button" onclick="event.stopPropagation(); punchOutTap()">${armed ? '⏹<small>Tap again</small>' : '⏹<small>Punch out</small>'}</span></div>` + areaHtml;
+    }
+    // Punch out from the Drive page: two taps (within 3 s) so a bump doesn't end the shift
+    let punchArmAt = 0;
+    function punchOutTap() {
+      if (Date.now() - punchArmAt < 3000) { punchArmAt = 0; if (loadShift()) toggleShift(); return; }
+      punchArmAt = Date.now(); renderShiftBar(); setTimeout(renderShiftBar, 3100);
+    }
+    // Auto-Read: tapping Go online in Uber punches you in. Only the switch from offline to online counts, so an "online"
+    // screen still showing after you punch out doesn't punch you straight back in.
+    const OFFLINE_RE = /(you'?re\s+offline|go\s+online)/i, ONLINE_RE = /(you'?re\s+online|finding\s+trips|looking\s+for\s+(trips|rides|requests))/i;
+    let sawOfflineAt = 0;
+    function checkOnline(n) {
+      if (ONLINE_RE.test(n)) {
+        if (!loadShift() && sawOfflineAt && Date.now() - sawOfflineAt < 15 * 60000) {
+          sawOfflineAt = 0; toggleShift(); toast('⏱ Punched in: you went online in Uber');
+        }
+      } else if (OFFLINE_RE.test(n)) sawOfflineAt = Date.now();
     }
     function openShift() {
       document.getElementById('shiftGoal').value = shiftGoal();
