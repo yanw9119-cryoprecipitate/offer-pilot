@@ -429,7 +429,11 @@
     .sb-car { align-self: center; font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); }
     .shift-bar.on .sb-car { align-self: flex-start; }
     .rg-acts { display: flex; gap: 6px; margin-top: 8px; } .rg-acts .rs-btn { flex: 1; }
-    .rg-info { font-size: .8rem; color: var(--muted); margin-top: 6px; } .rg-info:empty { display: none; } .rg-info b { color: var(--text); }
+    .rg-info { font-size: .8rem; color: var(--muted); margin-top: 6px; cursor: pointer; }
+    .rg-one .veh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; } .rg-one .veh-grid > .ac-note, .rg-one .veh-grid > .setting-item:first-of-type { grid-column: 1 / -1; }
+    .rg-auto input, .rg-auto select { background: color-mix(in srgb, #7c3aed 10%, var(--card-2)) !important; border-color: #a78bfa !important; }
+    .rg-warn { color: #ef4444; font-weight: 700; }
+    .rg-one select { width: 100%; box-sizing: border-box; padding: 12px 10px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; } .rg-info:empty { display: none; } .rg-info b { color: var(--text); }
     .rg-info b.warn { color: #f59e0b; } .rg-info b.neg { color: #ef4444; } .rg-info .rs-btn { padding: 2px 8px; margin-left: 4px; }
     .gar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
     .gar-chip { border: 1.5px solid var(--sx-line, var(--card-border)); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
@@ -2172,7 +2176,7 @@
         <h3 class="sx-ch">Your cars</h3>
         <div class="gar-chips" id="garChips"></div>
         <div class="sx-field"><label for="vehRego">Number plate (rego)</label><input id="vehRego" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. ABC123" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,''); if (garCar()) { garCar().rego = this.value; garChips(); }" />
-          <div class="rg-acts"><button type="button" class="rs-btn" onclick="regoCheck()">🔎 Rego check</button><button type="button" class="rs-btn" onclick="regoUpload()">📤 Upload result</button></div>
+          <div class="rg-acts"><button type="button" class="rs-btn" onclick="regoCheck()">🔎 Rego check</button><button type="button" class="rs-btn" onclick="regoUpload()">📤 Upload</button><button type="button" class="rs-btn" onclick="regoSheet()">✏️ Enter</button></div>
           <div class="rg-info" id="regoInfo"></div></div>
         <div class="sx-field"><label for="vehKind">Type</label><input id="vehKind" type="text" autocomplete="off" placeholder="e.g. Hybrid SUV, Electric" oninput="syncKindLabels()" /></div>
         <div class="sx-field" hidden><label for="vehModel">Model</label>
@@ -4838,23 +4842,51 @@
       const c = garCar(); if (!c) return;
       const r = await pickReceiptPhoto(false); if (!r) return;
       const g = parseRegoCheck(r.text || ''), rego = document.getElementById('vehRego');
-      if (!g.make && !g.exp && !g.body) { toast('Couldn’t read the rego check. Try a clearer screenshot of the result.'); return; }
-      if (g.plate && rego.value && g.plate !== rego.value) toast(`⚠️ The screenshot is for ${g.plate}, not ${rego.value}. Check it’s the right car.`);
-      if (g.plate && !rego.value) { rego.value = g.plate; c.rego = g.plate; }
-      Object.assign(c, { make: g.make || c.make, body: g.body || c.body, colour: g.colour || c.colour, year: g.year || c.year,
-        regoStatus: g.status || c.regoStatus, regoExp: g.exp || c.regoExp, regoImg: r.imgId, regoAt: Date.now() });
-      const nm = document.getElementById('vehName'), kd = document.getElementById('vehKind');
-      if (g.make && !nm.value.toLowerCase().startsWith(g.make.toLowerCase())) nm.value = g.make + ' ';    // add the model after it
-      if (g.body && !kd.value.trim()) kd.value = g.body;
-      garChips(); regoInfo(); syncKindLabels();
-      toast(`🔎 Read ${[g.make, g.body, g.year, g.exp ? 'expires ' + new Date(g.exp).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }) : ''].filter(Boolean).join(' · ')}. Add the model and Save changes.`);
-      if (g.make) setTimeout(() => { nm.focus(); nm.setSelectionRange(nm.value.length, nm.value.length); }, 60);
+      if (!g.make && !g.exp && !g.body) { toast('Couldn’t read that screenshot. Type the details in instead.'); regoSheet(); return; }
+      regoSheet(g, r.imgId);
+    }
+    // Rego details: filled from the scan for you to check, or typed in by hand. Nothing changes until you Confirm.
+    function regoSheet(g, imgId) {
+      const c = garCar(); if (!c) return;
+      const scan = !!g; g = g || {};
+      const plateNow = document.getElementById('vehRego').value.trim();
+      const v = (k, ck) => esc(String(g[k] || c[ck || k] || ''));
+      const exp = g.exp || c.regoExp, mm = document.getElementById('vehName').value.trim();
+      const model = mm && c.make && mm.toLowerCase().startsWith(c.make.toLowerCase()) ? mm.slice(c.make.length).trim() : (c.make ? '' : mm);
+      const warn = scan && g.plate && plateNow && g.plate !== plateNow ? `<div class="ac-note rg-warn">⚠️ The screenshot is for ${esc(g.plate)}, not ${esc(plateNow)}. Check it’s the right car.</div>` : '';
+      const filled = k => scan && g[k] ? ' rg-auto' : '';
+      const f = (id, label, val, k, extra = '') => `<div class="setting-item${filled(k)}"><label for="${id}">${label}</label><input id="${id}" value="${val}" ${extra} /></div>`;
+      acctSheet(scan ? '🔎 Check and confirm' : '✏️ Rego details', warn + (scan ? '<div class="ac-note">Read from your screenshot (highlighted). Fix anything that’s wrong, then Confirm.</div>' : '') +
+        f('rgPlate', 'Number plate', esc(g.plate || plateNow), 'plate', 'type="text" autocapitalize="characters" autocomplete="off"') +
+        f('rgMake', 'Make', v('make'), 'make', 'type="text" placeholder="e.g. Toyota" autocomplete="off"') +
+        f('rgModel', 'Model', esc(model), '', 'type="text" list="vehNames2" placeholder="e.g. Camry" autocomplete="off"') +
+        `<datalist id="vehNames2"><option value="Camry Hybrid"></option><option value="RAV4 Hybrid"></option></datalist>` +
+        f('rgBody', 'Body type', v('body'), 'body', 'type="text" placeholder="e.g. Sedan" autocomplete="off"') +
+        f('rgYear', 'Year', v('year'), 'year', 'type="number" inputmode="numeric" min="1980" max="2100" placeholder="e.g. 2022"') +
+        f('rgColour', 'Colour', v('colour'), 'colour', 'type="text" autocomplete="off"') +
+        f('rgExp', 'Rego expiry', exp ? ymd(new Date(exp)) : '', 'exp', 'type="date"') +
+        `<div class="setting-item${filled('status')}"><label for="rgStatus">Status</label><select id="rgStatus">${['', 'Current', 'Expired', 'Suspended', 'Cancelled'].map(x => `<option${(g.status || c.regoStatus || '') === x ? ' selected' : ''}>${x}</option>`).join('')}</select></div>`,
+        () => {
+          const val = id => document.getElementById(id).value.trim();
+          const plate = val('rgPlate').toUpperCase().replace(/\s+/g, ''), make = titleCase(val('rgMake')), mdl = val('rgModel'), ex = val('rgExp');
+          Object.assign(c, { make, body: val('rgBody'), year: val('rgYear'), colour: val('rgColour'), regoStatus: val('rgStatus'),
+            regoExp: ex ? new Date(ex + 'T12:00').getTime() : null, ...(imgId ? { regoImg: imgId, regoAt: Date.now() } : {}) });
+          if (plate) { c.rego = plate; document.getElementById('vehRego').value = plate; }
+          const nm = document.getElementById('vehName'), full = [make, mdl].filter(Boolean).join(' ');
+          if (full) { nm.value = full; onCarName(); }
+          const kd = document.getElementById('vehKind'); if (c.body && !kd.value.trim()) kd.value = c.body;
+          garChips(); regoInfo(); syncKindLabels();
+          toast('✓ Rego details added. Save changes to keep them.');
+        }, 'rg-one');
+      const sv = document.getElementById('acctSave'); if (sv) sv.textContent = scan ? '✓ Confirm' : '✓ Done';
+      document.querySelectorAll('#acctSheet .rg-one input[type="date"]').forEach(x => x.style.width = '100%');
     }
     function regoInfo() {
       const el = document.getElementById('regoInfo'), c = garCar(); if (!el || !c) return;
       const bits = [c.make, c.body, c.year, c.colour].filter(Boolean);
       const left = c.regoExp ? Math.ceil((c.regoExp - Date.now()) / 86400000) : null;
-      el.innerHTML = bits.length || c.regoExp ? `${esc(bits.join(' · '))}${c.regoExp ? `${bits.length ? ' · ' : ''}<b class="${left < 0 ? 'neg' : left <= 30 ? 'warn' : ''}">rego ${left < 0 ? 'expired' : 'to'} ${new Date(c.regoExp).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</b>` +
+      el.onclick = e => { if (!e.target.closest('button')) regoSheet(); };
+      el.innerHTML = bits.length || c.regoExp ? `✏️ ${esc(bits.join(' · '))}${c.regoExp ? `${bits.length ? ' · ' : ''}<b class="${left < 0 ? 'neg' : left <= 30 ? 'warn' : ''}">rego ${left < 0 ? 'expired' : 'to'} ${new Date(c.regoExp).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}</b>` +
         ` <button type="button" class="rs-btn" onclick="regoToCalendar()" aria-label="Add the rego expiry to my phone calendar">📅</button>` : ''}` : '';
     }
     // Rego due: a reminder 14 days before (and when it has expired), once a day while you open the pilot
@@ -8243,7 +8275,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.75.0';
+    const APP_VERSION = '1.75.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
