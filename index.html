@@ -6381,16 +6381,30 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       } finally { ocrBusy = false; }
     }
 
+    // Read an Uber offer card. Lines from the pilot's own window (when the whole screen is shared) are dropped first:
+    // "$500/hr", "$7.53/km", "FARE ($ AUD) 250", "DIST (KM) 33.2", "Punch in"… would otherwise be read as the offer.
+    const PILOT_LINE = /\/\s*(hr|km)\b|\b(gross|per km|net\b|fare\s*\(|time\s*\(min|dist\s*\(km|punch|start driving|accepted|declined|odometer|offer pilot|watching|auto-read)\b|accept\s*\(/i;
+    function parseOfferText(rawText) {
+      const lines = rawText.replace(/(\d),(\d)/g, '$1.$2').split(/\n+/).filter(l => l.trim() && !PILOT_LINE.test(l));
+      const norm = lines.join('\n');
+      // Uber's legs: "6 mins (2.1 km) away" and "24 mins (12.2 km) trip" — use those when they're there
+      const legs = [...norm.matchAll(/(\d{1,3})\s*mins?\s*\(\s*(\d{1,3}(?:\.\d+)?)\s*(km|mi)\s*\)/gi)];
+      let mins = 0, kms = 0;
+      if (legs.length) legs.forEach(m => { mins += +m[1]; kms += +m[2] * (m[3].toLowerCase() === 'mi' ? 1.60934 : 1); });
+      else {
+        [...norm.matchAll(/(?<![\d.$])(\d{1,3}(?:\.\d+)?)\s*mins?\b/gi)].forEach(m => mins += +m[1]);
+        [...norm.matchAll(/(?<![\d.$])(\d{1,3}(?:\.\d+)?)\s*(km|mi)\b(?!\s*\/)/gi)].forEach(m => kms += +m[1] * (m[2].toLowerCase() === 'mi' ? 1.60934 : 1));
+      }
+      // Fare: the dollar amount that stands on its own line (the big number), else the first one with cents
+      const own = lines.map(l => l.trim().match(/^\$\s*(\d{1,3}(?:\.\d{1,2})?)$/)).find(Boolean);
+      const cents = norm.match(/\$\s*(\d{1,3}\.\d{2})(?!\s*\/)/), any = norm.match(/\$\s*(\d{1,3}(?:\.\d{1,2})?)(?!\s*\/)/);
+      const fare = (own || cents || any || [])[1] || null;
+      return { norm, fare, mins: Math.round(mins * 10) / 10, kms: Math.round(kms * 10) / 10 };
+    }
     function applyOCRText(rawText) {
       document.getElementById('ocrRawText').textContent = rawText.trim().slice(0, 300) || '(no text detected)';
-      const norm = rawText.replace(/(\d),(\d)/g, '$1.$2');
-      const fareMatch = norm.match(/\$\s*(\d{1,3}(?:\.\d{1,2})?)/);
-      // Uber shows pickup and trip legs separately, so add up every "N min" and "N km"
-      const minMatches = [...norm.matchAll(/(\d{1,3}(?:\.\d+)?)\s*min/gi)];
-      const kmMatches = [...norm.matchAll(/(\d{1,3}(?:\.\d+)?)\s*km/gi)];
-      const miMatches = [...norm.matchAll(/(\d{1,3}(?:\.\d+)?)\s*mi\b/gi)];
-      const totalMins = minMatches.reduce((s, m) => s + parseFloat(m[1]), 0);
-      const totalKms = kmMatches.reduce((s, m) => s + parseFloat(m[1]), 0) + miMatches.reduce((s, m) => s + parseFloat(m[1]) * 1.60934, 0);
+      const o = parseOfferText(rawText), norm = o.norm, fareMatch = o.fare ? [o.fare, o.fare] : null;
+      const totalMins = o.mins, totalKms = o.kms;
 
       // Only a real offer card counts: a fare plus trip minutes and kilometres, at believable sizes, and not a screen that
       // is plainly something else (Earnings, wallet, weekly summary…) unless it also shows offer words like Accept or Match.
@@ -8567,7 +8581,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.9';
+    const APP_VERSION = '1.79.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
