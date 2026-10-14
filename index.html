@@ -8730,7 +8730,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.82.0';
+    const APP_VERSION = '1.82.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9003,11 +9003,16 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     // Auto-Read: tapping Go online in Uber punches you in. Only the switch from offline to online counts, so an "online"
     // screen still showing after you punch out doesn't punch you straight back in.
     const OFFLINE_RE = /(you'?re\s+offline|go\s+online)/i, ONLINE_RE = /(you'?re\s+online|finding\s+trips|looking\s+for\s+(trips|rides|requests))/i;
-    let sawOfflineAt = 0;
+    let sawOfflineAt = 0, onlineAskAt = 0;
     function checkOnline(n) {
       if (ONLINE_RE.test(n)) {
         if (!loadShift() && sawOfflineAt && Date.now() - sawOfflineAt < 15 * 60000) {
           sawOfflineAt = 0; toggleShift(); toast('⏱ Punched in: you went online in Uber');
+        } else if (!loadShift() && Date.now() - onlineAskAt > 10 * 60000) {
+          // Online in Uber but not punched in (say, after punching out): ask, at most every 10 minutes
+          onlineAskAt = Date.now();
+          toast('🟢 Uber shows you online. Punch in?', 'Punch in', () => { if (!loadShift()) toggleShift(); });
+          sendNotice('🟢 You’re online in Uber', 'Punch in to track this shift.');
         }
       } else if (OFFLINE_RE.test(n)) sawOfflineAt = Date.now();
     }
