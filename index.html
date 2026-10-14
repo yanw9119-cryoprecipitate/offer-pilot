@@ -6709,7 +6709,18 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       // Follow every Leaflet move, zoom (also mid-pinch) and turn
       map.on('move zoom rotate viewreset', vecSync);
       // Leaflet animates zooms over 250 ms with cubic-bezier(0, 0, .25, 1); follow the same curve so layers stay on the streets
-      map.on('zoomanim', e => { if (vmap) vmap.easeTo({ center: [e.center.lng, e.center.lat], zoom: e.zoom - 1, bearing: -map.getBearing(), duration: 250, easing: leafletEase }); });
+      // and scale around the same fixed point Leaflet's CSS zoom uses (the spot that stays put on screen)
+      map.on('zoomanim', e => {
+        if (!vmap) return;
+        const z0 = map.getZoom(), z1 = e.zoom, k = Math.pow(2, z1 - z0), opt = { zoom: z1 - 1, bearing: -map.getBearing(), duration: 250, easing: leafletEase };
+        if (Math.abs(k - 1) > 1e-6) {
+          const a = map.project(map.getCenter(), z0), b = map.project(e.center, z1), x0 = b.subtract(a).divideBy(k - 1), fix = map.unproject(x0, z0);
+          opt.around = [fix.lng, fix.lat];
+          // CSS grows the scale linearly (1 → k); MapLibre steps the zoom level, so convert one into the other
+          opt.easing = t => Math.log2(1 + (k - 1) * leafletEase(t)) / Math.log2(k);
+        } else opt.center = [e.center.lng, e.center.lat];
+        vmap.easeTo(opt);
+      });
       map.on('resize', () => { if (vmap) { vmap.resize(); vecSync(); } });
       vecSync(); syncBase();
     }
@@ -6952,7 +6963,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         if (p) {
           meMarker.setLatLng([p.lat, p.lng]);
           meAcc.setLatLng([p.lat, p.lng]);
-          if (followMe) map.setView([p.lat, p.lng], map.getZoom(), { animate: false });
+          if (followMe && !map._animatingZoom) map.setView([p.lat, p.lng], map.getZoom(), { animate: false });   // don't cut a zoom short
         }
         // Heading: turn smoothly the short way round
         const h = currentHeading(), arrow = document.getElementById('meArrow');
@@ -7309,7 +7320,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     function ensureMap() {
       if (map || typeof L === 'undefined') return !!map;
-      map = L.map('surgeMap', { zoomControl: false, rotate: true, bearing: 0, rotateControl: false, touchRotate: false, shiftKeyRotate: false, compassBearing: false }).setView(MELB, 12);
+      map = L.map('surgeMap', { zoomControl: false, zoomSnap: vectorOn ? 0 : 1, rotate: true, bearing: 0, rotateControl: false, touchRotate: false, shiftKeyRotate: false, compassBearing: false }).setView(MELB, 12);
       // Each base map tries several tile providers and falls back if one is blocked.
       const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
       // Key-free map pictures only. CARTO now answers with "API KEY REQUIRED" tiles, so it isn't used.
@@ -8547,7 +8558,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.5';
+    const APP_VERSION = '1.78.6';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
