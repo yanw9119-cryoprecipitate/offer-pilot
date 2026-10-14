@@ -8739,7 +8739,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.83.0';
+    const APP_VERSION = '1.83.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9022,8 +9022,8 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       bar.innerHTML = `<div class="sb-main"><div class="sb-col"><div class="sb-row"><span>⏱ <b>${fmtDur(st.hrs)}</b></span><small>${left >= 0 ? `${fmtDur(left)} left · ends ${fmtTime(end)}` : `${fmtDur(-left)} past ${fmtTime(end)}`}${s.planSrc === 'roster' ? ' 🗓' : s.planSrc === 'pilot' ? ' ✨' : ''}</small></div>` +
         `<div class="sb-prog time"><i style="width:${(tPct * 100).toFixed(0)}%"></i></div>` +
         `<div class="sb-row"><span>${st.pct >= 1 ? '🎯 Target reached' : '💵'} <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}${s.goalAuto ? ' ✨' : ''}</span><small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr` : ''}${st.etaH ? ' · target ~' + fmtTime(now + st.etaH * 3600000) : ''}</small></div>` +
-        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div></div>` +
-        `<span class="sb-out" role="button" onclick="event.stopPropagation(); punchOutTap()">⏹<small>Punch out</small></span></div>` + areaHtml;
+        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>` + areaHtml + `</div>` +
+        `<span class="sb-out" role="button" onclick="event.stopPropagation(); punchOutTap()">⏹<small>Punch out</small></span></div>`;
     }
     // Punch out from the Drive page: a summary of the shift and your next rostered shift, then confirm
     function shiftSummaryLines(st, s) {
