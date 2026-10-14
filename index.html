@@ -426,6 +426,19 @@
     @keyframes sbBeat { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 14% { box-shadow: 0 0 0 4px rgba(239,68,68,.35); } 28% { box-shadow: 0 0 0 1px rgba(239,68,68,.15); } 42% { box-shadow: 0 0 0 6px rgba(239,68,68,.3); } 70% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
     @keyframes sbPulse { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.08); } 70% { transform: scale(1); } }
     @media (prefers-reduced-motion: reduce) { .shift-bar.beat, .shift-bar.beat .sb-punch { animation: none; } }
+    .sb-car { align-self: center; font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); }
+    .shift-bar.on .sb-car { align-self: flex-start; }
+    .gar-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .gar-chip { border: 1.5px solid var(--sx-line, var(--card-border)); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 7px 14px; font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
+    .gar-chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); } .gar-chip.add { border-style: dashed; color: var(--accent); }
+    .gar-arr label { font-size: .9rem; } .gar-arr select { max-width: 62%; }
+    .gar-acts { display: flex; gap: 8px; flex-wrap: wrap; } .gar-acts .rs-btn { flex: 1 1 auto; }
+    .gar-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; padding: 10px 12px; margin-bottom: 6px; border-radius: 12px;
+      border: 1.5px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; cursor: pointer; position: relative; }
+    .gar-pick b { font-size: 1rem; letter-spacing: .5px; } .gar-pick span { font-size: .76rem; color: var(--muted); }
+    .gar-pick.on { border-color: var(--accent); } .gar-pick i { position: absolute; right: 12px; top: 12px; font-style: normal; font-size: .72rem; font-weight: 800; color: var(--accent); }
+    .gar-one .veh-grid, .st-one .veh-grid { display: block; } .st-one .rs-btn { width: 100%; margin-top: 4px; }
+    .ac-cars { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; } .ac-cars .rs-btn { font-size: .74rem; padding: 6px 10px; }
     .goal-line { display: flex; gap: 6px; align-items: center; } .goal-line input { flex: 1; min-width: 0; } .goal-line .rs-btn { white-space: nowrap; }
     .goal-line .rs-btn.on { background: #7c3aed; border-color: #7c3aed; color: #fff; }
     .sb-prog { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; position: relative; }
@@ -2151,22 +2164,35 @@
     <!-- ===== Vehicle ===== -->
     <section class="sx-page" data-page="vehicle" hidden>
       <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
-      <h1 class="sx-big">Vehicle</h1><p class="sx-lead">Your car and what each kilometre costs</p>
+      <h1 class="sx-big">Vehicle</h1><p class="sx-lead">The car you drive sets costs, targets and records everywhere in the pilot</p>
       <div class="sx-card sx-pad">
-        <h3 class="sx-ch">Car</h3>
-        <div class="sx-field"><label for="vehModel">Model</label>
+        <h3 class="sx-ch">Your cars</h3>
+        <div class="gar-chips" id="garChips"></div>
+        <div class="sx-field"><label for="vehRego">Number plate (rego)</label><input id="vehRego" type="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. ABC123" oninput="this.value=this.value.toUpperCase().replace(/\s+/g,''); if (garCar()) { garCar().rego = this.value; garChips(); }" /></div>
+        <div class="sx-field"><label for="vehKind">Type</label><input id="vehKind" type="text" autocomplete="off" placeholder="e.g. Hybrid SUV, Electric" oninput="syncKindLabels()" /></div>
+        <div class="sx-field" hidden><label for="vehModel">Model</label>
           <select id="vehModel" onchange="onVehicleChange()">
             <option value="rav4h">Toyota RAV4 Hybrid</option>
             <option value="camryh">Toyota Camry Hybrid</option>
             <option value="xtrail">Nissan X-Trail (2.5 petrol)</option>
             <option value="custom">Custom</option>
           </select></div>
+        <div class="sx-field" id="vehNameWrap"><label for="vehName">Make &amp; model</label><input id="vehName" type="text" list="vehNames" autocomplete="off" placeholder="Toyota Camry, RAV4 or type your own" oninput="onCarName()" /><datalist id="vehNames"><option value="Toyota Camry Hybrid"></option><option value="Toyota RAV4 Hybrid"></option></datalist></div>
         <div class="sx-hint" id="vehNote"></div>
+      </div>
+      <div class="sx-card sx-pad ac-set gar-arr">
+        <h3 class="sx-ch">Arrangement</h3>
+        <label>How you have it<select id="acCarType" onchange="syncCarFields()"><option value="">Not set</option><option value="rental">🔑 Rideshare rental</option><option value="lease">📝 Lease</option><option value="loan">🏦 Car loan</option><option value="own">🚗 Own car (paid off)</option></select></label>
+        <div id="acCarFields"></div>
+      </div>
+      <div class="sx-card sx-pad gar-acts">
+        <button type="button" class="rs-btn" onclick="carStatementSheet(garDraft.active)">⬇ Car statement</button>
+        <button type="button" class="rs-btn" id="garDel" onclick="garRemove(this)">🚮 Remove this car</button>
       </div>
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">Running costs</h3>
-        <div class="sx-field"><label for="vehL100">Fuel use (L/100 km, city)</label><input type="number" inputmode="decimal" id="vehL100" step="0.1" min="1" oninput="onVehicleEdit()" /></div>
-        <div class="sx-field"><label for="vehFuel">Fuel price ($/L)</label><input type="number" inputmode="decimal" id="vehFuel" step="0.01" min="0.5" oninput="onVehicleEdit()" /></div>
+        <div class="sx-field"><label for="vehL100" id="vehL100Lbl">Fuel use (L/100 km, city)</label><input type="number" inputmode="decimal" id="vehL100" step="0.1" min="1" oninput="onVehicleEdit()" /></div>
+        <div class="sx-field"><label for="vehFuel" id="vehFuelLbl">Fuel price ($/L)</label><input type="number" inputmode="decimal" id="vehFuel" step="0.01" min="0.5" oninput="onVehicleEdit()" /></div>
         <div class="sx-field"><label for="vehMaint">Servicing &amp; tyres ($/km)</label><input type="number" inputmode="decimal" id="vehMaint" step="0.01" min="0" oninput="onVehicleEdit()" /></div>
         <div class="sx-field"><label for="vehKmh">Average km per working hour</label><input type="number" inputmode="numeric" id="vehKmh" step="1" min="5" oninput="onVehicleEdit()" /></div>
       </div>
@@ -2670,6 +2696,7 @@
         document.getElementById('vehMaint').value = p.maint.toFixed(2);
       }
       document.getElementById('vehNote').textContent = p.note;
+      try { syncKindLabels(); } catch (e) {}
       onVehicleEdit();
     }
     function fillVehicleUI() {
@@ -2721,7 +2748,7 @@
         document.getElementById('cfgMaxChase').value = chaseCfg.maxMin;
         devLockNow(true);                  // keys are filled in only after the passcode
         document.getElementById('cfgAlerts').value = chaseCfg.alerts;
-        fillVehicleUI();
+        fillVehicleUI(); garOpen();
         renderFillLog();
       }
     }
@@ -2747,6 +2774,7 @@
       veh.goalHr = isNaN(vv('goalHr')) ? veh.goalHr : vv('goalHr'); veh.goalKm = isNaN(vv('goalKm')) ? veh.goalKm : vv('goalKm');
       lsSet('vehModel', veh.model); lsSet('vehL100', veh.l100); lsSet('vehFuel', veh.fuel);
       lsSet('vehMaint', veh.maint); lsSet('vehKmh', veh.kmh);
+      garSave();                                                       // cars, rego, type and arrangements; the car shown is the one you drive
       lsSet('goalHr', veh.goalHr); lsSet('goalKm', veh.goalKm);
       chaseCfg.maxMin = parseFloat(document.getElementById('cfgMaxChase').value) || 12;
       if (devUnlocked) chaseCfg.tomtom = document.getElementById('cfgTomTom').value.trim();
@@ -3729,7 +3757,7 @@
     function sxSummaries() {
       const set = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
       const sel = document.getElementById('vehModel');
-      set('sxsVehicle', `${sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : ''} · $${config.costPerKm.toFixed(2)}/km`);
+      set('sxsVehicle', `${loadCars().length > 1 ? loadCars().length + ' cars · driving ' : ''}${carLabel(activeCar())} · $${config.costPerKm.toFixed(2)}/km`);
       const fills = loadFills(), fa = avgEconomy('fuel');
       set('sxsFills', fills.length ? `${fills.length} fill-up${fills.length > 1 ? 's' : ''}${fa ? ` · real ${fa.per100.toFixed(1)} L/100 km` : ''}` : 'None logged yet');
       set('sxsTargets', `Min $${config.minGrossHr}/hr · $${config.minRateKm.toFixed(2)}/km · goal $${shiftGoal()}/day`);
@@ -4651,8 +4679,205 @@
     // that already includes them.
     const CAR_TYPES = { rental: '🔑 Rideshare rental', lease: '📝 Lease', loan: '🏦 Car loan', own: '🚗 Own car (paid off)' };
     const PER_DAYS = { week: 7, fortnight: 14, month: 365.25 / 12, year: 365.25 };
-    function carCosts(a, b) {
-      const c = (acctCfg().car) || {}, from = Math.max(a, c.since || a), to = Math.min(b, Date.now());
+    // ================= 🚗 GARAGE: your cars. The active car is the master key: its running costs set the offer
+    // targets, and fuel, costs, shifts and offers are recorded against it. Each car has its own arrangement
+    // (rental, lease, loan or own), and its own statement for tax and accounting.
+    function loadCars() {
+      try { const c = JSON.parse(lsGet('cars')); if (Array.isArray(c) && c.length) return c; } catch (e) {}
+      // first run: the car you already set up (model, running costs and the arrangement from Account settings)
+      const m = lsGet('vehModel') || 'rav4h', old = acctCfg().car || null;
+      const car = { id: 'c1', rego: '', kind: '', model: 'custom', name: VEHICLES[m] && m !== 'custom' ? VEHICLES[m].name : '', l100: veh.l100, maint: veh.maint, fuel: veh.fuel, arr: old };
+      lsSet('cars', JSON.stringify([car])); return [car];
+    }
+    const saveCars = c => lsSet('cars', JSON.stringify(c));
+    function activeCarId() { const c = loadCars(), a = lsGet('carActive'); return c.some(x => x.id === a) ? a : c[0].id; }
+    const activeCar = () => loadCars().find(c => c.id === activeCarId());
+    const carOf = x => (x && x.car) || loadCars()[0].id;              // records from before the garage belong to your first car
+    function carName(c) { return c ? (c.name || c.kind || 'Car') : 'Car'; }
+    function carLabel(c) { return c ? (c.rego ? c.rego + ' · ' : '') + carName(c) : 'Car'; }
+    const carShort = c => c ? (c.rego || carName(c)) : 'Car';
+    // Make a car the one you're driving: its running costs become the vehicle figures and the offer targets follow
+    function applyCarToVeh(c) {
+      veh.model = c.model || 'custom'; if (c.l100 > 0) veh.l100 = c.l100; if (c.maint != null) veh.maint = c.maint; if (c.fuel > 0) veh.fuel = c.fuel;
+      lsSet('vehModel', veh.model); lsSet('vehL100', veh.l100); lsSet('vehMaint', veh.maint); lsSet('vehFuel', veh.fuel);
+      const cost = veh.l100 * veh.fuel / 100 + veh.maint;
+      config.costPerKm = +cost.toFixed(2); config.minGrossHr = Math.round(veh.goalHr + cost * veh.kmh); config.minRateKm = +(veh.goalKm + cost).toFixed(2);
+      lsSet('cfgCostKm', config.costPerKm); lsSet('cfgMinHr', config.minGrossHr); lsSet('cfgMinKm', config.minRateKm);
+    }
+    function setActiveCar(id) {
+      const c = loadCars().find(x => x.id === id); if (!c) return;
+      lsSet('carActive', id); applyCarToVeh(c);
+      const cur = loadShift(); if (cur && !cur.car) { cur.car = id; lsSet(SHIFT_KEY, JSON.stringify(cur)); }
+      try { updateDisplay(); } catch (e) {} try { renderShiftBar(); } catch (e) {} try { renderAccount(); } catch (e) {}
+      toast(`🚗 Driving ${carLabel(c)} · $${config.costPerKm.toFixed(2)}/km`);
+    }
+    // Quick switch (Drive page and forms)
+    function pickCar() {
+      const cars = loadCars(), act = activeCarId();
+      acctSheet('🚗 Which car?', cars.map(c => `<button type="button" class="gar-pick${c.id === act ? ' on' : ''}" onclick="document.getElementById('acctSheet').style.display='none'; setActiveCar('${c.id}')">` +
+        `<b>${esc(c.rego || '—')}</b><span>${esc(carName(c))}${c.kind && c.name ? ' · ' + esc(c.kind) : ''}${c.arr && c.arr.type ? ' · ' + CAR_TYPES[c.arr.type] : ''}</span>${c.id === act ? '<i>✓ driving</i>' : ''}</button>`).join('') +
+        `<button type="button" class="rs-btn" onclick="document.getElementById('acctSheet').style.display='none'; toggleSettings(true); sxGo('vehicle')">⚙️ Manage cars</button>`, () => true, 'gar-one');
+      const sv = document.getElementById('acctSave'); if (sv) sv.hidden = true;
+    }
+    const carSelHTML = (id, sel, none) => loadCars().length < 2 && !none ? '' :
+      `<div class="setting-item"><label for="${id}">Car</label><select id="${id}">${loadCars().map(c => `<option value="${c.id}"${c.id === sel ? ' selected' : ''}>${esc(carLabel(c))}</option>`).join('')}${none ? `<option value=""${sel === '' ? ' selected' : ''}>Not car-related</option>` : ''}</select></div>`;
+    const carSelVal = (id, dflt) => { const el = document.getElementById(id); return el ? el.value : dflt; };
+
+    // ---- Vehicle settings: a draft of the garage, saved with Save changes (Back discards it) ----
+    let garDraft = { cars: [], active: null };
+    const garCar = () => garDraft.cars.find(c => c.id === garDraft.active);
+    function garOpen() { garDraft = { cars: JSON.parse(JSON.stringify(loadCars())), active: activeCarId() }; garLoad(); }
+    function readCarArr() {
+      const g = id => document.getElementById(id), t = g('acCarType') ? g('acCarType').value : '';
+      if (!t) return null;
+      return { type: t, amt: g('acCarAmt') ? +g('acCarAmt').value || 0 : 0, per: g('acCarPer') ? g('acCarPer').value : 'week',
+        gst: g('acCarGst') ? g('acCarGst').checked : false, incl: g('acCarIncl') ? g('acCarIncl').checked : false,
+        interest: g('acCarInt') ? +g('acCarInt').value || 0 : 0, value: g('acCarVal') ? +g('acCarVal').value || 0 : 0,
+        ins: g('acCarIns') ? +g('acCarIns').value || 0 : 0, rego: g('acCarRego') ? +g('acCarRego').value || 0 : 0,
+        since: g('acCarSince') && g('acCarSince').value ? new Date(g('acCarSince').value + 'T00:00').getTime() : 0,
+        until: g('acCarUntil') && g('acCarUntil').value ? new Date(g('acCarUntil').value + 'T23:59').getTime() : 0 };
+    }
+    // Form → draft car
+    function garStore() {
+      const c = garCar(); if (!c) return;
+      c.rego = document.getElementById('vehRego').value.trim().toUpperCase();
+      c.kind = document.getElementById('vehKind').value.trim(); c.model = 'custom';
+      c.name = document.getElementById('vehName').value.trim();
+      c.l100 = vv('vehL100') || c.l100; c.maint = isNaN(vv('vehMaint')) ? c.maint : vv('vehMaint'); c.fuel = vv('vehFuel') || c.fuel;
+      c.arr = readCarArr();
+    }
+    // Draft car → form
+    function garLoad() {
+      const c = garCar(); if (!c) return;
+      document.getElementById('vehRego').value = c.rego || '';
+      document.getElementById('vehKind').value = c.kind || '';
+      document.getElementById('vehModel').value = 'custom';
+      document.getElementById('vehName').value = c.name || '';
+      if (c.l100 > 0) document.getElementById('vehL100').value = c.l100;
+      if (c.maint != null) document.getElementById('vehMaint').value = (+c.maint).toFixed(2);
+      if (c.fuel > 0) document.getElementById('vehFuel').value = (+c.fuel).toFixed(2);
+      document.getElementById('vehNote').textContent = '';
+      document.getElementById('acCarType').value = (c.arr && c.arr.type) || '';
+      syncCarFields(); syncKindLabels(); garChips(); onVehicleEdit();
+    }
+    function garChips() {
+      const box = document.getElementById('garChips'); if (!box) return;
+      box.innerHTML = garDraft.cars.map(c => `<button type="button" class="gar-chip${c.id === garDraft.active ? ' on' : ''}" onclick="garSwitch('${c.id}')">${c.id === garDraft.active ? '✓ ' : ''}${esc(carShort(c))}</button>`).join('') +
+        `<button type="button" class="gar-chip add" onclick="garAdd()">＋ Add car</button>`;
+      const del = document.getElementById('garDel'); if (del) { del.hidden = garDraft.cars.length < 2; delete del.dataset.sure; del.textContent = '🚮 Remove this car'; }
+    }
+    function garSwitch(id) { if (id === garDraft.active) return; garStore(); garDraft.active = id; garLoad(); toast('🚗 Save changes to drive this car'); }
+    function garAdd() {
+      garStore();
+      const c = { id: 'c' + Date.now().toString(36), rego: '', kind: '', model: 'custom', name: '', l100: veh.l100, maint: veh.maint, fuel: veh.fuel, arr: null };
+      garDraft.cars.push(c); garDraft.active = c.id; garLoad();
+      setTimeout(() => document.getElementById('vehRego').focus(), 50);
+    }
+    function garRemove(btn) {
+      if (garDraft.cars.length < 2) return;
+      if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.textContent = 'Tap again to remove'; return; }
+      garDraft.cars = garDraft.cars.filter(c => c.id !== garDraft.active); garDraft.active = garDraft.cars[0].id; garLoad();
+      toast('Car removed. Its fuel, costs and shifts stay in your records.');
+    }
+    function garSave() {
+      if (!garDraft.cars.length) return;
+      garStore(); saveCars(garDraft.cars); lsSet('carActive', garDraft.active);
+      const cur = loadShift(); if (cur && !cur.car) { cur.car = garDraft.active; lsSet(SHIFT_KEY, JSON.stringify(cur)); }
+    }
+    // Picking a listed car (the usual Uber choices: Camry and RAV4 hybrids) fills its city running costs
+    function onCarName() {
+      const n = document.getElementById('vehName').value.trim().toLowerCase();
+      const k = Object.keys(VEHICLES).find(x => (x === 'rav4h' || x === 'camryh') && VEHICLES[x].name.toLowerCase() === n); if (!k) return;
+      document.getElementById('vehL100').value = VEHICLES[k].l100; document.getElementById('vehMaint').value = VEHICLES[k].maint.toFixed(2);
+      if (!document.getElementById('vehKind').value.trim()) document.getElementById('vehKind').value = 'Hybrid';
+      document.getElementById('vehNote').textContent = VEHICLES[k].note; syncKindLabels(); onVehicleEdit();
+    }
+    function syncKindLabels() {
+      const ev = /electric|\bev\b/i.test(document.getElementById('vehKind').value);
+      document.getElementById('vehL100Lbl').textContent = ev ? 'Energy use (kWh/100 km, city)' : 'Fuel use (L/100 km, city)';
+      document.getElementById('vehFuelLbl').textContent = ev ? 'Charging price ($/kWh)' : 'Fuel price ($/L)';
+    }
+
+    // ---- 📄 Car statement: everything recorded against one car for a period, for tax and accounting ----
+    function stRange(p) {
+      if (p === 'lastfy') { const f = fyStart(); return [new Date(new Date(f).getFullYear() - 1, 6, 1).getTime(), f, `FY ${new Date(f).getFullYear() - 1}–${String(new Date(f).getFullYear()).slice(2)}`]; }
+      if (p === 'all') return [0, Date.now() + 86400000, 'All records'];
+      return periodRange(p);
+    }
+    function carStatementData(id, a, b) {
+      const c = loadCars().find(x => x.id === id) || { id }, mine = x => carOf(x) === id, cfg = acctCfg(), biz = cfg.biz / 100;
+      const fuel = loadFills().filter(f => mine(f) && f.t >= a && f.t < b);
+      const ex = loadExpenses().filter(x => x.car !== '' && mine(x) && x.t >= a && x.t < b);
+      let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
+      const shifts = hist.filter(h => mine(h) && h.start >= a && h.start < b);
+      const offers = loadLog().filter(e => e.took && mine(e) && e.t >= a && e.t < b);
+      const arr = carCosts(a, b, id);
+      const fuelPaid = fuel.reduce((s, f) => s + (f.paid || 0), 0), fuelGst = fuel.reduce((s, f) => s + (f.paid ? (f.gst != null ? f.gst : f.paid / 11) : 0), 0);
+      const exPaid = ex.reduce((s, x) => s + x.amt, 0), exGst = ex.reduce((s, x) => s + (x.gst ? (x.gstAmt || x.amt / 11) : 0), 0);
+      const total = fuelPaid + exPaid + arr.total, gst = fuelGst + exGst + arr.gst;
+      return { c, fuel, ex, shifts, offers, arr, fuelPaid, fuelGst, exPaid, exGst, total, gst, biz: cfg.biz,
+        credits: gst * biz, deduct: (total - gst) * biz, km: shifts.reduce((s, h) => s + (h.km || 0), 0), hrs: shifts.reduce((s, h) => s + (h.hrs || 0), 0),
+        fares: offers.reduce((s, e) => s + e.fare, 0), litres: fuel.reduce((s, f) => s + (f.qty || 0), 0) };
+    }
+    function carStatementSheet(id) {
+      if (document.getElementById('settingsModal').style.display === 'block' && garDraft.cars.length) { garStore(); }
+      const cars = loadCars().concat(garDraft.cars.filter(d => !loadCars().some(c => c.id === d.id)));
+      const opts = [['week', 'This week'], ['last', 'Last week'], ['month', 'This month'], ['qtr', 'This quarter'], ['fy', 'This financial year'], ['lastfy', 'Last financial year'], ['all', 'All records']];
+      acctSheet('📄 Car statement', `<div class="setting-item"><label for="stCar">Car</label><select id="stCar">${cars.map(c => `<option value="${c.id}"${c.id === id ? ' selected' : ''}>${esc(carLabel(c))}</option>`).join('')}</select></div>` +
+        `<div class="setting-item"><label for="stPer">Period</label><select id="stPer">${opts.map(([k, t]) => `<option value="${k}"${k === 'fy' ? ' selected' : ''}>${t}</option>`).join('')}</select></div>` +
+        `<button type="button" class="rs-btn" onclick="downloadCarStatement('csv')">📊 Spreadsheet (CSV)</button>` +
+        `<div class="ac-note">Rego, arrangement, running costs, fuel and other receipts, shifts and kilometres for that car. The statement opens in your browser: Share → Print → save as PDF.</div>`,
+        () => { downloadCarStatement('html'); return false; }, 'st-one');
+      const sv = document.getElementById('acctSave'); if (sv) sv.textContent = '📄 Download statement';
+    }
+    function downloadCarStatement(fmt) {
+      const id = document.getElementById('stCar').value, [a, b, label] = stRange(document.getElementById('stPer').value);
+      const d = carStatementData(id, a, b), c = d.c, from = new Date(Math.max(a, Math.min(...[d.fuel[0], d.ex[0], d.shifts[0]].filter(Boolean).map(x => x.t || x.start).concat([b])))), to = new Date(Math.min(b, Date.now()) - 1);
+      const day = t => new Date(t).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+      const m2 = v => (+v || 0).toFixed(2), file = `car-statement-${(c.rego || carName(c)).replace(/[^\w-]+/g, '')}-${label.replace(/[^\w]+/g, '-').toLowerCase()}`;
+      const arrName = c.arr && c.arr.type ? CAR_TYPES[c.arr.type].replace(/^\S+\s/, '') : 'Not set';
+      if (fmt === 'csv') {
+        const q = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v, rows = [];
+        rows.push(['Car statement', label], ['Rego', c.rego || ''], ['Car', carName(c)], ['Type', c.kind || ''], ['Arrangement', arrName], ['Business use %', d.biz], []);
+        rows.push(['Summary', 'Amount']); [['Shifts', d.shifts.length], ['Hours worked', m2(d.hrs)], ['Kilometres (GPS, on shift)', m2(d.km)], ['Fuel/charging (litres or kWh)', m2(d.litres)],
+          ['Accepted offers (your share, est.)', m2(d.fares)], ['Car costs incl GST', m2(d.total)], ['GST in car costs', m2(d.gst)], [`GST credits (${d.biz}% business)`, m2(d.credits)], [`Deductible ex GST (${d.biz}% business)`, m2(d.deduct)]].forEach(r => rows.push(r));
+        rows.push([], ['Arrangement costs', 'Amount', 'GST']); d.arr.items.forEach(x => rows.push([x.k, m2(x.amt), m2(x.gst ? x.amt / 11 : 0)]));
+        rows.push([], ['Fuel / charging', 'Date', 'Station', 'Grade', 'Qty', 'Paid', 'GST', 'Receipt photo']); d.fuel.forEach(f => rows.push(['', day(f.t), f.station || '', f.grade || f.type, f.qty || '', m2(f.paid), m2(f.gst != null ? f.gst : (f.paid || 0) / 11), f.imgId ? 'yes' : 'no']));
+        rows.push([], ['Other costs', 'Date', 'What', 'Amount', 'GST', 'Receipt photo']); d.ex.forEach(x => rows.push(['', day(x.t), x.what || '', m2(x.amt), m2(x.gst ? (x.gstAmt || x.amt / 11) : 0), x.imgId ? 'yes' : 'no']));
+        rows.push([], ['Shifts', 'Date', 'Start', 'End', 'Hours', 'Km', 'Trips', 'Take-home']); d.shifts.forEach(h => rows.push(['', day(h.start), fmtTime(h.start), h.end ? fmtTime(h.end) : '', m2(h.hrs), m2(h.km), h.trips || 0, m2(h.net)]));
+        saveFile(file + '.csv', rows.map(r => r.map(q).join(',')).join('\n'), 'text/csv'); toast('📊 Car statement saved'); return;
+      }
+      const tr = (cells, th) => `<tr>${cells.map(x => `<${th ? 'th' : 'td'}>${x}</${th ? 'th' : 'td'}>`).join('')}</tr>`;
+      const tbl = (head, rows, empty) => rows.length ? `<table>${tr(head, true)}${rows.map(r => tr(r)).join('')}</table>` : `<p class="m">${empty}</p>`;
+      const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Car statement ${esc(c.rego || '')} ${esc(label)}</title>
+<style>body{font:14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;color:#111;margin:24px;max-width:820px}h1{font-size:20px;margin:0}h2{font-size:15px;margin:22px 0 6px;border-bottom:2px solid #111;padding-bottom:3px}
+.m{color:#666}table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:4px 6px;border-bottom:1px solid #ddd}th{background:#f3f4f6}td{white-space:nowrap}td:nth-child(2){white-space:normal}
+.kv td:first-child{width:55%}.kv td:last-child{text-align:right;font-weight:600}.tot td{font-weight:800;border-top:2px solid #111}@media print{body{margin:10mm}}</style></head><body>
+<h1>Vehicle statement · ${esc(c.rego || 'no rego')}</h1><div class="m">${esc(carName(c))} · ${esc(c.kind || '')} · ${esc(arrName)} · ${esc(label)} (${day(a || from)} – ${day(to)}) · made ${day(Date.now())} with Offer Pilot</div>
+<h2>Summary</h2><table class="kv">${[['Shifts', d.shifts.length], ['Hours worked', d.hrs.toFixed(1) + ' h'], ['Kilometres on shift (GPS)', d.km.toFixed(1) + ' km'], [/electric|\bev\b/i.test(c.kind || '') ? 'Energy added' : 'Fuel added', d.litres.toFixed(1) + (/electric|\bev\b/i.test(c.kind || '') ? ' kWh' : ' L')],
+  ['Accepted offers (your share, estimate)', '$' + m2(d.fares)], ['Car costs incl. GST', '$' + m2(d.total)], ['GST included in car costs', '$' + m2(d.gst)],
+  [`GST credits (${d.biz}% business use)`, '$' + m2(d.credits)]].map(r => tr(r)).join('')}<tr class="tot"><td>Deductible car costs ex GST (${d.biz}% business use)</td><td>$${m2(d.deduct)}</td></tr></table>
+<h2>Arrangement · ${esc(arrName)}</h2>${tbl(['Item', 'Amount', 'GST'], d.arr.items.map(x => [esc(x.k), '$' + m2(x.amt), '$' + m2(x.gst ? x.amt / 11 : 0)]), 'No arrangement costs in this period (set it in Settings → Vehicle).')}
+${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deductible): $${m2(d.arr.cash)}</p>` : ''}
+<h2>Fuel &amp; charging</h2>${tbl(['Date', 'Station', 'Grade', 'Qty', 'Paid', 'GST', 'Receipt'], d.fuel.map(f => [day(f.t), esc(f.station || ''), esc(f.grade || f.type || ''), f.qty ? f.qty + (f.type === 'ev' ? ' kWh' : ' L') : '', '$' + m2(f.paid), '$' + m2(f.gst != null ? f.gst : (f.paid || 0) / 11), f.imgId ? '✓' : '']), 'No fuel or charging receipts.')}
+<h2>Other costs</h2>${tbl(['Date', 'What', 'Amount', 'GST', 'Receipt'], d.ex.map(x => [day(x.t), esc(x.what || ''), '$' + m2(x.amt), '$' + m2(x.gst ? (x.gstAmt || x.amt / 11) : 0), x.imgId ? '✓' : '']), 'No other costs.')}
+<h2>Shifts (log of business use)</h2>${tbl(['Date', 'Start', 'End', 'Hours', 'Km', 'Trips', 'Take-home'], d.shifts.map(h => [day(h.start), fmtTime(h.start), h.end ? fmtTime(h.end) : '', (h.hrs || 0).toFixed(1), (h.km || 0).toFixed(1), h.trips || 0, '$' + m2(h.net)]), 'No shifts recorded with this car.')}
+<p class="m" style="margin-top:20px">Estimates from the records on this phone, not tax advice. Receipt photos: Settings → Your data → download receipts. Business use is ${d.biz}% (Settings → Account &amp; tax); a logbook may be needed to claim it. Check with a registered tax agent or the ATO.</p>
+</body></html>`;
+      saveFile(file + '.html', html, 'text/html'); toast('📄 Car statement saved');
+    }
+
+    // All your cars (or one, with id), each over its own dates
+    function carCosts(a, b, id) {
+      const out = { items: [], total: 0, gst: 0, cash: 0 }, cars = loadCars().filter(c => !id || c.id === id);
+      cars.forEach(car => {
+        const r = oneCarCosts(a, b, car.arr || {}), lbl = cars.length > 1 || loadCars().length > 1 ? carShort(car) + ' ' : '';
+        r.items.forEach(x => out.items.push({ ...x, type: r.type, k2: lbl + x.k })); out.total += r.total; out.gst += r.gst; out.cash += r.cash;
+      });
+      return out;
+    }
+    function oneCarCosts(a, b, c) {
+      const from = Math.max(a, c.since || a), to = Math.min(b, Date.now(), c.until || Infinity);
       const days = Math.max(0, (to - from) / 86400000); if (!c.type || !days) return { items: [], total: 0, gst: 0, cash: 0 };
       const per = v => (+v || 0) / (PER_DAYS[c.per] || 7) * days, items = [];
       if (c.type === 'rental') items.push({ k: 'Rental', amt: per(c.amt), gst: c.gst !== false });
@@ -4751,10 +4976,11 @@
           <div><small>Per hour</small><b>${n.actual > 0.2 ? acMoney(n.payout / n.actual) : '—'}</b></div></div>
         <div class="ac-sec"><svg class="h-ic"><use href="#h-receipt"/></svg>Costs</div>
         ${line(`Fuel / charging (${n.fuelN} receipt${n.fuelN === 1 ? '' : 's'})`, acMoney(n.fuelPaid))}
-        ${n.car.items.map(x => line(`${CAR_TYPES[n.car.type].split(' ')[0]} ${x.k}`, acMoney(x.amt))).join('')}
+        ${n.car.items.map(x => line(`${CAR_TYPES[x.type].split(' ')[0]} ${esc(x.k2)}`, acMoney(x.amt))).join('')}
         ${n.car.cash ? line('🏦 Loan repayments (cash, not all deductible)', acMoney(n.car.cash), 'muted') : ''}
         ${line(`Other (${n.exN})`, acMoney(n.exPaid))}
-        ${!cfg.car || !cfg.car.type ? `<div class="ac-note">Set your car in ⚙️ settings to count its costs.</div>` : ''}
+        ${!loadCars().some(c => c.arr && c.arr.type) ? `<div class="ac-note">Set your car’s arrangement in ⚙️ Settings → Vehicle to count its costs.</div>` : ''}
+        <div class="ac-cars">${loadCars().map(c => `<button type="button" class="rs-btn" onclick="carStatementSheet('${c.id}')">📄 ${esc(carShort(c))} statement</button>`).join('')}</div>
         <div class="ac-acts one"><button type="button" class="rs-btn" onclick="openFuelCost()">＋ Fuel</button><button type="button" class="rs-btn" onclick="openExpense()">＋ Other</button><button type="button" class="rs-btn" onclick="openStatement()">＋ Statement</button></div>
         <div class="ac-sec"><svg class="h-ic"><use href="#h-bank"/></svg>GST · ${label}</div>
         ${line('GST on fares (1/11)', acMoney(n.gstOnFares))}${line(`GST credits (fee + ${n.biz}% of costs)`, '−' + acMoney(n.gstCredits))}
@@ -4798,19 +5024,15 @@
       box.innerHTML = `<label>Business use of the car (%)<input type="number" id="acBiz" min="0" max="100" value="${cfg.biz}" inputmode="numeric"></label>
           <label>Other taxable income this FY ($)<input type="number" id="acOther" min="0" step="100" value="${cfg.other || ''}" placeholder="0" inputmode="numeric"></label>
           <label>Uber service fee (% of fare, for estimates)<input type="number" id="acFee" min="0" max="60" value="${cfg.feePct}" inputmode="numeric"></label>
-          <div class="ac-car">
-            <label>🚗 Your car<select id="acCarType" onchange="syncCarFields()"><option value="">Not set</option>${Object.entries(CAR_TYPES).map(([k, t]) => `<option value="${k}"${(cfg.car || {}).type === k ? ' selected' : ''}>${t}</option>`).join('')}</select></label>
-            <div id="acCarFields"></div>
-          </div>
+          <button type="button" class="rs-btn" onclick="sxGo('vehicle')">🚗 Cars, rego and arrangements: Settings → Vehicle ›</button>
           <label>Monday reminder to add the statement<input type="time" id="acRemind" value="${cfg.remind || ''}"></label>
           <div class="ac-note help">Uber's week ends Monday 4am; the statement usually comes out Monday afternoon. Leave the time empty for no reminder.</div>
           ${cfg.remind ? `<button type="button" class="rs-btn" onclick="remindToCalendar()">📅 Add the Monday reminder to my phone calendar</button>` : ''}`;
-      syncCarFields();
     }
     // Fields for the chosen car arrangement
     function syncCarFields() {
       const box = document.getElementById('acCarFields'); if (!box) return;
-      const t = document.getElementById('acCarType').value, c = (acctCfg().car || {});
+      const t = document.getElementById('acCarType').value, c = ((garCar() || {}).arr) || {};
       const v = k => c[k] != null && c[k] !== '' ? c[k] : '';
       const perSel = `<select id="acCarPer">${['week', 'fortnight', 'month'].map(p => `<option value="${p}"${(c.per || 'week') === p ? ' selected' : ''}>per ${p}</option>`).join('')}</select>`;
       const money = (id, label, val, extra = '') => `<label>${label}<span class="ac-in"><input type="number" id="${id}" min="0" step="1" inputmode="decimal" value="${val}" placeholder="0">${extra}</span></label>`;
@@ -4824,18 +5046,14 @@
       if (t === 'own') h = money('acCarVal', 'Car value / price paid ($)', v('value'));
       if (t && !(t === 'rental')) h += money('acCarIns', 'Insurance per year ($)', v('ins')) + money('acCarRego', 'Rego per year ($)', v('rego'));
       if (t === 'rental') h += `<div id="acRentExtra"></div>`;
-      if (t) h += `<label>Since<input type="date" id="acCarSince" value="${c.since ? ymd(new Date(c.since)) : ''}"></label><div class="ac-note">Costs count from this date.<span class="help"> Empty = all periods.${t === 'loan' ? ' The interest part is on your loan statement; only interest and depreciation are deductible, not the whole repayment.' : ''}${t === 'loan' || t === 'own' ? ' Depreciation is an estimate (25% a year).' : ''}</span></div>`;
+      if (t) h += `<label>Since<input type="date" id="acCarSince" value="${c.since ? ymd(new Date(c.since)) : ''}"></label><label>Until<input type="date" id="acCarUntil" value="${c.until ? ymd(new Date(c.until)) : ''}"></label><div class="ac-note">Costs count between these dates (Until empty = still using it).<span class="help"> Empty = all periods.${t === 'loan' ? ' The interest part is on your loan statement; only interest and depreciation are deductible, not the whole repayment.' : ''}${t === 'loan' || t === 'own' ? ' Depreciation is an estimate (25% a year).' : ''}</span></div>`;
       box.innerHTML = h;
     }
     function saveAcctCfg() {
       const v = id => parseFloat(document.getElementById(id).value);
       const g = id => { const el = document.getElementById(id); return el ? el : null; };
-      const carType = document.getElementById('acCarType').value;
-      const car = carType ? { type: carType, amt: g('acCarAmt') ? +g('acCarAmt').value || 0 : 0, per: g('acCarPer') ? g('acCarPer').value : 'week',
-        gst: g('acCarGst') ? g('acCarGst').checked : false, incl: g('acCarIncl') ? g('acCarIncl').checked : false,
-        interest: g('acCarInt') ? +g('acCarInt').value || 0 : 0, value: g('acCarVal') ? +g('acCarVal').value || 0 : 0,
-        ins: g('acCarIns') ? +g('acCarIns').value || 0 : 0, rego: g('acCarRego') ? +g('acCarRego').value || 0 : 0,
-        since: g('acCarSince') && g('acCarSince').value ? new Date(g('acCarSince').value + 'T00:00').getTime() : 0 } : null;
+      loadCars();                                                      // keeps the old car arrangement (moved to the garage)
+      const car = acctCfg().car || null;
       lsSet('acctCfg', JSON.stringify({ biz: Math.min(100, Math.max(0, v('acBiz') || 0)), other: Math.max(0, v('acOther') || 0), feePct: Math.min(60, Math.max(0, isNaN(v('acFee')) ? 27 : v('acFee'))),
         remind: document.getElementById('acRemind').value || '', car }));
       toast('✓ Account settings saved'); try { renderAccount(); } catch (e) {}
@@ -4847,7 +5065,7 @@
       sh.innerHTML = `<div class="sheet-content ${cls}"><div class="sheet-head"><h3 style="color: var(--accent);">${title}</h3><button class="x-btn" onclick="document.getElementById('acctSheet').style.display='none'" aria-label="Close">✕</button></div>
         <div class="veh-grid">${fields}</div><button class="pip-btn" id="acctSave">Save</button></div>`;
       sh.querySelector('#acctSave').onclick = () => { if (onSave() !== false) { sh.style.display = 'none'; renderAccount(); } };
-      sh.style.display = 'flex';
+      sh.style.display = 'flex'; sh.style.zIndex = 2100;              // above Settings when opened from there
     }
     const fld = (id, label, extra = '') => `<div class="setting-item"><label for="${id}">${label}</label><input id="${id}" ${extra} /></div>`;
     const num = id => parseFloat(document.getElementById(id).value);
@@ -4916,7 +5134,7 @@
       acctSheet('⛽ Fuel', `<div class="ex-photo" id="fuPhotoBtn"><button type="button" class="rs-btn up" onclick="fuAddPhoto(false)">📤 Upload</button></div>` +
         `<div class="setting-item fu-st"><label for="fuStation">Station <small id="fuNear">${me ? (me.d < 300 ? '📍 you’re here' : `nearest ${me.d < 1000 ? Math.round(me.d) + ' m' : (me.d / 1000).toFixed(1) + ' km'} away`) : 'type the name'}</small></label>` +
         `<input id="fuStation" type="text" list="fuStations" autocomplete="off" value="${me && me.d < 300 ? esc(me.name) : ''}" placeholder="${me ? esc(me.name) : 'e.g. Shell Richmond'}"><datalist id="fuStations">${opts}</datalist></div>` +
-        fld('fuCost', 'Cost ($)', 'type="number" inputmode="decimal" step="0.01"') +
+        fld('fuCost', 'Cost ($)', 'type="number" inputmode="decimal" step="0.01"') + carSelHTML('fuCar', activeCarId()) +
         `<div class="setting-item"><label for="fuGrade">Fuel</label><select id="fuGrade">${FUEL_GRADES.map(g => `<option${(last && last.grade === g) || (!last && g === 'Unleaded 91') ? ' selected' : ''}>${g}</option>`).join('')}</select></div>` +
         fld('fuDate', 'Date', `type="date" value="${ymd(new Date())}"`) +
         fld('fuQty', 'Litres (optional)', 'type="number" inputmode="decimal" step="0.01" placeholder="for real economy"') +
@@ -4925,7 +5143,7 @@
         const grade = document.getElementById('fuGrade').value, d = document.getElementById('fuDate').value, qty = num('fuQty');
         const t = d === ymd(new Date()) ? Date.now() : new Date(d + 'T12:00').getTime() || Date.now();
         const fills = loadFills();
-        fills.push({ t, station: document.getElementById('fuStation').value.trim() || (me ? me.name : 'Fuel'), type: grade === 'EV charge' ? 'ev' : 'fuel', grade,
+        fills.push({ t, car: carSelVal('fuCar', activeCarId()), station: document.getElementById('fuStation').value.trim() || (me ? me.name : 'Fuel'), type: grade === 'EV charge' ? 'ev' : 'fuel', grade,
           qty: qty > 0 ? qty : null, paid: cost, odo: null, full: document.getElementById('fuFull').checked, gpsKm: trackedKm(),
           ...(fuPhoto ? { imgId: fuPhoto.imgId, gst: fuPhoto.gst || null, rcDate: fuPhoto.date || null } : {}) });
         fills.sort((a, b) => a.t - b.t); saveFills(fills); fuPhoto = null;
@@ -4984,9 +5202,9 @@
       exPhoto = null;
       acctSheet('🧾 Other cost', `<div class="ex-photo" id="exPhotoBtn"><button type="button" class="rs-btn up" onclick="exAddPhoto(false)">📤 Upload</button></div>` +
         fld('exWhat', 'What', 'type="text" placeholder="Car wash, phone, rego, service…"') + fld('exAmt', 'Amount ($)', 'type="number" inputmode="decimal" step="0.01"') +
-        fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
+        fld('exDate', 'Date', `type="date" value="${ymd(new Date())}"`) + carSelHTML('exCar', activeCarId(), true) + `<label class="tgl"><input type="checkbox" id="exGst" checked /><span>Includes GST<small>Untick for things without GST (e.g. rego, insurance stamp duty parts).</small></span></label>`, () => {
         const amt = num('exAmt'); if (!(amt > 0)) { toast('Enter the amount'); return false; }
-        const list = loadExpenses(); list.push({ t: new Date(document.getElementById('exDate').value + 'T12:00').getTime() || Date.now(), what: document.getElementById('exWhat').value.trim(), amt, gst: document.getElementById('exGst').checked,
+        const list = loadExpenses(); list.push({ t: new Date(document.getElementById('exDate').value + 'T12:00').getTime() || Date.now(), car: carSelVal('exCar', activeCarId()), what: document.getElementById('exWhat').value.trim(), amt, gst: document.getElementById('exGst').checked,
           ...(exPhoto ? { imgId: exPhoto.imgId, gstAmt: exPhoto.gst || null } : {}) });
         exPhoto = null;
         lsSet('expenses', JSON.stringify(list)); toast('✓ Cost saved');
@@ -6554,7 +6772,7 @@
       document.getElementById('fuelToast').classList.remove('show');
       const st = pendingFill || { name: 'Manual entry', ev: !!manualEv };
       pendingFill = st;
-      const fills = loadFills(), last = fills[fills.length - 1];
+      const fills = loadFills().filter(f => carOf(f) === activeCarId()), last = fills[fills.length - 1];
       document.getElementById('fillTitle').textContent = `${st.ev ? '⚡ Recharge' : '⛽ Fill-up'} · ${st.name}`;
       document.getElementById('fillType').value = st.ev ? 'ev' : 'fuel';
       document.getElementById('fillQty').value = '';
@@ -6585,8 +6803,8 @@
       if (!(km > 20)) return null;
       return { per100: qty / km * 100, km, byOdo: !!(cur.odo && prev.odo) };
     }
-    function avgEconomy(type) {
-      const fills = loadFills(), vals = [];
+    function avgEconomy(type, id) {
+      const cid = id || activeCarId(), fills = loadFills().filter(f => carOf(f) === cid), vals = [];
       fills.forEach((f, i) => { if (f.type === type) { const e = economyFor(fills, i); if (e) vals.push(e); } });
       const recent = vals.slice(-3);
       if (!recent.length) return null;
@@ -6602,12 +6820,12 @@
       if (!(qty > 0)) { toast(type === 'ev' ? 'Enter the kWh added' : 'Enter the litres added'); return; }
       const fills = loadFills();
       const rc = pendingFill && pendingFill.receipt;
-      fills.push({ t: Date.now(), station: pendingFill ? pendingFill.name : 'Manual entry', type, qty,
+      fills.push({ t: Date.now(), car: activeCarId(), station: pendingFill ? pendingFill.name : 'Manual entry', type, qty,
         paid: paid > 0 ? paid : null, odo: odo > 0 ? odo : null, full: document.getElementById('fillFull').checked, gpsKm: trackedKm(),
         ...(rc ? { gst: rc.gst, imgId: rc.imgId, rcDate: rc.date } : {}) });
       try { renderAccount(); } catch (e) {}
       saveFills(fills);
-      const e = economyFor(fills, fills.length - 1);
+      const mineF = fills.filter(f => carOf(f) === activeCarId()), e = economyFor(mineF, mineF.length - 1);
       const unit = type === 'ev' ? 'kWh' : 'L';
       const res = document.getElementById('fillResult');
       const price = paid > 0 ? ` · paid $${(paid / qty).toFixed(2)}/${unit}` : '';
@@ -6624,7 +6842,7 @@
     function renderFillLog() {
       const box = document.getElementById('fillLog');
       if (!box) return;
-      const fills = loadFills();
+      const fills = loadFills().filter(f => carOf(f) === activeCarId());
       const fuelAvg = avgEconomy('fuel'), evAvg = avgEconomy('ev');
       const lastPaid = [...fills].reverse().find(f => f.type === 'fuel' && f.paid && f.qty > 0);
       let html = '';
@@ -7938,7 +8156,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.73.0';
+    const APP_VERSION = '1.74.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8048,6 +8266,11 @@
       const q = routeNow(from, nearestOnRing(from.lat, from.lng, UBER_ZONE_SHAPES[b.z]));
       return { z: b.z, v: b.v, txt: `🚗 ${q.real ? '' : '~'}${Math.max(1, Math.round(q.r.min))} min · ${q.r.km.toFixed(1)} km` };
     }
+    // The car you're driving, on the Drive page; tap to switch (shown once you have more than one car, or a rego)
+    function carPill(id) {
+      try { const c = id ? loadCars().find(x => x.id === id) : activeCar(); if (!c || (loadCars().length < 2 && !c.rego)) return '';
+        return `<span class="sb-car" role="button" onclick="event.stopPropagation(); pickCar()">🚗 ${esc(carShort(c))}${loadCars().length > 1 ? ' ▾' : ''}</span>`; } catch (e) { return ''; }
+    }
     function renderShiftBar() {
       const bar = document.getElementById('shiftBar');
       if (!bar) return;
@@ -8059,7 +8282,7 @@
         bar.className = 'shift-bar idle' + (hot ? ' beat' : '');
         bar.innerHTML = (hot ? `<div class="sb-hot">🔥 High demand in ${esc(hot.z)} for ${hot.hrs >= 6 ? '6+' : hot.hrs} h</div>` : '') +
           `<span class="sb-punch" role="button" onclick="event.stopPropagation(); toggleShift()">⏱ Punch in</span>` +
-          `<div class="sb-meta">${p.src === 'roster' ? `🗓 Rostered until ${fmtTime(p.end)}` : p.src === 'pilot' ? `✨ Until ${fmtTime(p.end)}` : 'No suggestion yet'} · 🎯 $${shiftGoal().toFixed(0)}${goalAuto() ? ' ✨' : ''}</div>` + areaHtml;
+          `<div class="sb-meta">${p.src === 'roster' ? `🗓 Rostered until ${fmtTime(p.end)}` : p.src === 'pilot' ? `✨ Until ${fmtTime(p.end)}` : 'No suggestion yet'} · 🎯 $${shiftGoal().toFixed(0)}${goalAuto() ? ' ✨' : ''}</div>` + carPill() + areaHtml;
         return;
       }
       const st = shiftStats(s), now = Date.now(), end = s.planEnd || (s.start + 4 * 3600000);
@@ -8068,7 +8291,7 @@
       bar.innerHTML = `<div class="sb-row"><span>⏱ <b>${fmtDur(st.hrs)}</b> worked</span><small>${left >= 0 ? `${fmtDur(left)} left · ends ${fmtTime(end)}` : `${fmtDur(-left)} past ${fmtTime(end)}`}${s.planSrc === 'roster' ? ' 🗓' : s.planSrc === 'pilot' ? ' ✨' : ''}</small></div>` +
         `<div class="sb-prog time"><i style="width:${(tPct * 100).toFixed(0)}%"></i></div>` +
         `<div class="sb-row"><span>${st.pct >= 1 ? '🎯 Target reached' : '💵'} <b>$${st.net.toFixed(0)}</b> / $${st.goal.toFixed(0)}${s.goalAuto ? ' ✨' : ''}</span><small>${st.trips} trip${st.trips === 1 ? '' : 's'}${st.hrs >= 0.25 ? ` · $${st.netHr.toFixed(0)}/hr` : ''}${st.etaH ? ' · target ~' + fmtTime(now + st.etaH * 3600000) : ''}</small></div>` +
-        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>` + areaHtml;
+        `<div class="sb-prog money"><i style="width:${(st.pct * 100).toFixed(0)}%"></i></div>` + carPill(s.car) + areaHtml;
     }
     function openShift() {
       document.getElementById('shiftGoal').value = shiftGoal();
@@ -8126,13 +8349,13 @@
       const s = loadShift();
       if (!s) {
         const p = shiftPlanNow();
-        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: goalAuto() ? null : (parseFloat(document.getElementById('shiftGoal').value) || shiftGoal()), goalAuto: goalAuto(), zone: p.zone, planEnd: p.end, planSrc: p.src }));
+        lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: goalAuto() ? null : (parseFloat(document.getElementById('shiftGoal').value) || shiftGoal()), goalAuto: goalAuto(), zone: p.zone, car: activeCarId(), planEnd: p.end, planSrc: p.src }));
         toast(`⏱ Punched in · finish around ${fmtTime(p.end)}${p.src === 'roster' ? ' (your roster)' : p.src === 'pilot' ? ' (Pilot’s suggestion)' : ''}`);
       } else {
         s.end = Date.now(); s.km1 = trackedKm();
         const st = shiftStats(s);
         let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
-        hist.push({ start: s.start, end: s.end, hrs: st.hrs, trips: st.trips, earn: st.earn, km: st.km, net: st.net, goal: st.goal });
+        hist.push({ start: s.start, end: s.end, hrs: st.hrs, trips: st.trips, earn: st.earn, km: st.km, net: st.net, goal: st.goal, car: s.car || activeCarId() });
         lsSet(SHIFT_HIST_KEY, JSON.stringify(hist.slice(-100)));
         lsDel(SHIFT_KEY);
         toast(`⏹ Punched out · $${st.net.toFixed(0)} take-home in ${fmtDur(st.hrs)} ($${st.netHr.toFixed(0)}/hr)`);
@@ -8184,7 +8407,7 @@
 
     // ================= BEST PICKUP SPOTS (from your offers) =================
     // Each logged offer remembers where you were; suburbs are ranked by the average $/hr offered there.
-    function stampLoc(e) { if (lastFix && e.lat == null) { e.lat = +lastFix.lat.toFixed(5); e.lng = +lastFix.lng.toFixed(5); } return e; }
+    function stampLoc(e) { if (!e.car) { try { e.car = activeCarId(); } catch (x) {} } if (lastFix && e.lat == null) { e.lat = +lastFix.lat.toFixed(5); e.lng = +lastFix.lng.toFixed(5); } return e; }
     function spotStats() {
       const by = new Map();
       loadLog().forEach(e => {
