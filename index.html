@@ -362,6 +362,7 @@
     .plan-row select { background: var(--card-2); color: var(--text); border: 1px solid var(--card-border); border-radius: 8px; padding: 7px; font-size: .85rem; }
     .plan-row select:disabled { opacity: .45; }
     .plan-line { display: grid; grid-template-columns: 1.1fr 1fr 1.06fr; gap: 6px; margin-bottom: 8px; }
+    .ap-line { grid-template-columns: 1.1fr 1fr; }
     .plan-line label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .plan-line span { font-size: .66rem; font-weight: 800; color: var(--muted); padding-left: 4px; }
     .plan-line select { width: 100%; min-width: 0; background-color: var(--card-2); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 12px;
@@ -7922,7 +7923,7 @@
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.71.0';
+    const APP_VERSION = '1.72.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8968,6 +8969,7 @@
       const back = airportScore('in', at);
       return { out, back, at, both: (out + back) / 2 };
     }
+    function apSetDay(v) { document.getElementById('planDay').value = String(v); renderPlan(); renderPlanCal(); }
     function renderAirport() {
       const box = document.getElementById('airportBox');
       if (!box) return;
@@ -8997,7 +8999,10 @@
       const bo = best('out'), bi = best('in');
       if (document.getElementById('view-insights').style.display !== 'none') loadFlights('MEL');
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const dbar = `<div class="ap-datebar"><svg class="h-ic"><use href="#h-clock"/></svg><b>${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</b><button type="button" class="rs-btn" onclick="setPlanSide('plan')">Change</button></div>`;
+      // Same Day and From as the planner: changing them here moves the Plan calendar too (and the other way round)
+      const dayOpts = [...document.getElementById('planDay').options].map(o => `<option value="${o.value}"${+o.value === dayOff ? ' selected' : ''}>${o.textContent}</option>`).join('');
+      const dbar = `<div class="plan-line ap-line"><label><span>Day</span><select onchange="apSetDay(this.value)" aria-label="Day">${dayOpts}</select></label>` +
+        `<label><span>From</span><button type="button" class="plan-pick" onclick="openWheel('start', this)" aria-label="Start time">${fmtMin(sm)}</button></label></div>`;
       box.innerHTML = dbar + airportOutlookHTML(today, dayOff, allEvents()) + `<div class="ap-sec"><svg class="h-ic"><use href="#h-clock"/></svg>${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</div>` + `
         <div class="rank-item"><div><div>${dirIcon('out')} City to airport at ${fmtMin(sm)}</div>
           <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
