@@ -421,11 +421,14 @@
     .sb-meta { font-size: .72rem; color: var(--muted); font-weight: 600; }
     .shift-bar.idle .sb-area { text-align: center; max-width: 100%; }
     .sb-hot { font-size: .74rem; font-weight: 800; color: #ef4444; }
-    .shift-bar.beat { border-color: #ef4444; animation: sbBeat 1.2s ease-in-out infinite; }
-    .shift-bar.beat .sb-punch { background: #ef4444; animation: sbPulse 1.2s ease-in-out infinite; }
-    @keyframes sbBeat { 0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } 14% { box-shadow: 0 0 0 4px rgba(239,68,68,.35); } 28% { box-shadow: 0 0 0 1px rgba(239,68,68,.15); } 42% { box-shadow: 0 0 0 6px rgba(239,68,68,.3); } 70% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+    .shift-bar.beat { border-color: #ef4444; }
+    .shift-bar.beat .sb-punch { background: #ef4444; animation: sbPulse 1.2s ease-in-out infinite; will-change: transform; }
+    .shift-bar.beat { overflow: visible; }
+    .shift-bar.beat::after { content: ''; position: absolute; inset: -4px; border-radius: 14px; border: 3px solid rgba(239,68,68,.45); pointer-events: none;
+      opacity: 0; animation: sbBeat 1.2s ease-in-out infinite; will-change: opacity, transform; }
+    @keyframes sbBeat { 0%, 100% { opacity: 0; transform: scale(.99); } 14% { opacity: .9; transform: scale(1); } 28% { opacity: .2; } 42% { opacity: 1; transform: scale(1.01); } 70% { opacity: 0; } }
     @keyframes sbPulse { 0%, 100% { transform: scale(1); } 14% { transform: scale(1.06); } 28% { transform: scale(1); } 42% { transform: scale(1.08); } 70% { transform: scale(1); } }
-    @media (prefers-reduced-motion: reduce) { .shift-bar.beat, .shift-bar.beat .sb-punch { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .shift-bar.beat::after, .shift-bar.beat .sb-punch { animation: none; } }
     .drive-box { display: flex; gap: 8px; align-items: stretch; margin-bottom: 6px; padding: 8px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--card-border); }
     .drive-box:empty { display: none; } .drive-box.on { border-color: var(--green); }
     .db-car { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; text-align: left; padding: 4px 6px;
@@ -562,11 +565,14 @@
     .cal-air.peak { filter: drop-shadow(0 0 2px #a78bfa); }
     .ap-out { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
     .ap-out-h { font-weight: 800; font-size: .9rem; }
-    .ap-day { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 10px; width: 100%; text-align: left; font: inherit; color: var(--text);
+    .ap-day { display: grid; grid-template-columns: 3.4em 1fr auto; align-items: center; gap: 4px 10px; width: 100%; text-align: left; font: inherit; color: var(--text);
       background: var(--card-2); border: var(--bw) solid var(--card-border); border-radius: 14px; padding: 9px 11px; }
     .ap-day b { font-size: .85rem; white-space: nowrap; }
     .ap-day span { font-size: .74rem; color: var(--muted); line-height: 1.35; }
     .ap-day .pill { margin: 0; font-size: .62rem; }
+    .ap-runs { display: flex; flex-direction: column; gap: 2px; }
+    .ap-run { display: grid; grid-template-columns: 3.1em auto; align-items: center; gap: 6px; font-style: normal; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .ap-run svg { justify-self: start; }
     .ap-day.rec { border-color: color-mix(in srgb, var(--green) 55%, transparent); }
     .ap-day.sel { box-shadow: 0 0 0 2px var(--accent); }
     .ap-sum { font-size: .76rem; color: var(--muted); line-height: 1.45; }
@@ -1061,11 +1067,12 @@
       background: color-mix(in srgb, var(--bg) 70%, transparent); color: var(--muted); border-radius: 6px 0 0 0; }
     .map-wrap .leaflet-control-attribution a { color: inherit; }
     .map-wrap .leaflet-control-attribution.open { white-space: normal; max-width: 92vw; }
-    .map-chips #chipNear.burning { animation: chipBurn 1.4s ease-in-out infinite; }
+    .map-chips #chipNear.burning::after { content: ''; position: absolute; inset: -3px; border-radius: inherit; box-shadow: 0 0 10px 3px rgba(249,115,22,.55); pointer-events: none;
+      opacity: 0; animation: chipBurn 1.4s ease-in-out infinite; will-change: opacity; }
     .map-chips #chipNear.burning .chip-flame { animation: fireFlickerSmall .8s ease-in-out infinite alternate; transform-origin: 50% 100%; }
     @keyframes fireFlickerSmall { 0% { transform: scale(1) rotate(-4deg); } 100% { transform: scale(1.15, 1.05) rotate(3deg); } }
-    @keyframes chipBurn { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,.0), var(--shadow); } 50% { box-shadow: 0 0 10px 3px rgba(249,115,22,.55), var(--shadow); } }
-    @media (prefers-reduced-motion: reduce) { .surge-fire b, .surge-fire em, .surge-fire .sf-glow, #chipNear.burning, #chipNear.burning .chip-flame { animation: none; } }
+    @keyframes chipBurn { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .surge-fire b, .surge-fire em, .surge-fire .sf-glow, #chipNear.burning::after, #chipNear.burning .chip-flame { animation: none; } }
 
 
     /* 🔥 button: fire tiers 9 → 1 from how many zones are high and medium (score = 2 × high + medium, tier = 17 − score) */
@@ -1091,8 +1098,8 @@
     .fx-sm { position: absolute; left: 50%; bottom: 14px; width: 10px; height: 10px; margin-left: calc(var(--x) - 5px); border-radius: 50%; background: rgba(68,64,60,.7); filter: blur(1.2px);
       opacity: 0; animation: fxSmoke 2.4s ease-out var(--dl) infinite; }
     @keyframes fxSmoke { 0% { opacity: 0; transform: translateY(0) scale(.5); } 20% { opacity: .8; } 100% { opacity: 0; transform: translate(4px, -26px) scale(1.9); } }
-    .map-chips #chipNear.ft3 { animation: chipBurn .7s ease-in-out infinite; }
-    .map-chips #chipNear.ft2 { animation: chipBurn .5s ease-in-out infinite, fxRumble .14s linear infinite; }
+    .map-chips #chipNear.ft3::after { animation-duration: .7s; }
+    .map-chips #chipNear.ft2::after { animation-duration: .5s; } .map-chips #chipNear.ft2 { animation: fxRumble .14s linear infinite; }
     @keyframes fxRumble { 0%, 100% { translate: 0 0; } 25% { translate: -1px .6px; } 50% { translate: 1px -.6px; } 75% { translate: -.6px -.4px; } }
     /* Tier 1: the fuse burns down, the bomb flashes red, then 💥 with a white flash, bouncing debris, smoke and embers (4 s loop) */
     .fx-bomb { display: inline-block; position: relative; animation: fxBomb 4s linear infinite; }
@@ -4443,9 +4450,9 @@
       const lbl = d => `${DAYS[dayIdx(d)]} ${d.getDate()}`;
       // Next 3 days from the chosen date, with every good window
       const rows = days.slice(0, 3).map(({ d, k, ap }) => {
-        const w = ap.runs.map(r => `<span class="nw">${fmtRange(r.s, r.e + 1)} ${r.to > r.from ? dirIcon('out') : dirIcon('in')}</span>`).join(' · ');
+        const w = ap.runs.map(r => `<em class="ap-run">${r.to > r.from ? dirIcon('out') : dirIcon('in')}<span>${fmtRange(r.s, r.e + 1)}</span></em>`).join('');
         return `<button type="button" class="ap-day${ap.rec ? ' rec' : ''}${k === sel ? ' sel' : ''}" onclick="pickPlanDay(${k})"><b>${lbl(d)}</b>` +
-          `<span>${w || 'Quiet: no busy airport hours'}${ap.peak ? ' · 🟣 Uber peak' : ''}</span><i class="pill ${ap.rec ? 'yes' : ap.n ? 'maybe' : 'no'}">${ap.rec ? 'Recommended' : ap.n ? 'Some' : 'Quiet'}</i></button>`;
+          `<span class="ap-runs">${w || 'Quiet: no busy airport hours'}${ap.peak ? '<em class="ap-run">🟣 <span>Uber peak</span></em>' : ''}</span><i class="pill ${ap.rec ? 'yes' : ap.n ? 'maybe' : 'no'}">${ap.rec ? 'Recommended' : ap.n ? 'Some' : 'Quiet'}</i></button>`;
       }).join('');
       // 7-day summary: which parts of the day are good, on which days
       const parts = DAY_PARTS.map(([name]) => ({ name, ds: days.filter(({ ap }) => ap.hrs.filter(x => partOf(x.h) === name).length >= 2).map(x => x.d) }))
@@ -8369,7 +8376,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.77.1';
+    const APP_VERSION = '1.77.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -8484,48 +8491,61 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     // ---- 🛣 Odometer and kilometre log for each car. GPS kilometres count for the car you're driving whenever the pilot
     // is open and a drive is on (tap Start driving, or it starts by itself once you're moving), punched in or not. ----
     let garOdoEdited = false;
-    const carKm = id => parseFloat(lsGet('carKm:' + id)) || 0;               // GPS km counted for this car, ever
+    const carKm = id => (parseFloat(lsGet('carKm:' + id)) || 0) + (typeof driveMem !== 'undefined' && driveMem && driveMem.car === id ? carKmPend : 0);   // GPS km counted for this car, ever
     function carOdo(c) { return c && c.odo > 0 ? Math.round(c.odo + Math.max(0, carKm(c.id) - (c.odoKm || 0))) : null; }
     function setCarOdo(id, odo) {                                             // a new dashboard reading recalibrates the count
       const cars = loadCars(), c = cars.find(x => x.id === id); if (!c || !(odo > 0)) return;
       c.odo = Math.round(odo); c.odoAt = Date.now(); c.odoKm = carKm(id); saveCars(cars);
-      const d = loadDrive(); if (d && d.car === id) { d.odoS = d.odoS || c.odo; lsSet('drive', JSON.stringify(d)); }
+      const d = loadDrive(); if (d && d.car === id) { d.odoS = d.odoS || c.odo; saveDrive(d, true); }
     }
-    const loadDrive = () => { try { return JSON.parse(lsGet('drive')) || null; } catch (e) { return null; } };
+    let driveMem, driveSavedAt = 0, carKmPend = 0, driveBoxAt = 0;
+    function loadDrive() {
+      if (driveMem === undefined) { try { driveMem = JSON.parse(lsGet('drive')) || null; } catch (e) { driveMem = null; } }
+      return driveMem;
+    }
+    function saveDrive(d, force) {
+      driveMem = d;
+      if (!force && Date.now() - driveSavedAt < 15000) return;
+      driveSavedAt = Date.now();
+      if (d && carKmPend) { lsSet('carKm:' + d.car, (carKm(d.car) + carKmPend).toFixed(3)); carKmPend = 0; }
+      if (d) lsSet('drive', JSON.stringify(d)); else lsDel('drive');
+    }
+    window.addEventListener('pagehide', () => { try { saveDrive(driveMem, true); } catch (e) {} });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) try { saveDrive(driveMem, true); } catch (e) {} });
     const loadDriveLog = () => { try { return JSON.parse(lsGet('driveLog')) || []; } catch (e) { return []; } };
     function startDrive(auto) {
       const c = activeCar(); if (!c) return;
       if (!(c.odo > 0)) { toast(`Enter ${carShort(c)}’s odometer first`, 'Enter', () => { toggleSettings(true); sxGo('vehicle'); setTimeout(() => document.getElementById('vehOdo').focus(), 200); }); return; }
       const cur = loadDrive(); if (cur && cur.car === c.id) return;
       if (cur) endDrive(true);
-      lsSet('drive', JSON.stringify({ car: c.id, s: Date.now(), km: 0, odoS: carOdo(c), auto: !!auto, lastMove: Date.now() }));
+      saveDrive({ car: c.id, s: Date.now(), km: 0, odoS: carOdo(c), auto: !!auto, lastMove: Date.now() }, true);
       try { renderShiftBar(); } catch (e) {}
       toast(auto ? `🚗 Moving: counting km for ${carShort(c)}` : `▶ Driving ${carShort(c)} · odometer ${carOdo(c).toLocaleString()} km`, auto ? 'Change car' : null, auto ? pickCar : null);
     }
     function endDrive(quiet, at) {
       const d = loadDrive(); if (!d) return;
+      saveDrive(d, true);                                                 // flush the km first
       const c = loadCars().find(x => x.id === d.car), e = at || Date.now();
       if (d.km >= 0.2 || e - d.s > 5 * 60000) {
         const log = loadDriveLog(); log.push({ car: d.car, s: d.s, e, km: +d.km.toFixed(2), odoS: d.odoS, odoE: carOdo(c) });
         lsSet('driveLog', JSON.stringify(log.slice(-2000)));
       }
-      lsDel('drive'); try { renderShiftBar(); } catch (x) {}
+      saveDrive(null, true); try { renderShiftBar(); } catch (x) {}
       if (!quiet) toast(`■ Drive saved · ${d.km.toFixed(1)} km · odometer ${(carOdo(c) || 0).toLocaleString()} km`);
     }
     function toggleDrive() { if (loadDrive()) { endDrive(); lsSet('driveOffAt', Date.now()); } else startDrive(false); }
     // Called with each GPS step the pilot counts (metres → km)
     function countCarKm(kmStep) {
       const d = loadDrive(); if (!d) return;
-      lsSet('carKm:' + d.car, (carKm(d.car) + kmStep).toFixed(3));
-      d.km += kmStep; d.lastMove = Date.now(); lsSet('drive', JSON.stringify(d));
-      try { renderDriveBox(); } catch (e) {}
+      carKmPend += kmStep; d.km += kmStep; d.lastMove = Date.now(); saveDrive(d);
+      if (Date.now() - driveBoxAt > 5000) { driveBoxAt = Date.now(); try { renderDriveBox(); } catch (e) {} }
     }
     // Detect driving: moving faster than 15 km/h for about 45 s starts a drive; parked for 15 min ends it
     let movingSince = 0;
     function detectDriving(fix) {
       const fast = (fix.speed || 0) > 4.2, d = loadDrive();
       if (d) {
-        if (fast) { d.lastMove = Date.now(); lsSet('drive', JSON.stringify(d)); }
+        if (fast) { d.lastMove = Date.now(); saveDrive(d); }
         else if (Date.now() - (d.lastMove || d.s) > 15 * 60000) endDrive(false, d.lastMove || Date.now());
         return;
       }
