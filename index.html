@@ -6131,6 +6131,8 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       pendingOutcome = null;
       curEntryT = null;                                    // this offer is finished
       lastApplied = { fare: null, mins: null, kms: null }; // ready for the next offer
+      data = { fare: '', mins: '', kms: '' }; updateDisplay();   // accepted, passed or expired: empty boxes, verdict back to waiting
+      document.getElementById('decisionToast').classList.remove('show');
       const log = loadLog();
       const e = log.find(x => x.t === t);
       if (!e) return;
@@ -6383,7 +6385,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // Read an Uber offer card. Lines from the pilot's own window (when the whole screen is shared) are dropped first:
     // "$500/hr", "$7.53/km", "FARE ($ AUD) 250", "DIST (KM) 33.2", "Punch in"… would otherwise be read as the offer.
-    const PILOT_LINE = /\/\s*(hr|km)\b|\b(gross|per km|net\b|fare\s*\(|time\s*\(min|dist\s*\(km|punch|start driving|accepted|declined|odometer|offer pilot|watching|auto-read)\b|accept\s*\(/i;
+    const PILOT_LINE = /\/\s*(hr|km)\b|\b(gross|per km|net\b|fare\s*\(|time\s*\(min|dist\s*\(km|punch|start driving|accepted|declined|odometer|offer pilot|watching|watches|detect|auto-read|auto surge|place surges|set my car|read now|full screen|stop auto)\b|accept\s*\(/i;
     function parseOfferText(rawText) {
       const lines = rawText.replace(/(\d),(\d)/g, '$1.$2').split(/\n+/).filter(l => l.trim() && !PILOT_LINE.test(l));
       const norm = lines.join('\n');
@@ -6430,6 +6432,13 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         setOCRStatus(true, isOffer || pendingOutcome ? 'Watching' : fareMatch ? 'No offer on screen' : 'Watching');
       }
       checkOutcome(norm, isOffer);
+      // No offer on screen: empty the boxes straight away so the verdict (and the Map pill) go back to waiting.
+      // The logged offer stays; if the same offer comes back within 20 s it updates that entry instead of adding one.
+      if (!isOffer && (data.fare || data.mins || data.kms)) {
+        data = { fare: '', mins: '', kms: '' }; lastApplied = { fare: null, mins: null, kms: null };
+        document.getElementById('decisionToast').classList.remove('show');
+        updateDisplay();
+      }
     }
 
     // ================= ACCEPT / DECLINE ALERTS =================
@@ -8581,7 +8590,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.79.0';
+    const APP_VERSION = '1.79.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
