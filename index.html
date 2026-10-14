@@ -478,9 +478,9 @@
     .shift-bar.on .sb-drv { justify-content: flex-start; }
     .req { font-size: .62rem; color: #ef4444; font-weight: 800; margin-left: 4px; } #vehOdo.need { outline: 2px solid #ef4444; }
     .sb-main { display: flex; align-items: center; gap: 8px; } .sb-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-    .sb-out { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 62px; align-self: stretch; border-radius: 12px;
-      border: 1.5px solid #ef4444; color: #ef4444; background: var(--card); font-size: 1rem; font-weight: 900; cursor: pointer; }
-    .shift-bar .sb-out small { font-size: .6rem; font-weight: 800; white-space: nowrap; color: inherit; } .sb-out.armed { background: #ef4444; color: #fff; }
+    .sb-out { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 78px; align-self: stretch; border-radius: 14px;
+      border: 2px solid #ef4444; color: #ef4444; background: color-mix(in srgb, #ef4444 6%, var(--card)); font-size: 1.35rem; font-weight: 900; cursor: pointer; }
+    .shift-bar .sb-out small { font-size: .72rem; font-weight: 800; white-space: nowrap; color: inherit; } .sb-out.armed { background: #ef4444; color: #fff; }
     .sb-car { align-self: center; font-size: .72rem; font-weight: 800; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--text); }
     .shift-bar.on .sb-car { align-self: flex-start; }
     .rg-acts { display: flex; gap: 6px; margin-top: 8px; } .rg-acts .rs-btn { flex: 1; white-space: nowrap; padding: 7px 6px; font-size: .74rem; }
@@ -8739,7 +8739,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.83.1';
+    const APP_VERSION = '1.83.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
