@@ -6749,10 +6749,24 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     }
 
     function currentHeading() {
-      // Compass when available; otherwise GPS course while moving (> ~4 km/h)
+      // Driving (> ~12 km/h): the GPS course, which is exact. Slower or parked: the compass, corrected by what it learnt from the GPS.
+      const gpsOk = lastFix && lastFix.heading != null && !isNaN(lastFix.heading) && Date.now() - lastFix.t < 5000;
+      if (gpsOk && lastFix.speed > 3.4) return lastFix.heading;
       if (compassHeading !== null) return compassHeading;
-      if (lastFix && lastFix.heading != null && !isNaN(lastFix.heading) && lastFix.speed > 1.1) return lastFix.heading;
+      if (gpsOk && lastFix.speed > 1.1) return lastFix.heading;
       return null;
+    }
+    // Compass correction: magnetic vs true north (about 11–12° in Melbourne), the car's metal and how the phone sits in the mount.
+    // Learnt while driving straight: the gap between the GPS course and the compass, averaged slowly and remembered.
+    const angDiff = (a, b) => ((a - b + 540) % 360) - 180;
+    let compassRaw = null, compassOffset = parseFloat(lsGet('compassOffset')) || 0, offSavedAt = 0, prevCourse = null;
+    function learnCompass(fix) {
+      if (compassRaw === null || fix.heading == null || isNaN(fix.heading) || !(fix.speed > 4.2)) { prevCourse = null; return; }
+      const straight = prevCourse !== null && Math.abs(angDiff(fix.heading, prevCourse)) < 4; prevCourse = fix.heading;
+      if (!straight) return;
+      const gap = angDiff(fix.heading, compassRaw); if (Math.abs(angDiff(gap, compassOffset)) > 40) return;   // a turn or a bad reading
+      compassOffset = (compassOffset + 0.12 * angDiff(gap, compassOffset) + 360) % 360; if (compassOffset > 180) compassOffset -= 360;
+      if (Date.now() - offSavedAt > 30000) { offSavedAt = Date.now(); lsSet('compassOffset', compassOffset.toFixed(1)); }
     }
 
     // Navigation arrow: blue when GPS is live, grey while locating. Points where you face / travel.
@@ -7094,6 +7108,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       addTrackedKm(lastFix);
       checkFuelStop(lastFix);
       try { detectDriving(lastFix); } catch (e) {}
+      try { learnCompass(lastFix); } catch (e) {}
       glideTo(lastFix);
       if (!map) return;
       drawMe();
@@ -7120,7 +7135,9 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       else if (e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;
       if (h === null) return;
       const o = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
-      compassHeading = (h + o + 360) % 360;
+      const raw = (h + o + 360) % 360;
+      compassRaw = compassRaw === null ? raw : (compassRaw + 0.3 * angDiff(raw, compassRaw) + 360) % 360;   // smooth out the jitter
+      compassHeading = (compassRaw + compassOffset + 360) % 360;
       if (lastFix && document.getElementById('locPill').classList.contains('on'))
         setLocPill('on', `📍 ±${Math.round(lastFix.acc)} m · 🧭`);
       startMeLoop();
@@ -8376,7 +8393,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.77.2';
+    const APP_VERSION = '1.77.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
