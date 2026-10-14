@@ -6110,7 +6110,9 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
     // ---- Took / passed from what the Uber screen does after an offer ----
     // After an offer is read: if the screen moves to the pickup flow -> took;
     // if the offer card disappears without that (2 reads in a row) -> passed.
-    const PICKUP_RE = /(picking\s*up|pick\s*up\s+\w|heading\s+to|en\s*route|navigat|arriv|start\s*(uber)?\s*trip|swipe\s+to\s+start|waiting\s+for\s+rider|confirm\s+rider)/i;
+    const PICKUP_RE = /(picking\s*up|pick\s*up\s+\w|pick\s*up\s+in|go\s+to\s+pick|heading\s+to|en\s*route|on\s+(the|your)\s+way|navigat|arriv|start\s*(uber)?\s*trip|swipe\s+to\s+start|waiting\s+for\s+rider|rider\s+(is\s+)?waiting|meet\s+(the\s+|your\s+)?rider|confirm\s+rider|contact\s+rider|message\s+rider|drop(ping)?\s*off)/i;
+    // Back on the waiting screen, or Uber saying the request went: the offer was passed or expired
+    const IDLE_RE = /(finding\s+trips|looking\s+for\s+(trips|rides|requests)|you'?re\s+(online|offline)|go\s+online|searching|no\s+(new\s+)?(trip\s+)?requests?|request\s+(expired|missed|cancell?ed)|missed\s+(a\s+)?(trip|request)|trip\s+request\s+expired)/i;
     let pendingOutcome = null; // { t, goneCount, since }
 
     // Accepted back-to-back (an offer arriving during a trip) shows as a queued next trip, not a new pickup screen
@@ -6125,7 +6127,22 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       if (Date.now() - pendingOutcome.since > 60000) { pendingOutcome = null; return; } // gave up: keep the verdict
       if (offerVisible) { pendingOutcome.goneCount = 0; return; }
       if (pendingOutcome.onTrip ? NEXT_RE.test(norm) : PICKUP_RE.test(norm)) return setOutcome(true);
-      if (++pendingOutcome.goneCount >= 2) setOutcome(false);
+      if (IDLE_RE.test(norm)) return setOutcome(false);
+      // Neither seen after about 12 s: keep the pilot's verdict and ask (never guess "declined")
+      if (++pendingOutcome.goneCount >= 6) setOutcome(null);
+    }
+    // While an outcome is pending and the offer has gone from the crop, also look at the whole shared screen:
+    // the pickup or waiting screen is usually outside a tight crop around the offer card.
+    async function outcomeFullFrame() {
+      if (!pendingOutcome || !ocrWorker || ocrVideo.readyState < 2) return;
+      const vw = ocrVideo.videoWidth, vh = ocrVideo.videoHeight, w = Math.min(900, vw), h = Math.round(vh * w / vw);
+      const c = outcomeFullFrame.c || (outcomeFullFrame.c = document.createElement('canvas')); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(ocrVideo, 0, 0, w, h);
+      const { data: { text } } = await ocrWorker.recognize(c);
+      if (!pendingOutcome) return;
+      const n = parseOfferText(text).norm;
+      if (pendingOutcome.onTrip ? NEXT_RE.test(n) : PICKUP_RE.test(n)) setOutcome(true);
+      else if (IDLE_RE.test(n)) setOutcome(false);
     }
 
     function setOutcome(took) {
@@ -6138,9 +6155,10 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       const log = loadLog();
       const e = log.find(x => x.t === t);
       if (!e) return;
-      e.took = took; e.auto = true;
+      const sure = took !== null;
+      if (sure) { e.took = took; e.auto = true; }
       saveLog(log);
-      toast(took ? '🔎 Detected: accepted ✓' : '🔎 Detected: declined ✗', 'Flip', () => {
+      toast(sure ? (took ? '🔎 Detected: accepted ✓' : '🔎 Detected: declined ✗') : `🔎 Couldn’t see your choice: logged as ${e.took ? 'accepted ✓' : 'declined ✗'}`, 'Flip', () => {
         const l = loadLog(); const x = l.find(y => y.t === t);
         if (x) { x.took = !x.took; saveLog(l); toast(x.took ? '✓ Changed to accepted' : '✗ Changed to declined'); renderInsights(); }
       });
@@ -6379,6 +6397,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         ocrCtx.drawImage(ocrVideo, sx, sy, sw, sh, 0, 0, ocrCanvas.width, ocrCanvas.height);
         const { data: { text } } = await ocrWorker.recognize(ocrCanvas);
         applyOCRText(text);
+        if (pendingOutcome && !(data.fare && data.mins)) await outcomeFullFrame();
         await autoSurgeSnapshot();
       } catch (e) {
         setOCRStatus(true, 'Retrying…');
@@ -8609,7 +8628,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.79.2';
+    const APP_VERSION = '1.79.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
