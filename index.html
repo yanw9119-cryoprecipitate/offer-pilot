@@ -6980,12 +6980,38 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
         if (lastFix) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom(), 16));
         const h = currentHeading(); if (h !== null && map.setBearing) map.setBearing(-h);
       } else if (map && map.setBearing) map.setBearing(0);
-      syncBase();
+      syncBase(); syncTouchRotate();
       const arrow = document.getElementById('meArrow');
       if (arrow) arrow.style.transform = `rotate(${((currentHeading() || 0) + mapBearing()).toFixed(1)}deg)`;
       syncCompass(); startMeLoop();
       if (!quiet) showMapHelp(on ? 'headup' : 'north', true);
     }
+
+    // North up: two fingers can still turn the map, but it isn't fixed there. Let go within 8° of north (a pinch-zoom
+    // wobble, say) and it springs back and locks to exactly north; turn it further on purpose and it stays where you put it.
+    const NORTH_SNAP = 8;
+    function syncTouchRotate() {
+      if (!map || !map.touchRotate) return;
+      if (headUp) map.touchRotate.disable(); else map.touchRotate.enable();
+    }
+    let turnAnim = null;
+    function turnMapTo(target) {
+      if (!map || !map.setBearing) return;
+      cancelAnimationFrame(turnAnim);
+      const from = mapBearing(), diff = angDiff(target, from), t0 = performance.now();
+      const step = now => {
+        const k = Math.min(1, (now - t0) / 220), e = 1 - Math.pow(1 - k, 3);
+        map.setBearing(from + diff * e); syncCompass();
+        if (k < 1) turnAnim = requestAnimationFrame(step); else { map.setBearing(target); syncCompass(); }
+      };
+      turnAnim = requestAnimationFrame(step);
+    }
+    function snapNorth() {
+      if (!map || headUp) return;
+      const b = mapBearing();
+      if (Math.abs(angDiff(b, 0)) < NORTH_SNAP && Math.abs(angDiff(b, 0)) > 0.01) turnMapTo(0);
+    }
+    document.addEventListener('touchend', e => { if (map && e.touches.length === 0 && e.target.closest && e.target.closest('#surgeMap')) setTimeout(snapNorth, 30); }, { passive: true });
 
     // Small status pill on the map: is location working?
     function setLocPill(state, text) {
@@ -7336,7 +7362,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
             '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 3 3 10.5l7.2 2.3L12.5 20z" fill="currentColor"/></svg></button>';
           L.DomEvent.disableClickPropagation(box);
           L.DomEvent.disableScrollPropagation(box);
-          box.querySelector('#fabCompass').onclick = () => setHeadUp(!headUp);
+          box.querySelector('#fabCompass').onclick = () => { if (!headUp && Math.abs(angDiff(mapBearing(), 0)) > 0.5) { turnMapTo(0); showMapHelp('north', true); } else setHeadUp(!headUp); };
           box.querySelector('#fabCity').onclick = () => { if (headUp) setHeadUp(false, true); setFollow(false); map.setView(MELB, 12); showMapHelp('city', true); };
           box.querySelector('#fabLocate').onclick = () => {
             enableCompass();
@@ -7351,6 +7377,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       map.addControl(new Ctl());
       map.on('rotate', syncCompass);
       if (headUp) setHeadUp(true, true); else syncCompass();
+      syncTouchRotate(); map.on('rotate', syncCompass);
       nightMap = !wantNightMap(); setNightMap(wantNightMap());
       drawMe();
       map.on('dragstart', () => { setFollow(false); hideMapHelp(); });
@@ -7506,7 +7533,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
       wx: ['🌦 Weather', 'Rain radar for the last 2 hours plays on a loop so you can see where the rain is heading. Zones show 🌧 raining now, 🌦 rain due within 2 hours, ☁️ cloudy, 🌫 fog, and ☀️ when it’s 30° or hotter.'],
       city: ['🏙 All of Melbourne', 'Zoomed out to the whole city. Tap the arrow button to follow yourself again.'],
       headup: ['🧭 Direction up', 'The map turns so the way you’re facing or driving is at the top. Street names are hidden so none are upside down; the street you’re on shows at the top. Tap again for north up.'],
-      north: ['🧭 North up', 'North is back at the top. Tap the compass to turn the map with your direction.'],
+      north: ['🧭 North up', 'North is at the top. Twist with two fingers to turn the map; within 8° of north it snaps back. Tap the compass for north again, or again for direction up.'],
       locate: ['➤ Follow me', 'The map stays centred on you and turns your arrow with the compass. Dragging the map stops following.']
     };
     // ---- Bottom bar: what each button does ----
@@ -8512,7 +8539,7 @@ ${d.arr.cash ? `<p class="m">Loan repayments in this period (cash, not all deduc
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.78.2';
+    const APP_VERSION = '1.78.3';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
