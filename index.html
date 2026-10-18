@@ -2408,7 +2408,7 @@
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">Google Drive</h3>
         <div class="sx-kv"><span>Last backup</span><b id="backupInfo"></b></div>
-        <div class="sx-hint">One file with your offers, trends, shifts, fill-ups and settings. On iPhone, choose <b>Drive</b> in the share sheet. To restore, pick the file from Files → Google Drive.</div>
+        <div class="sx-hint">One file with your offers, trends, shifts, fill-ups and settings. On iPhone, choose <b>Drive</b> in the share sheet and save it in <b>Offer Pilot › Offer pilot- files log</b>. To restore, pick the file from Files → Google Drive → Offer Pilot.</div>
         <button type="button" class="sx-add" onclick="makeBackup()"><svg><use href="#i-plus"/></svg>Back up now</button>
         <label class="sx-add"><svg><use href="#i-plus"/></svg>Restore from a file<input type="file" accept="application/json,.json" hidden onchange="onRestoreFile(event)" /></label>
         <button type="button" class="sx-primary sx-danger" id="restoreGo" hidden onclick="doRestore()"></button>
@@ -10638,7 +10638,7 @@ ${sub}${body}
       try {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: 'Offer Pilot backup' });
-          toast('☁️ Backup ready · choose Google Drive');
+          toast('☁️ Backup ready · choose Drive → Offer Pilot folder');
           renderBackupInfo(); return;
         }
       } catch (e) { if (e && e.name === 'AbortError') { renderBackupInfo(); return; } }
@@ -10646,7 +10646,7 @@ ${sub}${body}
       a.href = URL.createObjectURL(blob); a.download = name;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      toast('☁️ Backup saved · upload it to Google Drive');
+      toast('☁️ Backup saved · upload it to Google Drive → Offer Pilot');
       renderBackupInfo();
     }
     let pendingRestore = null;
