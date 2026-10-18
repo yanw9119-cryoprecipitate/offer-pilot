@@ -188,6 +188,9 @@
     .rank { background: var(--card); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; }
     .rank-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid var(--card-border); font-size: 0.88rem; }
     .rank-item:last-child { border-bottom: none; }
+    .ap-tl { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 5px; margin: 4px 0 2px; font-size: .78rem; font-weight: 700; }
+    .ap-tl span { display: inline-flex; flex-direction: column; padding: 3px 7px; border-radius: 9px; background: var(--card-2); line-height: 1.2; }
+    .ap-tl small { font-size: .64rem; color: var(--muted); font-weight: 600; } .ap-tl i { color: var(--muted); font-style: normal; }
     .rank-item .r-sub { font-size: 0.7rem; color: var(--muted); }
     .rank-item .r-val { font-weight: 800; }
     .empty { padding: 12px; color: var(--muted); font-size: 0.82rem; text-align: center; }
@@ -4505,7 +4508,7 @@
       const hrs = [];
       for (let k = 0; k < 24; k++) {
         const dt = new Date(day0.getTime() + (4 + k) * 3600000);
-        const vin = airportScore('in', dt), run = airportRun(dt).both;
+        const vin = apTrip(dt).adj, run = airportRun(dt).both;                 // hours to LEAVE: drive and queue included
         if (Math.max(vin, run) >= 0.75) hrs.push({ h: dt.getHours(), dir: vin >= run ? 'from' : 'to' });
       }
       const d0 = day0.getTime() + 4 * 3600000, peak = evs.find(e => e.zone === AIRPORT_ZONE && e.s < d0 + 86400000 && e.e > d0);
@@ -4578,7 +4581,7 @@
       const sum = parts.length
         ? `<b>Next 7 days:</b> ${recN} of 7 recommended. Best ${parts.slice(0, 3).map((p, i) => `${i === 0 ? '' : i === parts.slice(0, 3).length - 1 ? ' and ' : ', '}<b>${p.name}</b> (${dayList(p.ds)})`).join('')}.`
         : '<b>Next 7 days:</b> no busy airport times expected.';
-      return `<div class="ap-out"><div class="ap-out-h"><svg class="h-ic"><use href="#h-cal"/></svg>Next 3 days from ${lbl(days[0].d)} <small class="help">tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
+      return `<div class="ap-out"><div class="ap-out-h"><svg class="h-ic"><use href="#h-cal"/></svg>Next 3 days from ${lbl(days[0].d)} <small>· times to leave</small> <small class="help">· drive and queue included · tap a day to choose it</small></div>${rows}<div class="ap-sum">${sum}</div></div>`;
     }
     function renderPlanCal() {
       const box = document.getElementById('planCal');
@@ -7591,6 +7594,7 @@ ${sub}${body}
       try { detectDriving(lastFix); } catch (e) {}
       try { learnCompass(lastFix); } catch (e) {}
       try { routeAdd(lastFix); } catch (e) {}
+      try { apQueueWatch(lastFix); } catch (e) {}
       updateRoadName();
       glideTo(lastFix);
       if (!map) return;
@@ -8886,7 +8890,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.85.0';
+    const APP_VERSION = '1.86.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -10515,12 +10519,57 @@ ${sub}${body}
       }
       return Math.min(1, v);
     }
-    // A run out to the airport is better when pickups there are busy as you arrive (no empty drive back)
+    // ---- ✈️ The whole airport run: drive there, wait in Uber's virtual queue, then the rider ----
+    // Queue wait when you join at time t: from how busy arrivals are, blended with the waits you've actually had
+    // (learned on this phone: from reaching the airport with no rider to your next accepted offer there).
+    const AP_PICK_MIN = 6;                                // from the holding area to the terminal pick-up zone
+    const loadApQ = () => { try { return JSON.parse(lsGet('apQueue')) || []; } catch (e) { return []; } };
+    function apQueueGuess(v) { return v >= 0.85 ? 15 : v >= GOOD ? 25 : v >= OK ? 45 : 75; }
+    function apQueueMins(t) {
+      const dt = new Date(t), guess = apQueueGuess(airportScore('in', dt)), h = dt.getHours() + dt.getMinutes() / 60, wk = dayIdx(dt) < 5;
+      const near = loadApQ().filter(x => { const d = new Date(x.t), hh = d.getHours() + d.getMinutes() / 60, dh = Math.min(Math.abs(hh - h), 24 - Math.abs(hh - h));
+        return dh <= 1.5 && (dayIdx(d) < 5) === wk && t - x.t < 90 * 86400000 && x.t < t + 7 * 86400000; }).map(x => x.w).sort((a, b) => a - b);
+      if (near.length < 2) return { min: guess, learned: 0 };
+      const med = near[Math.floor(near.length / 2)], wt = Math.min(0.8, 0.3 + near.length * 0.1);
+      return { min: Math.round(wt * med + (1 - wt) * guess), learned: near.length };
+    }
+    // Leave for the airport at time `leave` (with no rider): when you get there, the queue, when the rider comes
+    function apTrip(leave, useGps) {
+      const L = typeof leave === 'number' ? leave : leave.getTime();
+      let drive = airportMins(new Date(L)), real = false;
+      if (useGps && lastFix && Math.abs(L - Date.now()) < 20 * 60000 && !inRing(lastFix.lat, lastFix.lng, AIRPORTS.MEL.ring)) {
+        const q = routeNow(myPos(), AIRPORT); drive = Math.max(5, Math.round(q.r.min)); real = q.real;
+      } else if (lastFix && Math.abs(L - Date.now()) < 20 * 60000 && inRing(lastFix.lat, lastFix.lng, AIRPORTS.MEL.ring)) drive = 0;   // already there
+      const arrive = L + drive * 60000, q = apQueueMins(arrive), pickup = arrive + (q.min + AP_PICK_MIN) * 60000;
+      const v = airportScore('in', new Date(pickup)), dead = drive + q.min + AP_PICK_MIN;
+      // the empty time counts against it: up to an hour is normal for an airport run, longer slowly lowers it
+      const adj = v * Math.max(0.5, Math.min(1, 1 - (dead - 60) / 180));
+      return { leave: L, drive, real, arrive, wait: q.min, learned: q.learned, pickup, back: airportMins(new Date(pickup)), dead, v, adj };
+    }
+    // A run out to the airport is better when pickups there are busy once you've dropped off and waited in the queue
     function airportRun(dt) {
-      const out = airportScore('out', dt);
-      const at = new Date(dt.getTime() + (airportMins(dt) + 30) * 60000); at.setMinutes(0, 0, 0);   // nearest hour
-      const back = airportScore('in', at);
-      return { out, back, at, both: (out + back) / 2 };
+      const out = airportScore('out', dt), drop = dt.getTime() + airportMins(dt) * 60000;
+      const q = apQueueMins(drop), pick = drop + (q.min + AP_PICK_MIN) * 60000;
+      const at = new Date(pick); at.setMinutes(0, 0, 0);                                     // hour of the ride back
+      const back = airportScore('in', new Date(pick));
+      return { out, back, at: new Date(pick), drop, wait: q.min, learned: q.learned, both: (out + back) / 2 };
+    }
+    // Learn real queue waits: reaching the airport with no rider (punched in) starts the clock, the next accepted offer
+    // while still there stops it. Leaving without a ride just resets it.
+    let apWatchAt = 0;
+    function apQueueWatch(f) {
+      if (Date.now() - apWatchAt < 20000 || !f || f.acc > 100) return; apWatchAt = Date.now();
+      const inAp = inRing(f.lat, f.lng, AIRPORTS.MEL.ring), st = loadTrip().stage, t0 = +lsGet('apIn') || 0;
+      if (inAp && !t0 && loadShift() && (st === 'idle' || st === 'done')) { lsSet('apIn', Date.now()); return; }
+      if (!t0) return;
+      const last = loadLog().slice(-1)[0];
+      if (last && last.took && last.t > t0) {
+        const w = Math.round((last.t - t0) / 60000);
+        if (w >= 2 && w <= 240) { const q = loadApQ(); q.push({ t: t0, w }); lsSet('apQueue', JSON.stringify(q.slice(-200))); toast(`✈️ Airport queue: ${w} min this time · saved for future estimates`); }
+        lsDel('apIn'); return;
+      }
+      if (!inAp && distM(f.lat, f.lng, AIRPORT.lat, AIRPORT.lng) > 7000) lsDel('apIn');
+      else if (Date.now() - t0 > 5 * 3600000) lsDel('apIn');
     }
     function apSetDay(v) { document.getElementById('planDay').value = String(v); renderPlan(); renderPlanCal(); }
     function renderAirport() {
@@ -10531,13 +10580,13 @@ ${sub}${body}
       const hrsOfDay = Array.from({ length: 24 }, (_, k) => new Date(base.getTime() + (4 + k) * 3600000));   // 4am–3am
       const sm = +document.getElementById('planStart').value, sh = Math.floor(sm / 60);
       const strip = dir => hrsOfDay.map((t, k) => {
-        const v = airportScore(dir, t), c = v >= GOOD ? 'yes' : v >= OK ? 'maybe' : 'no';
+        const v = dir === 'in' ? apTrip(t).adj : airportScore(dir, t), c = v >= GOOD ? 'yes' : v >= OK ? 'maybe' : 'no';
         return `<i class="ap-${c}${t.getHours() === sh ? ' sel' : ''}" title="${fmtHour(t.getHours())}"></i>`;
       }).join('');
       const best = dir => {
         const runs = []; let cur = null;
         hrsOfDay.forEach(t => {
-          const v = airportScore(dir, t);
+          const v = dir === 'in' ? apTrip(t).adj : airportScore(dir, t);
           if (v >= GOOD) { if (!cur) cur = { s: t, e: t, sum: 0, n: 0 }; cur.e = t; cur.sum += v; cur.n++; } else if (cur) { runs.push(cur); cur = null; }
         });
         if (cur) runs.push(cur);
@@ -10546,8 +10595,9 @@ ${sub}${body}
       };
       // Your chosen start time
       const st = new Date(base.getTime() + sm * 60000);      // same date as the shift above (1:30 on Wed 14 is early Wed morning)
-      const run = airportRun(st), inNow = airportScore('in', st);
+      const run = airportRun(st), trip = apTrip(st, true), inNow = trip.adj;
       const vo = VERDICT(run.both), vi = VERDICT(inNow);
+      const qTxt = (w, n) => `~${w} min${n ? ` (from ${n} of your waits)` : ''}`;
       const peaks = allEvents().filter(e => e.zone === AIRPORT_ZONE && e.e > base.getTime() + 4 * 3600000 && e.s < base.getTime() + 28 * 3600000);
       const bo = best('out'), bi = best('in');
       if (document.getElementById('view-insights').style.display !== 'none') loadFlights('MEL');
@@ -10558,15 +10608,16 @@ ${sub}${body}
         `<label><span>From</span><button type="button" class="plan-pick" onclick="openWheel('start', this)" aria-label="Start time">${fmtMin(sm)}</button></label></div>`;
       box.innerHTML = dbar + airportOutlookHTML(today, dayOff, allEvents()) + `<div class="ap-sec"><svg class="h-ic"><use href="#h-clock"/></svg>${DAYS[dayIdx(base)]} ${base.getDate()} at ${fmtMin(sm)}</div>` + `
         <div class="rank-item"><div><div>${dirIcon('out')} City to airport at ${fmtMin(sm)}</div>
-          <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · arrive about ${fmtTime(run.at)}, when airport pickups are ${demandName(run.back).toLowerCase()}` +
-          `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'} · ~${AIRPORT.km} km, ${airportMins(st)} min</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
-        <div class="rank-item"><div><div>${dirIcon('in')} Airport to city at ${fmtMin(sm)}</div>
-          <div class="r-sub">Arrivals ${demandName(inNow).toLowerCase()} · wait in the airport queue, pick up at the Uber zone (T1, T2 or T4 car park)</div></div><i class="pill ${vi.c}">${vi.t}</i></div>
+          <div class="r-sub">Departures ${demandName(run.out).toLowerCase()} · drop off about ${fmtTime(run.drop)} (~${AIRPORT.km} km, ${airportMins(st)} min), then the virtual queue ${qTxt(run.wait, run.learned)}: a rider about ${fmtTime(run.at)}, when pickups are ${demandName(run.back).toLowerCase()}` +
+          `${run.back >= OK ? ', so a ride back is likely' : ', so you may drive back empty'}</div></div><i class="pill ${vo.c}">${vo.t}</i></div>
+        <div class="rank-item"><div><div>${dirIcon('in')} Airport pickup, leaving at ${fmtMin(sm)}</div>
+          <div class="ap-tl">${trip.drive ? `<span>🚗 ${trip.real ? '' : '~'}${trip.drive} min<small>at ${fmtTime(trip.arrive)}</small></span><i>›</i>` : ''}<span>⏳ queue ${qTxt(trip.wait, trip.learned).slice(1)}<small>join ${fmtTime(trip.arrive)}</small></span><i>›</i><span>🧍 rider ~${fmtTime(trip.pickup)}<small>${demandName(trip.v).toLowerCase()} arrivals</small></span><i>›</i><span>🏙 city ~${fmtTime(trip.pickup + trip.back * 60000)}</span></div>
+          <div class="r-sub">${trip.dead} min without a rider before the pickup (drive, queue and getting to the Uber zone at T1, T2 or T4)${trip.dead > 60 ? ': longer than usual, so it counts against the run' : ''}.</div></div><i class="pill ${vi.c}">${vi.t}</i></div>
         <div class="ap-strip"><span>${dirIcon('out')}</span><div>${strip('out')}</div></div>
         <div class="ap-strip"><span>${dirIcon('in')}</span><div>${strip('in')}</div></div>
         <div class="demand-axis ap-axis">${AXIS_HRS.map(h => `<span>${fmtHour(h)}</span>`).join('')}</div>
         ${peaks.map(e => `<div class="ap-peak">🟣 Uber: <b>${esc(e.name)}</b> ${fmtTimeRange(e.s, e.e)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}</div>`).join('')}
-        <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.<span class="help">
+        <div class="autoread-hint">Best times to leave on ${DAYS[dayIdx(base)]}: with a rider to the airport ${bo || 'no busy hours'}; empty for an airport pickup ${bi || 'no busy hours'}.<span class="help"> The ${dirIcon('in')} strip counts the drive there and the virtual queue, so each hour is when to set off. Queue times start as estimates from arrivals and learn from your real waits at the airport.
           Estimated from typical Melbourne Airport flight times${flSource() ? ', live flights where loaded,' : ''} and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</span></div>` +
         flightPlanHTML(st);
       return { out: run, in: inNow };
