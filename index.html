@@ -742,6 +742,32 @@
     .rs-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
     .rs-btn { border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
     .rs-btn.on { border-color: #7c3aed; color: #7c3aed; } .rs-btn.go { background: var(--green); border-color: var(--green); color: #fff; }
+    /* 🙋 your times (availability) in sky blue, next to Pilot's ✨ purple */
+    .rs-tag.av { color: #0284c7; margin-left: 4px; } .rs-pop-row .rs-tag.av { margin-left: 2px; }
+    .wk-row.sug.av { border-color: #38bdf8; background: color-mix(in srgb, #0284c7 7%, var(--card)); margin-top: -2px; }
+    .rs-btn.av { border-color: #38bdf8; }
+    .wk-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: .7rem; font-weight: 700; color: #7c3aed; margin: 4px 2px 0; }
+    .av-bar { display: flex; align-items: center; gap: 10px; width: 100%; margin: 8px 0; padding: 9px 12px; border-radius: 14px; border: 1.5px dashed #38bdf8; background: color-mix(in srgb, #0284c7 6%, var(--card)); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+    .av-bar.set { border-style: solid; } .av-bar > span { font-size: 1.3rem; } .av-bar > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .av-bar small { color: var(--muted); font-size: .72rem; line-height: 1.3; } .av-bar em { font-style: normal; color: var(--muted); font-size: 1.2rem; font-weight: 800; }
+    .av-rows { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+    .av-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: var(--card-2); }
+    .av-row > b { width: 40px; flex: none; font-size: .86rem; } .av-row > .rs-btn { padding: 5px 11px; flex: none; }
+    .av-wins { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; } .av-wins small { color: var(--muted); font-style: italic; font-size: .76rem; }
+    .av-win { display: inline-flex; align-items: center; gap: 2px; padding: 2px 2px 2px 4px; border-radius: 999px; border: 1px solid #38bdf8; background: var(--card); font-size: .78rem; }
+    .av-t, .av-del { border: none; background: none; color: var(--text); font: inherit; font-weight: 800; padding: 4px 4px; cursor: pointer; } .av-del { font-size: .8rem; padding: 3px 5px; }
+    .av-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; } .av-acts .rs-btn { flex: 1 1 auto; }
+    .rse-line { display: flex; gap: 8px; margin: 4px 0 8px; } .rse-line label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: .72rem; font-weight: 700; color: var(--muted); }
+    .rse-line select { width: 100%; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; font-size: .9rem; font-weight: 700; }
+    .rse-times { display: flex; align-items: center; gap: 8px; } .rse-times > span { color: var(--muted); font-weight: 800; } .rse-times em { font-style: normal; margin-left: auto; color: var(--muted); font-size: .78rem; font-weight: 700; white-space: nowrap; }
+    .rse-t { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; padding: 8px 12px; border-radius: 14px; border: 1.5px solid var(--accent); background: var(--card-2); color: var(--text); font: inherit; cursor: pointer; }
+    .rse-t small { font-size: .68rem; color: var(--muted); font-weight: 700; } .rse-t b { font-size: 1.2rem; }
+    .rse-v { margin-top: 8px; font-size: .82rem; font-weight: 700; } .rse-fit { font-size: .8rem; margin-top: 3px; color: var(--muted); } .rse-fit.in { color: #0284c7; font-weight: 700; } .rse-fit.out { color: #f59e0b; font-weight: 700; }
+    .rse-fit a { color: #0284c7; } .rse-clash { color: #ef4444; font-size: .8rem; font-weight: 700; min-height: 2px; }
+    .rse-picks { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 4px; } .rse-picks .rs-btn { display: flex; flex-direction: column; align-items: flex-start; border-radius: 12px; padding: 6px 10px; }
+    .rse-picks .rs-btn small { font-size: .66rem; color: var(--muted); font-weight: 600; }
+    .rse-acts { display: flex; gap: 8px; align-items: center; margin-top: 10px; } .rse-acts .pip-btn { flex: 1; margin: 0; } .rse-acts .rs-btn { flex: none; padding: 11px 14px; }
+    .rse-sheet .rs-pop-sec, .av-sheet .rs-pop-sec { padding: 8px 0 2px; }
     .rs-home { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .78rem; font-weight: 700; }
     .rs-home select { flex: 1; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-2); color: var(--text); font: inherit; }
     .rs-sub { margin-top: 12px; font-weight: 800; font-size: .85rem; } .rs-sub small { display: block; font-weight: 600; color: var(--muted); font-size: .7rem; }
@@ -2198,6 +2224,8 @@
         <div class="sx-card">
           <button type="button" class="sx-row" data-k="backup restore google drive file export" onclick="sxGo('backup')">
             <svg class="sx-ic"><use href="#i-cloud"/></svg><span class="sx-rt"><b>Backup &amp; restore</b><small id="sxsBackup"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
+          <button type="button" class="sx-row" data-k="google sheet sheets drive shift log history month route location flights api shared" onclick="sxGo('gsheet')">
+            <svg class="sx-ic" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 9v12"/></svg><span class="sx-rt"><b>Google Sheet</b><small id="sxsSheet"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
           <button type="button" class="sx-row" data-k="manage data delete remove download export csv zip offers trends snapshots shifts events clear reset" onclick="sxGo('data')">
             <svg class="sx-ic"><use href="#i-folder"/></svg><span class="sx-rt"><b>Manage &amp; download data</b><small id="sxsData"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
@@ -2384,6 +2412,33 @@
       </div>
     </section>
 
+    <!-- ===== Google Sheet ===== -->
+    <section class="sx-page" data-page="gsheet" hidden>
+      <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
+      <h1 class="sx-big">Google Sheet</h1><p class="sx-lead">Live flights shared by all your devices, and your shift log month by month</p>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">📗 Connection</h3>
+        <div class="sx-field"><label for="cfgSheetUrl">Web app address</label><input type="password" id="cfgSheetUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-field"><label for="cfgSheetKey">Private key (for the shift log)</label><input type="password" id="cfgSheetKey" placeholder="From ✈️ Offer Pilot ▸ 3. Phone link" autocomplete="off" spellcheck="false" /></div>
+        <div class="sx-hint" id="sheetNote" style="white-space: pre-line"></div>
+        <button type="button" class="sx-add" onclick="sheetTest()"><svg><use href="#i-plus"/></svg>Test connection</button>
+        <div class="sx-hint help">Easiest: open the phone link from the sheet (✈️ Offer Pilot ▸ 3. Phone link) once on each device and both boxes fill in. Flights: the sheet calls AeroDataBox every hour and every pilot reads them from the sheet. Shift log: each shift goes to a tab for its month (“2026-10 October”), with a Summary tab of the months. Both stay only on this phone and in your own Google Drive.</div>
+      </div>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">⏱ Shift log</h3>
+        <label class="tgl"><input type="checkbox" id="sheetAuto" checked /><span>Send each shift when I punch out<small>Queued on the phone if you're offline, sent later</small></span></label>
+        <button type="button" class="sx-add" onclick="sheetSendAll()"><svg><use href="#i-plus"/></svg>Send all past shifts</button>
+        <div class="sx-hint">Each row: date, punch in and out, hours, car, trips, offers (accepted and declined, ride types), fares, costs, take-home, $/hr, target, km, where you started and finished, areas, a route map link and the offers list. Sending again updates the same row.</div>
+      </div>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">📍 Route log</h3>
+        <label class="tgl"><input type="checkbox" id="routeOn" checked /><span>Record where I drive while punched in<small>Only on this phone; the sheet gets a map link</small></span></label>
+        <div class="sx-field"><label for="routeKeep">Keep routes on this phone for</label><select id="routeKeep"><option value="30">30 days</option><option value="90">90 days</option><option value="180">6 months</option><option value="365">1 year</option></select></div>
+        <div class="sx-hint">A point every ~100 m while the pilot is open. Older routes are removed from the phone; shift totals and the sheet's route links stay.</div>
+      </div>
+      <button type="button" class="sx-primary" onclick="sheetSave()">Save changes</button>
+    </section>
+
     <!-- ===== Manage data ===== -->
     <section class="sx-page" data-page="data" hidden>
       <header class="sx-top"><button type="button" class="sx-round" onclick="sxGo('main')" aria-label="Back"><svg><use href="#i-back"/></svg></button></header>
@@ -2469,7 +2524,7 @@
     // ---------- Safe storage helpers ----------
     // Test run keeps its own copy of everything under "test:" keys
     const TEST = (() => { try { return localStorage.getItem('testMode') === '1'; } catch (e) { return false; } })();
-    const SHARED_KEYS = new Set(['testMode', 'devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'cfgFlightCap', 'flCalls']);   // same in test runs
+    const SHARED_KEYS = new Set(['testMode', 'devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'cfgFlightCap', 'flCalls', 'cfgSheetUrl', 'cfgSheetKey']);   // same in test runs
     const tk = k => TEST && !SHARED_KEYS.has(k) ? 'test:' + k : k;
     function lsGet(k) { try { return localStorage.getItem(tk(k)); } catch (e) { return null; } }
     function lsSet(k, v) { try { localStorage.setItem(tk(k), v); } catch (e) {} }
@@ -3849,6 +3904,7 @@
     // ---- Settings pages ----
     function sxGo(page) {
       if (page === 'data') renderDataSheet();
+      if (page === 'gsheet') sheetPage();
       if (page === 'acct') renderAcctSettings();
       if (page === 'test') { renderTestRuns(); document.getElementById('testRunView').hidden = true; }
       const leavingData = !document.querySelector('#settingsModal [data-page="data"]').hidden && page !== 'data';
@@ -3876,6 +3932,7 @@
       { const n = [chaseCfg.tomtom, lsGet('cfgTrainKey'), lsGet('cfgFlightKey')].filter(Boolean).length;
         set('sxsDev', `${n} of 3 keys added · ${devPass() ? '🔒 passcode on' : 'set a passcode'}`); }
       { const ac = acctCfg(); set('sxsAcct', `${ac.biz}% business use${ac.remind ? ' · reminder Mon ' + ac.remind : ''}`); }
+      set('sxsSheet', !sheetOn() ? 'Not connected · shared flights and shift log' : `Connected · flights${sheetKey() ? ' + shift log' + (loadSheetQ().length ? ` · ${loadSheetQ().length} to send` : '') : ' only'}`);
       set('sxsStmt', `${loadCars().length} car${loadCars().length === 1 ? '' : 's'} · download for tax and accounting`);
       set('sxsTime', (timePick || (is24() ? '24' : '12')) === '24' ? '24-hour · 15:00–16:00' : '12-hour · 3–4PM, 10AM–2PM');
       set('sxsVersion', `v${APP_VERSION}${newerVersion ? ' · update ready, tap to load' : ' · tap to check'}`);
@@ -4661,6 +4718,7 @@
       if (!wheelFor) return;
       const v = wheelValue();
       if (!wheelFor) return;                             // a late scroll after the pop-up closed
+      if (wheelFor === 'hook') { if (wheelHook) wheelHook.set(v); return; }
       if (wheelFor === 'start') document.getElementById('planStart').value = String(v);
       else { document.getElementById('planMode').value = 'end'; document.getElementById('planEnd').value = String(v); syncWheelModes(); }
       fillPlanUntil(); renderPlan();
@@ -4699,8 +4757,21 @@
       b.hidden = wheelFor !== 'start';
       b.textContent = `🕘 Now · ${fmtMin(nowSlot().min)}`;
     }
+    // The same wheel for other pop-ups (roster editor, availability): hook = { title, get() → minutes, set(minutes) }
+    let wheelHook = null;
+    function openWheelFor(hook, btn) {
+      wheelFor = 'hook'; wheelHook = hook;
+      document.getElementById('wheelTitle').textContent = hook.title;
+      document.getElementById('wheelModes').hidden = true;
+      const sh = document.getElementById('wheelSheet'); sh.style.display = 'block'; sh.style.zIndex = 2300;   // above pop-up sheets
+      buildWheels(hook.get()); syncWheelModes(); syncWheelNow();
+      const card = document.getElementById('wheelCard'), r = btn.getBoundingClientRect();
+      const w = card.offsetWidth, hgt = card.offsetHeight, vw = innerWidth, vh = innerHeight;
+      card.style.left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
+      card.style.top = (r.bottom + 8 + hgt < vh - 20 ? r.bottom + 8 : Math.max(12, r.top - hgt - 8)) + 'px';
+    }
     function openWheel(which, btn) {
-      wheelFor = which;
+      wheelFor = which; wheelHook = null; document.getElementById('wheelSheet').style.zIndex = '';
       const start = +document.getElementById('planStart').value, mode = document.getElementById('planMode').value;
       let v = start;
       if (which === 'end') v = mode === 'end' ? +document.getElementById('planEnd').value
@@ -4715,7 +4786,12 @@
       card.style.left = Math.max(12, Math.min(vw - w - 12, r.left + r.width / 2 - w / 2)) + 'px';
       card.style.top = (r.bottom + 8 + hgt < vh - 90 ? r.bottom + 8 : Math.max(12, r.top - hgt - 8)) + 'px';
     }
-    function closeWheel() { clearTimeout(wheelTimer); document.getElementById('wheelSheet').style.display = 'none'; wheelFor = null; }
+    function closeWheel() {
+      clearTimeout(wheelTimer);
+      if (wheelFor === 'hook' && wheelHook) { try { wheelHook.set(wheelValue()); } catch (e) {} }   // Done keeps where the wheel stopped
+      document.getElementById('wheelSheet').style.display = 'none'; wheelFor = null;
+      const h = wheelHook; wheelHook = null; if (h && h.done) h.done();
+    }
     function onPlanUntil() {
       const v = document.getElementById('planUntil').value;
       if (v[0] === 'h') { document.getElementById('planMode').value = 'end'; document.getElementById('planEnd').value = v.slice(1); }
@@ -5702,27 +5778,32 @@ ${sub}${body}
       const qs = s => `'${esc(s).replace(/'/g, '&#39;')}'`;
       let h = `<div class="flp-h"><b>${lbl}</b></div>`;
       if (r.length) h += `<div class="rs-pop-sec">Your shift${r.length > 1 ? 's' : ''}</div>` + r.map(x => `<div class="rs-pop-row mine"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${x.z ? esc(x.z) + ' · ' : ''}${shiftLen(x)}</span></div>` +
-        `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterOpen('${x.id}')">Change</button></div>`).join('');
+        `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEditor({ id: '${x.id}' })">Change</button></div>`).join('');
       // a suggestion row with Take (or "overlaps") and Adjust
       const sugRow = (x, sub) => {
         const clash = r.some(y => y.s < x.e && y.e > x.s);
         return `<div class="rs-pop-row"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${sub}</span></div>` +
           (clash ? '<i class="rs-clash">overlaps</i>' : `<button type="button" class="rs-btn go" onclick="rosterPick(${x.s}, ${x.e}, ${qs(x.z)}); closeRsPop(); renderRoster()">Take</button>`) +
-          `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`;
+          `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEditor({ s: ${x.s}, e: ${x.e}, z: ${qs(x.z)} })">Adjust</button></div>`;
       };
       const none = t => `<div class="rs-pop-row"><span class="rs-none">${t}</span></div>`;
+      if (availSet()) {
+        const ws = availWins(base), am = availSugs(base, 2);
+        h += `<div class="rs-pop-sec">🙋 Your time${ws.length ? ' · ' + ws.map(([a, b]) => fmtTimeRange(a, b)).join(', ') : ''}</div>` +
+          (!ws.length ? none('Not available this day. <a href="#" onclick="closeRsPop(); openAvail(); return false;">Change</a>') : am.length ? am.map(x => sugRow(x, `${esc(x.z)} · ${shiftLen(x)} · ${x.quiet ? 'quiet' : demandName(x.avg).toLowerCase()}`)).join('') : none('No trend data for your times yet.'));
+      }
       const here = myZone() || homeZone(), mine = zoneDaySugs(base, [here], 2);
       h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-pin"/></svg>Where you are · ${esc(myZone() ? hereLabel(here) : here + ' (home)')}</div>` +
-        (mine.length ? mine.map(x => sugRow(x, `${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}`)).join('') : none('No busy stretch here that day.'));
+        (mine.length ? mine.map(x => sugRow(x, `${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}${fitTag(x)}`)).join('') : none('No busy stretch here that day.'));
       const ap = airportDaySugs(base);
       h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-plane"/></svg>Airport runs</div>` +
         (ap.length ? ap.map(x => sugRow(x, `${dirIcon(x.dir)} ${x.dir === 'in' ? 'airport → city' : 'city → airport'} · ${shiftLen(x)}`)).join('') : none('No busy airport times that day.'));
       const rec = Object.keys(UBER_ZONE_SHAPES).filter(z => z !== here).map(z => zoneDaySugs(base, [z], 1)[0]).filter(Boolean)   // best stretch per area, top 3 areas
         .sort((x, y) => y.score - x.score).slice(0, 3).sort((x, y) => x.s - y.s);
       h += `<div class="rs-pop-sec"><svg class="h-ic"><use href="#h-star"/></svg>Recommended areas</div>` +
-        (rec.length ? rec.map(x => sugRow(x, `${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}`)).join('')
+        (rec.length ? rec.map(x => sugRow(x, `${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}${fitTag(x)}`)).join('')
           : none(`No other busy areas that day${Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)'}.`));
-      h += `<div class="rs-pop-foot"><button type="button" class="rs-btn" onclick="closeRsPop(); rosterEdit=null; rosterLoad(${base + 17 * 3600000}, ${base + 21 * 3600000})">✍️ Plan my own for this day</button></div>`;
+      h += `<div class="rs-pop-foot"><button type="button" class="rs-btn" onclick="closeRsPop(); rosterEditor({ day: ${base} })">✍️ Add my own for this day</button></div>`;
       const p = document.createElement('div'); p.id = 'rsPop'; p.className = 'fl-pop'; p.innerHTML = h; document.body.appendChild(p);
       const rc = cell.getBoundingClientRect(), vh = innerHeight, below = vh - 92 - rc.bottom - 8, above = rc.top - 70 - 8, useBelow = below >= 240 || below >= above;
       const maxH = Math.max(180, Math.min(useBelow ? below : above, vh * 0.62)); p.style.maxHeight = maxH + 'px';
@@ -5755,7 +5836,8 @@ ${sub}${body}
         const mine = shifts.filter(x => x.s >= d4 && x.s < d4 + 86400000);
         const past = d4 + 86400000 <= now;
         const sug = !mine.length && !past ? (daySuggestions(base, 1)[0] || null) : null;
-        return { k, d4, base, mine, past, sug };
+        const sugA = !mine.length && !past && availSet() ? (availSugs(base, 1)[0] || null) : null;      // best inside your times
+        return { k, d4, base, mine, past, sug, sugA };
       });
       const hrs = shifts.reduce((a, x) => a + (x.e - x.s), 0) / 3600000;
       return { w, days, shifts, hrs };
@@ -5764,31 +5846,35 @@ ${sub}${body}
     function fillWeek() {
       const cfg = wkCfg(), d = weekPlanData(rsWeekOff), r = loadRoster();
       let hrs = d.hrs, daysUsed = d.days.filter(x => x.mine.length).length;
-      const added = [];
-      d.days.filter(x => x.sug).sort((a, b) => b.sug.score - a.sug.score).forEach(x => {
+      const added = [], av = availSet(), pick = x => av ? (x.sugA && !x.sugA.quiet ? x.sugA : null) : x.sug;   // with your times set, only shifts inside them
+      d.days.filter(pick).sort((a, b) => pick(b).score - pick(a).score).forEach(x => {
+        const g = pick(x);
         if (hrs >= cfg.hrs || daysUsed >= cfg.days) return;
-        if (r.some(y => y.s < x.sug.e && y.e > x.sug.s)) return;
+        if (r.some(y => y.s < g.e && y.e > g.s)) return;
         const id = 'r' + Date.now().toString(36) + x.k;
-        r.push({ id, s: x.sug.s, e: x.sug.e, z: x.sug.z, src: 'pilot' }); added.push(id);
-        hrs += (x.sug.e - x.sug.s) / 3600000; daysUsed++;
+        r.push({ id, s: g.s, e: g.e, z: g.z, src: 'pilot' }); added.push(id);
+        hrs += (g.e - g.s) / 3600000; daysUsed++;
       });
-      if (!added.length) { toast(hrs >= cfg.hrs ? 'This week already reaches your hours.' : 'No busy stretches left to add this week.'); return; }
+      if (!added.length) { toast(hrs >= cfg.hrs ? 'This week already reaches your hours.' : av ? 'No busy stretches left inside your times this week.' : 'No busy stretches left to add this week.'); return; }
       saveRoster(r); renderRoster(); renderPlanCal();
-      toast(`✓ ${added.length} shift${added.length === 1 ? '' : 's'} added · ${Math.round(hrs * 10) / 10} h planned`, 'Undo', () => { saveRoster(loadRoster().filter(y => !added.includes(y.id))); renderRoster(); renderPlanCal(); });
+      toast(`✓ ${added.length} shift${added.length === 1 ? '' : 's'} added${av ? ' in your times' : ''} · ${Math.round(hrs * 10) / 10} h planned`, 'Undo', () => { saveRoster(loadRoster().filter(y => !added.includes(y.id))); renderRoster(); renderPlanCal(); });
     }
     function weekPlanHTML() {
-      const cfg = wkCfg(), d = weekPlanData(rsWeekOff), now = Date.now();
+      const cfg = wkCfg(), d = weekPlanData(rsWeekOff), now = Date.now(), av = availSet();
       const dm = t => new Date(t).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
       const pct = Math.min(100, Math.round(d.hrs / Math.max(1, cfg.hrs) * 100));
       const zq = z => esc(z).replace(/'/g, '&#39;');
       const rows = d.days.map(x => {
         const lbl = `<b>${DAYS[x.k]} ${new Date(x.d4).getDate()}</b>`;
-        if (x.mine.length) return `<div class="wk-row mine${x.past ? ' past' : ''}">${lbl}<div>${x.mine.map(m => `<button type="button" class="wk-shift" onclick="rosterOpen('${m.id}')">🚗 ${fmtTimeRange(m.s, m.e)} <small>${m.z ? esc(m.z) + ' · ' : ''}${shiftLen(m)}</small></button>`).join('')}</div></div>`;
+        if (x.mine.length) return `<div class="wk-row mine${x.past ? ' past' : ''}">${lbl}<div>${x.mine.map(m => `<button type="button" class="wk-shift" onclick="rosterEditor({ id: '${m.id}' })">🚗 ${fmtTimeRange(m.s, m.e)} <small>${m.z ? esc(m.z) + ' · ' : ''}${shiftLen(m)}</small></button>`).join('')}</div></div>`;
         if (x.past) return `<div class="wk-row past">${lbl}<div><small>—</small></div></div>`;
-        if (!x.sug) return `<div class="wk-row off">${lbl}<div><small>Day off · quiet</small></div></div>`;
-        return `<div class="wk-row sug">${lbl}<div><span>✨ ${fmtTimeRange(x.sug.s, x.sug.e)}</span><small>${x.sug.home ? '🏠 ' : ''}${esc(x.sug.z)} · ${shiftLen(x.sug)} · ${demandName(x.sug.avg).toLowerCase()}</small></div>` +
-          `<button type="button" class="rs-btn go" onclick="rosterPick(${x.sug.s}, ${x.sug.e}, '${zq(x.sug.z)}')">Take</button>` +
-          `<button type="button" class="rs-btn" onclick="rosterEdit=null; rosterLoad(${x.sug.s}, ${x.sug.e})">Adjust</button></div>`;
+        const line = (g, mine) => `<div class="wk-row sug${mine ? ' av' : ''}">${mine ? '' : lbl}<div><span>${mine ? '🙋' : '✨'} ${fmtTimeRange(g.s, g.e)}${!mine && inAvail(g.s, g.e) ? ' <i class="rs-tag av">🙋 fits</i>' : ''}</span><small>${g.home ? '🏠 ' : ''}${esc(g.z)} · ${shiftLen(g)} · ${g.quiet ? 'quiet' : demandName(g.avg).toLowerCase()}</small></div>` +
+          `<button type="button" class="rs-btn go" onclick="rosterPick(${g.s}, ${g.e}, '${zq(g.z)}')">Take</button>` +
+          `<button type="button" class="rs-btn" onclick="rosterEditor({ s: ${g.s}, e: ${g.e}, z: '${zq(g.z)}' })">Adjust</button></div>`;
+        const same = x.sug && x.sugA && x.sug.s === x.sugA.s && x.sug.e === x.sugA.e;
+        if (!x.sug && !x.sugA) return `<div class="wk-row off">${lbl}<div><small>${av && !availWins(x.base).length ? 'Not available' : 'Day off · quiet'}</small></div>${`<button type="button" class="rs-btn" onclick="rosterEditor({ day: ${x.base} })" aria-label="Add my own shift">＋</button>`}</div>`;
+        if (!x.sug) return line(x.sugA, true).replace('<div class="wk-row sug av">', `<div class="wk-row sug av">${lbl}`);
+        return line(x.sug, false) + (x.sugA && !same ? line(x.sugA, true).replace('<div class="wk-row sug av">', '<div class="wk-row sug av"><b></b>') : '');
       }).join('');
       const opt = (n, v) => `<option value="${n}"${+v === n ? ' selected' : ''}>${n}</option>`;
       return `<div class="wk-plan">` +
@@ -5797,7 +5883,7 @@ ${sub}${body}
         `<small>${dm(d.w.s)} 4am → ${dm(d.w.e)} 4am · pay week</small></div>` +
         `<button type="button" class="rs-btn" ${rsWeekOff >= 3 ? 'disabled' : ''} onclick="rsWeekOff++; renderRoster()" aria-label="Next week">›</button></div>` +
         `<div class="wk-goal"><span><b>${Math.round(d.hrs * 10) / 10} h</b> of ${cfg.hrs} h · ${d.days.filter(x => x.mine.length).length} of ${cfg.days} days</span><i><em style="width:${pct}%"></em></i></div>` +
-        `<div class="wk-rows">${rows}</div>` +
+        `<div class="wk-rows">${rows}</div>` + (av ? `<div class="wk-key"><span>✨ Pilot's recommended</span><span style="color:#0284c7">🙋 best inside your times</span></div>` : '') +
         `<div class="wk-acts"><button type="button" class="rs-btn go" onclick="fillWeek()">✨ Fill the week</button>` +
         `<label>Hours<select onchange="setWkCfg('hrs', +this.value)">${[10, 15, 20, 25, 30, 35, 38, 40, 45, 50, 55, 60].map(n => opt(n, cfg.hrs)).join('')}</select></label>` +
         `<label>Days<select onchange="setWkCfg('days', +this.value)">${[1, 2, 3, 4, 5, 6, 7].map(n => opt(n, cfg.days)).join('')}</select></label></div>` +
@@ -5847,24 +5933,25 @@ ${sub}${body}
       const hrs = thisWeek.reduce((a, x) => a + (x.e - x.s), 0) / 3600000;
       const up = r.filter(x => x.e > now).slice(0, 14), done = r.filter(x => x.e <= now).slice(-3).reverse();
       const srcTag = x => x.src === 'pilot' ? '<i class="rs-tag">✨ Pilot</i>' : x.src === 'pilot-adj' ? '<i class="rs-tag">✨ adjusted</i>' : '';
-      const row = (x, past) => `<button type="button" class="rs-row${past ? ' past' : ''}${x.id === rosterEdit ? ' sel' : ''}${x.s <= now && x.e > now ? ' now' : ''}" onclick="rosterOpen('${x.id}')">` +
+      const row = (x, past) => `<button type="button" class="rs-row${past ? ' past' : ''}${x.id === rosterEdit ? ' sel' : ''}${x.s <= now && x.e > now ? ' now' : ''}" onclick="rosterEditor({ id: '${x.id}' })">` +
         `<b>${shiftLabel(x)}</b><span>${x.z ? esc(x.z) + ' · ' : ''}${shiftLen(x)}</span>${srcTag(x)}</button>`;
       let sug = '';
       if (rosterShowSug) {
         const list = rosterSuggestions();
         sug = `<div class="rs-sub"><svg class="h-ic"><use href="#h-spark"/></svg>Pilot suggests <small>best stretch each day for the next 7 days, from your Uber trends, starting from home where it's busy enough</small></div>` +
           `<label class="rs-home">🏠 Home area <select onchange="setHomeZone(this.value)">${Object.keys(UBER_ZONE_SHAPES).map(z => `<option${z === homeZone() ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select></label>` +
-          (list.length ? list.map(x => `<div class="rs-sug"><div><b>${shiftLabel(x)}</b><span>${x.home ? '🏠 ' : ''}${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}</span></div>` +
+          (list.length ? list.map(x => `<div class="rs-sug"><div><b>${shiftLabel(x)}</b><span>${x.home ? '🏠 ' : ''}${esc(x.z)} · ${shiftLen(x)} · ${demandName(x.avg).toLowerCase()}${fitTag(x)}</span></div>` +
             `<button type="button" class="rs-btn go" onclick="rosterPick(${x.s}, ${x.e}, '${esc(x.z).replace(/'/g, '&#39;')}')">Pick up</button>` +
-            `<button type="button" class="rs-btn" onclick="rosterEdit=null; rosterLoad(${x.s}, ${x.e})">Adjust</button></div>`).join('')
+            `<button type="button" class="rs-btn" onclick="rosterEditor({ s: ${x.s}, e: ${x.e}, z: '${esc(x.z).replace(/'/g, '&#39;')}' })">Adjust</button></div>`).join('')
             : '<div class="autoread-hint">No busy stretches found in the next 7 days' + (Object.keys(loadTrends()).length ? '' : ' (import Uber trends first)') + '.</div>');
       }
       box.innerHTML = `<div class="demand-title"><svg class="h-ic"><use href="#h-roster"/></svg>My roster</div>` +
         `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}<span class="help">. Tap a day for Pilot's suggested shifts to take or adjust, or a shift below to change it.</span></div>` +
+        `<button type="button" class="av-bar${availSet() ? ' set' : ''}" onclick="openAvail()"><span>🙋</span><div><b>When I can work</b><small>${availSet() ? esc(availSummary()) : 'Not set · tap to add your free times so Pilot can fit shifts to them'}</small></div><em>›</em></button>` +
         rosterCalHTML() + weekPlanHTML() +
         `<div class="rs-sub">Upcoming shifts</div><div class="rs-list">${up.length ? up.map(x => row(x)).join('') : '<div class="autoread-hint">No shifts planned yet.</div>'}</div>` +
         `<div class="rs-acts"><button type="button" class="rs-btn${rosterShowSug ? ' on' : ''}" onclick="rosterToggleSug()"><svg class="h-ic"><use href="#h-spark"/></svg>${rosterShowSug ? 'Hide suggestions' : 'Suggest shifts'}</button>` +
-        `<button type="button" class="rs-btn" onclick="rosterEdit=null; setPlanSide('plan', true); const b=document.querySelector('#view-insights .plan-box'); if (b) setTimeout(() => b.scrollIntoView({behavior:'smooth', block:'start'}), 60)"><svg class="h-ic"><use href="#h-compass"/></svg>Add my own in Plan</button></div>` +
+        `<button type="button" class="rs-btn" onclick="rosterEditor({})">✍️ Add my own</button></div>` +
         sug + (done.length ? `<div class="rs-sub">Done</div>` + done.map(x => row(x, true)).join('') : '');
     }
     // Planner buttons: add to roster, or update/remove the shift being edited
@@ -7503,6 +7590,7 @@ ${sub}${body}
       checkFuelStop(lastFix);
       try { detectDriving(lastFix); } catch (e) {}
       try { learnCompass(lastFix); } catch (e) {}
+      try { routeAdd(lastFix); } catch (e) {}
       updateRoadName();
       glideTo(lastFix);
       if (!map) return;
@@ -8798,7 +8886,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.84.0';
+    const APP_VERSION = '1.85.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9162,7 +9250,7 @@ ${sub}${body}
       } else box.innerHTML = '<div class="autoread-hint">Tap Punch in when you go online.<span class="help"> Trips you mark ✓ Accepted (or that Auto-Read detects) count towards the goal; kilometres come from GPS while the pilot is open.</span></div>';
       const hist = (() => { try { return JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) { return []; } })();
       document.getElementById('shiftHist').innerHTML = hist.length ? hist.slice(-8).reverse().map(h =>
-        `<div class="fl-row"><span>${new Date(h.start).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtDur(h.hrs)} · ${h.trips} trips · ${h.km.toFixed(0)} km</span>` +
+        `<div class="fl-row"><span>${new Date(h.start).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtDur(h.hrs)} · ${h.trips} trips · ${h.km.toFixed(0)} km${h.offers != null ? ` · ${h.offers} offers` : ''}${h.map ? ` · <a href="${esc(h.map)}" target="_blank" rel="noopener">🗺 route</a>` : ''}</span>` +
         `<b style="color:${h.net >= h.goal ? 'var(--green)' : 'var(--text)'}">$${h.net.toFixed(0)}${h.net >= h.goal ? ' 🎯' : ''}</b></div>`).join('')
         : '<div class="autoread-hint">No past shifts yet.</div>';
     }
@@ -9172,14 +9260,19 @@ ${sub}${body}
         const p = shiftPlanNow();
         lsSet(SHIFT_KEY, JSON.stringify({ start: Date.now(), km0: trackedKm(), goal: goalAuto() ? null : (parseFloat(document.getElementById('shiftGoal').value) || shiftGoal()), goalAuto: goalAuto(), zone: p.zone, car: activeCarId(), planEnd: p.end, planSrc: p.src }));
         if (!loadDrive()) startDrive(false);
+        routeMem = null; try { if (lastFix) routeAdd(Object.assign({}, lastFix, { t: Date.now() })); } catch (e) {}
         toast(`⏱ Punched in · finish around ${fmtTime(p.end)}${p.src === 'roster' ? ' (your roster)' : p.src === 'pilot' ? ' (Pilot’s suggestion)' : ''}`);
       } else {
         s.end = Date.now(); s.km1 = trackedKm();
         const st = shiftStats(s);
         let hist = []; try { hist = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
-        hist.push({ start: s.start, end: s.end, hrs: st.hrs, trips: st.trips, earn: st.earn, km: st.km, net: st.net, goal: st.goal, car: s.car || activeCarId() });
-        lsSet(SHIFT_HIST_KEY, JSON.stringify(hist.slice(-100)));
-        lsDel(SHIFT_KEY);
+        try { if (lastFix) routeAdd(Object.assign({}, lastFix, { t: Date.now() })); routeSave(); } catch (e) {}
+        const h = { start: s.start, end: s.end, hrs: st.hrs, trips: st.trips, earn: st.earn, km: st.km, net: st.net, goal: st.goal, car: s.car || activeCarId() };
+        let rec = null; try { rec = shiftRecord(h); Object.assign(h, { offers: rec.offers, accepted: rec.accepted, from: rec.from, to: rec.to, areas: rec.areas, map: rec.map }); } catch (e) {}
+        hist.push(h);
+        lsSet(SHIFT_HIST_KEY, JSON.stringify(hist.slice(-300)));
+        lsDel(SHIFT_KEY); routeMem = null;
+        if (rec) sheetQueue(rec);
         toast(`⏹ Punched out · $${st.net.toFixed(0)} take-home in ${fmtDur(st.hrs)} ($${st.netHr.toFixed(0)}/hr)`);
         const nx = nextShiftText(nextShift());
         sendNotice(`⏹ Shift done · $${st.net.toFixed(0)} take-home`, `${fmtDur(st.hrs)} · ${st.trips} trip${st.trips === 1 ? '' : 's'} · ${st.km.toFixed(0)} km · $${st.netHr.toFixed(0)}/hr` +
@@ -9187,6 +9280,348 @@ ${sub}${body}
       }
       renderShiftBar(); renderShiftSheet();
     }
+
+
+    // ================= 🙋 AVAILABILITY: when you can work, each day of the week =================
+    // Stored as { 0: [[startMin, endMin], …], … 6: […] } (0 = Monday). An end at or before the start runs past midnight.
+    // Pilot keeps its own ✨ Recommended shifts, and also finds the best stretch inside your times (labelled 🙋 Your time).
+    const loadAvail = () => { try { return JSON.parse(lsGet('avail')) || {}; } catch (e) { return {}; } };
+    const availSet = (a = loadAvail()) => Object.values(a).some(x => x && x.length);
+    const atMin = (base, m) => { const d = new Date(base); d.setHours(0, 0, 0, 0); d.setMinutes(m); return d.getTime(); };
+    const dayBase = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    // Windows that start on the day of base (midnight), as times
+    function availWins(base, a = loadAvail()) {
+      return (a[dayIdx(new Date(base))] || []).map(([s, e]) => [atMin(base, s), atMin(base, e <= s ? e + 1440 : e)]);
+    }
+    // Is a shift fully inside your times? (also windows from the day before that run past midnight)
+    function inAvail(s, e, a = loadAvail()) {
+      if (!availSet(a)) return null;
+      const b = dayBase(s);
+      return [...availWins(b, a), ...availWins(b - 86400000, a)].some(([w0, w1]) => s >= w0 - 60000 && e <= w1 + 60000);
+    }
+    const fmtMinRange = (s, e) => { const b = dayBase(Date.now()); return fmtTimeRange(atMin(b, s), atMin(b, e <= s ? e + 1440 : e)); };
+    function availSummary(a = loadAvail()) {
+      if (!availSet(a)) return '';
+      const parts = [];
+      for (let d = 0; d < 7; d++) {
+        const key = JSON.stringify(a[d] || []); if (key === '[]') continue;
+        let e = d; while (e + 1 < 7 && JSON.stringify(a[e + 1] || []) === key) e++;
+        parts.push(`${DAYS[d]}${e > d ? '–' + DAYS[e] : ''} ${(a[d] || []).map(([s, x]) => fmtMinRange(s, x)).join(', ')}`);
+        d = e;
+      }
+      return parts.join(' · ');
+    }
+    // Best stretches inside your times on a day: busy (Medium or better) to start, kept while it stays busy, never past
+    // the end of your window. When a window is quiet all through, its best 2 hours are still offered (marked quiet).
+    function availSugs(base, max = 2) {
+      const a = loadAvail(), now = Date.now(), cands = [];
+      if (!Object.keys(loadTrends()).length) return [];
+      availWins(base, a).forEach(([w0, w1]) => {
+        let bestQuiet = null;
+        for (let t0 = Math.ceil(Math.max(w0, now) / SLOT_MS) * SLOT_MS; t0 + 2 * SLOT_MS <= w1; t0 += SLOT_MS) {
+          const t = new Date(t0), zs = [...new Set([homeZone(), (bestZoneAt(t) || {}).z].filter(Boolean))];
+          for (const z of zs) {
+            const room = Math.floor((w1 - t0) / SLOT_MS), v0 = slotVal(z, t); if (v0 === null) continue;
+            const home = z === homeZone();
+            if (v0 >= OK) {
+              const len = Math.min(suggestShift(t, z).len, MAX_SLOTS, room); if (len < 2) continue;
+              const vals = Array.from({ length: len }, (_, i) => slotVal(z, new Date(t0 + i * SLOT_MS)) ?? 0), avg = vals.reduce((x, c) => x + c, 0) / len;
+              cands.push({ s: t0, e: t0 + len * SLOT_MS, z, avg, home, mine: true, score: avg * Math.min(len, 12) * (home ? 1.35 : 1) });
+            } else if (home) {
+              const len = Math.min(4, room), vals = Array.from({ length: len }, (_, i) => slotVal(z, new Date(t0 + i * SLOT_MS)) ?? 0), avg = vals.reduce((x, c) => x + c, 0) / len;
+              if (!bestQuiet || avg > bestQuiet.avg) bestQuiet = { s: t0, e: t0 + len * SLOT_MS, z, avg, home, mine: true, quiet: true, score: avg * len * 0.5 };
+            }
+          }
+        }
+        if (bestQuiet && !cands.some(c => c.s < w1 && c.e > w0)) cands.push(bestQuiet);
+      });
+      const out = [];
+      cands.sort((x, y) => y.score - x.score).forEach(c => { if (out.length < max && !out.some(o => o.s < c.e && o.e > c.s)) out.push(c); });
+      return out.sort((x, y) => x.s - y.s);
+    }
+    const AV_TAG = '<i class="rs-tag av">🙋 Your time</i>', REC_TAG = '<i class="rs-tag">✨ Recommended</i>';
+    const fitTag = x => inAvail(x.s, x.e) ? ' <i class="rs-tag av">🙋 fits your time</i>' : '';
+
+    // ---- 🙋 Availability pop-up: a row per day, each time range set with the same scroll wheel ----
+    let avDraft = null;
+    function openAvail() {
+      avDraft = JSON.parse(JSON.stringify(loadAvail()));
+      let sh = document.getElementById('avSheet');
+      if (!sh) { sh = document.createElement('div'); sh.id = 'avSheet'; sh.className = 'sheet'; sh.onclick = e => { if (e.target === sh) closeAvail(); }; document.body.appendChild(sh); }
+      sh.style.display = 'flex'; sh.style.zIndex = 2150; renderAvail();
+    }
+    function closeAvail() { const sh = document.getElementById('avSheet'); if (sh) sh.style.display = 'none'; avDraft = null; }
+    function renderAvail() {
+      const sh = document.getElementById('avSheet'); if (!sh || !avDraft) return;
+      const rows = DAYS.map((n, d) => {
+        const r = avDraft[d] || [];
+        return `<div class="av-row"><b>${n}</b><div class="av-wins">${r.length ? r.map(([s, e], i) =>
+          `<span class="av-win"><button type="button" class="av-t" onclick="avPick(${d}, ${i}, 0, this)">${fmtMin(s)}</button>–<button type="button" class="av-t" onclick="avPick(${d}, ${i}, 1, this)">${fmtMin(e)}</button>` +
+          `<button type="button" class="av-del" onclick="avDel(${d}, ${i})" aria-label="Remove this time">🚮</button></span>`).join('') : '<small>Not available</small>'}</div>` +
+          `<button type="button" class="rs-btn" onclick="avAdd(${d})" aria-label="Add a time on ${n}">＋</button></div>`;
+      }).join('');
+      sh.innerHTML = `<div class="sheet-content av-sheet"><div class="sheet-head"><h3 style="color: var(--accent);">🙋 When I can work</h3><button class="x-btn" onclick="closeAvail()" aria-label="Close">✕</button></div>` +
+        `<div class="ac-note help">Set the times you're free each week. Pilot still shows its ✨ Recommended shifts, and adds the best shift inside your times, marked 🙋 Your time. An end before the start runs past midnight (6 PM–2 AM).</div>` +
+        `<div class="av-rows">${rows}</div>` +
+        `<div class="av-acts"><button type="button" class="rs-btn" onclick="avCopyWeekdays()">Copy Mon to Tue–Fri</button><button type="button" class="rs-btn" onclick="avDraft = {}; renderAvail()">🚮 Clear all</button></div>` +
+        `<button class="pip-btn" onclick="saveAvail()">Save</button></div>`;
+    }
+    function avPick(d, i, end, btn) {
+      openWheelFor({ title: `${DAYS[d]} · ${end ? '🏁 Until' : '🕘 From'}`, get: () => avDraft[d][i][end], set: v => { avDraft[d][i][end] = v; btn.textContent = fmtMin(v); }, done: renderAvail }, btn);
+    }
+    function avAdd(d) {
+      const r = avDraft[d] = avDraft[d] || [], last = r[r.length - 1];
+      r.push(last ? [last[1] % 1440, (last[1] + 240) % 1440] : (avDraft[(d + 6) % 7] || [])[0] ? [...avDraft[(d + 6) % 7][0]] : [17 * 60, 23 * 60]);
+      renderAvail();
+    }
+    function avDel(d, i) { avDraft[d].splice(i, 1); renderAvail(); }
+    function avCopyWeekdays() { for (let d = 1; d <= 4; d++) avDraft[d] = JSON.parse(JSON.stringify(avDraft[0] || [])); renderAvail(); toast('Monday copied to Tue–Fri'); }
+    function saveAvail() {
+      const a = {}; Object.keys(avDraft || {}).forEach(d => { const r = (avDraft[d] || []).filter(([s, e]) => s !== e); if (r.length) a[d] = r.sort((x, y) => x[0] - y[0]); });
+      lsSet('avail', JSON.stringify(a)); closeAvail(); renderRoster(); renderPlanCal();
+      toast(availSet(a) ? '✓ Availability saved: 🙋 shifts now fit your times' : 'Availability cleared');
+    }
+
+    // ---- ✍️ Roster editor pop-up: add or change a shift without leaving the roster ----
+    // opts: { id } to change a shift, { s, e, z } to start from a suggestion, { day } for a day, {} for the next free evening
+    let rsEd = null;
+    function rosterEditor(opts = {}) {
+      const r = loadRoster(), x = opts.id ? r.find(y => y.id === opts.id) : null;
+      let s = x ? x.s : opts.s, e = x ? x.e : opts.e, z = x ? x.z : opts.z;
+      if (!s) {
+        const base = opts.day || dayBase(Date.now()), w = availWins(base)[0];
+        s = w ? w[0] : atMin(base, 17 * 60); e = w ? Math.min(w[1], s + 8 * 3600000) : atMin(base, 21 * 60);
+        if (s < Date.now() && !opts.day) { s = Math.ceil(Date.now() / SLOT_MS) * SLOT_MS; e = s + 4 * 3600000; }
+      }
+      const st = new Date(s), en = new Date(e);
+      rsEd = { id: x ? x.id : null, src: x ? x.src : opts.s ? 'pilot-adj' : 'manual', day: dayBase(s), sm: st.getHours() * 60 + st.getMinutes(), em: en.getHours() * 60 + en.getMinutes(), z: z || homeZone() };
+      let sh = document.getElementById('rsEdSheet');
+      if (!sh) { sh = document.createElement('div'); sh.id = 'rsEdSheet'; sh.className = 'sheet'; sh.onclick = ev => { if (ev.target === sh) closeRosterEditor(); }; document.body.appendChild(sh); }
+      sh.style.display = 'flex'; sh.style.zIndex = 2100; renderRosterEditor();
+    }
+    function closeRosterEditor() { const sh = document.getElementById('rsEdSheet'); if (sh) sh.style.display = 'none'; rsEd = null; }
+    function rsEdTimes() { const s = atMin(rsEd.day, rsEd.sm); return { s, e: atMin(rsEd.day, rsEd.em <= rsEd.sm ? rsEd.em + 1440 : rsEd.em) }; }
+    function rsEdUse(s, e, z) { const a = new Date(s), b = new Date(e); Object.assign(rsEd, { day: dayBase(s), sm: a.getHours() * 60 + a.getMinutes(), em: b.getHours() * 60 + b.getMinutes(), z: z || rsEd.z }); renderRosterEditor(); }
+    function rsEdPick(end, btn) {
+      openWheelFor({ title: end ? '🏁 Finish time' : '🕘 Start time', get: () => end ? rsEd.em : rsEd.sm,
+        set: v => { if (!rsEd) return; const len = (rsEd.em - rsEd.sm + 1440) % 1440 || 240; if (end) rsEd.em = v; else { rsEd.sm = v; rsEd.em = (v + len) % 1440; } renderRosterEditor(true); },
+        done: () => renderRosterEditor() }, btn);
+    }
+    function renderRosterEditor(quick) {
+      const sh = document.getElementById('rsEdSheet'); if (!sh || !rsEd) return;
+      const { s, e } = rsEdTimes(), r = loadRoster(), clash = r.find(y => y.id !== rsEd.id && y.s < e && y.e > s);
+      const vals = []; for (let t = s; t < e; t += SLOT_MS) { const v = slotVal(rsEd.z, new Date(t)); if (v !== null) vals.push(v); }
+      const avg = vals.length ? vals.reduce((a, c) => a + c, 0) / vals.length : null, fit = inAvail(s, e);
+      let goal = null; try { goal = autoGoal(s, e, rsEd.z).goal; } catch (x) {}
+      const verdict = [avg === null ? 'No trend data for this time yet' : `${demandName(avg)} demand on average in ${esc(rsEd.z)}`, goal ? `target ~$${goal}` : ''].filter(Boolean).join(' · ');
+      const fitTxt = fit === null ? `<a href="#" onclick="openAvail(); return false;">🙋 Set when you can work</a>` : fit ? '🙋 Inside your times' : `⚠️ Outside your times${availWins(rsEd.day).length ? ' (' + availWins(rsEd.day).map(([a, b]) => fmtTimeRange(a, b)).join(', ') + ')' : ': not available that day'}`;
+      if (quick) {                                       // while the wheel turns: just the times and the verdict
+        const q = id => sh.querySelector(id);
+        if (q('#rsEdS')) q('#rsEdS').textContent = fmtMin(rsEd.sm);
+        if (q('#rsEdE')) q('#rsEdE').textContent = fmtMin(rsEd.em);
+        if (q('#rsEdLen')) q('#rsEdLen').textContent = fmtLen(Math.round((e - s) / 60000));
+        if (q('#rsEdV')) q('#rsEdV').innerHTML = verdict;
+        if (q('#rsEdFit')) { q('#rsEdFit').innerHTML = fitTxt; q('#rsEdFit').className = 'rse-fit' + (fit === false ? ' out' : fit ? ' in' : ''); }
+        if (q('#rsEdClash')) q('#rsEdClash').textContent = clash ? `Overlaps ${shiftLabel(clash)}` : '';
+        return;
+      }
+      const d0 = dayBase(Date.now()), days = Array.from({ length: 28 }, (_, k) => { const b = new Date(d0); b.setDate(b.getDate() + k); return b.getTime(); });
+      if (!days.includes(rsEd.day)) days.unshift(rsEd.day);
+      const dOpt = b => `<option value="${b}"${b === rsEd.day ? ' selected' : ''}>${b === d0 ? 'Today' : b === days[1] && b - d0 < 1.5 * 86400000 ? 'Tomorrow' : new Date(b).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</option>`;
+      const zq = z => esc(z).replace(/'/g, '&#39;');
+      // quick picks for the chosen day: best in your times first, then Pilot's recommended
+      const mine = availSugs(rsEd.day, 2), rec = daySuggestions(rsEd.day, 2);
+      const picks = [...mine.map(x => ({ ...x, tag: '🙋' })), ...rec.filter(x => !mine.some(m => m.s === x.s && m.e === x.e)).map(x => ({ ...x, tag: inAvail(x.s, x.e) ? '✨🙋' : '✨' }))].slice(0, 4);
+      sh.innerHTML = `<div class="sheet-content rse-sheet"><div class="sheet-head"><h3 style="color: var(--accent);">${rsEd.id ? '✏️ Change shift' : '🗓 Add a shift'}</h3><button class="x-btn" onclick="closeRosterEditor()" aria-label="Close">✕</button></div>` +
+        `<div class="rse-line"><label>Day<select onchange="rsEd.day = +this.value; renderRosterEditor()">${days.map(dOpt).join('')}</select></label>` +
+        `<label>Area<select onchange="rsEd.z = this.value; renderRosterEditor()">${Object.keys(UBER_ZONE_SHAPES).map(z => `<option${z === rsEd.z ? ' selected' : ''}>${esc(z)}</option>`).join('')}</select></label></div>` +
+        `<div class="rse-times"><button type="button" class="rse-t" onclick="rsEdPick(0, this)"><small>From</small><b id="rsEdS">${fmtMin(rsEd.sm)}</b></button><span>→</span>` +
+        `<button type="button" class="rse-t" onclick="rsEdPick(1, this)"><small>Until</small><b id="rsEdE">${fmtMin(rsEd.em)}</b></button><em id="rsEdLen">${fmtLen(Math.round((e - s) / 60000))}</em></div>` +
+        `<div class="rse-v" id="rsEdV">${verdict}</div><div class="rse-fit${fit === false ? ' out' : fit ? ' in' : ''}" id="rsEdFit">${fitTxt}</div><div class="rse-clash" id="rsEdClash">${clash ? `Overlaps ${shiftLabel(clash)}` : ''}</div>` +
+        (picks.length ? `<div class="rs-pop-sec">Good times this day</div><div class="rse-picks">${picks.map(x => `<button type="button" class="rs-btn${x.tag.includes('🙋') ? ' av' : ''}" onclick="rsEdUse(${x.s}, ${x.e}, '${zq(x.z)}')">${x.tag} ${fmtTimeRange(x.s, x.e)}<small>${esc(x.z)}${x.quiet ? ' · quiet' : ''}</small></button>`).join('')}</div>` : '') +
+        `<div class="rse-acts"><button class="pip-btn" onclick="rosterEdSave()">${rsEd.id ? '💾 Update shift' : '🗓 Add to roster'}</button>${rsEd.id ? `<button type="button" class="rs-btn" onclick="rosterEdRemove()">🚮 Remove</button>` : ''}</div></div>`;
+    }
+    function rosterEdSave() {
+      const { s, e } = rsEdTimes(), r = loadRoster();
+      if (e <= s) { toast('The finish must be after the start.'); return; }
+      const clash = r.find(y => y.id !== rsEd.id && y.s < e && y.e > s);
+      if (clash) { toast(`Overlaps ${shiftLabel(clash)}. Change the times or remove that shift first.`); return; }
+      if (rsEd.id) { const x = r.find(y => y.id === rsEd.id); if (x) Object.assign(x, { s, e, z: rsEd.z, src: x.src === 'pilot' ? 'pilot-adj' : x.src }); toast('✓ Shift updated'); }
+      else { r.push({ id: 'r' + Date.now().toString(36), s, e, z: rsEd.z, src: rsEd.src }); toast(`✓ Added: ${shiftLabel({ s, e })}`); }
+      saveRoster(r); closeRosterEditor(); renderRoster(); renderPlanCal(); try { renderNextBar(); renderShiftBar(); } catch (x) {}
+    }
+    function rosterEdRemove() {
+      const id = rsEd.id, old = loadRoster().find(y => y.id === id);
+      saveRoster(loadRoster().filter(y => y.id !== id)); closeRosterEditor(); renderRoster(); renderPlanCal(); try { renderNextBar(); } catch (x) {}
+      toast('Shift removed', 'Undo', () => { if (old) { saveRoster([...loadRoster(), old]); renderRoster(); renderPlanCal(); } });
+    }
+
+    // ================= 📍 ROUTE LOG: where you went on each shift =================
+    // While you're punched in, a point every ~100 m (or each minute when you creep along), on this phone only.
+    // Routes older than your chosen time (90 days unless changed) are removed; the shift totals stay.
+    let routeMem = null, routeSavedAt = 0;
+    const routeKeepDays = () => parseInt(lsGet('routeKeep'), 10) || 90;
+    function routeLoad(start) { if (routeMem && routeMem.s === start) return routeMem.p; try { return JSON.parse(lsGet('route:' + start)) || []; } catch (e) { return []; } }
+    function routeAdd(f) {
+      if (lsGet('routeOff') === '1' || !f || f.acc > 80) return;
+      const s = loadShift(); if (!s) return;
+      if (!routeMem || routeMem.s !== s.start) routeMem = { s: s.start, p: routeLoad(s.start) };
+      const p = routeMem.p, last = p[p.length - 1], t = Math.round(f.t / 1000);
+      if (last) { const d = distM(last[0], last[1], f.lat, f.lng), dt = t - last[2]; if (d < 100 && !(dt >= 60 && d >= 25)) return; }
+      p.push([+f.lat.toFixed(5), +f.lng.toFixed(5), t]);
+      if (Date.now() - routeSavedAt > 60000) routeSave();
+    }
+    function routeSave() { if (!routeMem) return; routeSavedAt = Date.now(); lsSet('route:' + routeMem.s, JSON.stringify(routeMem.p)); }
+    window.addEventListener('pagehide', () => { try { routeSave(); } catch (e) {} });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) try { routeSave(); } catch (e) {} });
+    function routePrune() {
+      try {
+        const cut = Date.now() - routeKeepDays() * 86400000, gone = [];
+        for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i), m = k && k.match(/route:(\d+)$/); if (m && +m[1] < cut) gone.push(k); }
+        gone.forEach(k => localStorage.removeItem(k));
+      } catch (e) {}
+    }
+    setTimeout(routePrune, 15000);
+    // A Google Maps link through up to 10 points of the route (it draws roads between them)
+    function routeMapUrl(p) {
+      if (!p || p.length < 2) return '';
+      const n = Math.min(10, p.length), pts = Array.from({ length: n }, (_, i) => p[Math.round(i * (p.length - 1) / (n - 1))]);
+      return 'https://www.google.com/maps/dir/' + pts.map(x => x[0] + ',' + x[1]).join('/');
+    }
+    const areaName = (lat, lng) => { try { const a = areaOf(lat, lng); return a ? a.name : (zoneAt(lat, lng) || ''); } catch (e) { return ''; } };
+    // Everything about one shift, for the shift history and the Google Sheet
+    function shiftRecord(h) {
+      const end = h.end || Date.now(), log = loadLog().filter(x => x.t >= h.start && x.t <= end), acc = log.filter(x => x.took);
+      const types = {}; log.forEach(x => { const k = x.type || 'Other'; types[k] = (types[k] || 0) + 1; });
+      const p = routeLoad(h.start), first = p[0], last = p[p.length - 1];
+      const areas = []; [...p.filter((_, i) => i % 5 === 0), ...log.filter(x => x.lat).map(x => [x.lat, x.lng])].forEach(q => { const n = areaName(q[0], q[1]); if (n && !areas.includes(n)) areas.push(n); });
+      const car = (() => { try { const c = loadCars().find(x => x.id === h.car); return c ? (c.rego || carShort(c)) : ''; } catch (e) { return ''; } })();
+      return { id: String(h.start), start: h.start, end, hrs: h.hrs, car, trips: h.trips, offers: log.length, accepted: acc.length, declined: log.length - acc.length,
+        types: Object.entries(types).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(' · '),
+        earn: h.earn, cost: h.earn - h.net, net: h.net, netHr: h.hrs > 0 ? h.net / h.hrs : 0, goal: h.goal, km: h.km,
+        from: first ? areaName(first[0], first[1]) : '', to: last ? areaName(last[0], last[1]) : '', areas: areas.slice(0, 20).join(', '), map: routeMapUrl(p), pts: p.length,
+        list: log.map(x => `${fmtTime(x.t)} ${x.type ? x.type + ' ' : ''}$${(+x.fare).toFixed(2)} · ${x.mins} min · ${(+x.kms).toFixed(1)} km ${x.took ? '✓' : '✗'}`).join('\n') };
+    }
+
+    // ================= 📗 GOOGLE SHEET: shared live flights, and your shift log month by month =================
+    // The sheet's script calls AeroDataBox on a timer; every pilot reads the flights from the sheet, so no device
+    // spends API calls. With your private key, each shift is sent when you punch out (queued until it gets through).
+    const SHEET_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
+    const sheetUrl = () => lsGet('cfgSheetUrl') || '', sheetKey = () => lsGet('cfgSheetKey') || '';
+    const sheetOn = () => SHEET_RE.test(sheetUrl());
+    const flSource = () => sheetOn() || !!lsGet('cfgFlightKey');
+    let shFlAt = 0, shFlBusy = false, shFlErr = '', shFlErrAt = 0, shFlInfo = null;
+    try { shFlInfo = JSON.parse(lsGet('shFlInfo')); shFlAt = (shFlInfo && shFlInfo.got) || 0; } catch (e) {}
+    // force = Refresh: always ask the sheet. Otherwise at most every 20 minutes (the sheet itself updates hourly).
+    async function sheetFlights(force) {
+      if (!sheetOn()) return false;
+      if (shFlBusy) return true;
+      if (!force && shFlErr && Date.now() - shFlErrAt < 10 * 60000) return false;
+      if (!force && Date.now() - shFlAt < 20 * 60000 && flBlocks.MEL && Object.keys(flBlocks.MEL).length) return true;
+      shFlBusy = true; flLoading.MEL = true;
+      try {
+        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 25000);
+        const r = await fetch(sheetUrl() + '?flights=1', { signal: ctl.signal }); clearTimeout(tm);
+        const j = await r.json();
+        if (!j || !j.ok || !j.blocks) throw new Error('The Google Sheet didn’t send flights. Check the web app is deployed for “Anyone”.');
+        const mk = a => ({ n: a[0], al: a[1], ap: a[2], t: a[3], rt: a[4] || null, term: a[5], st: a[6], intl: !!a[7] }), B = {};
+        Object.entries(j.blocks).forEach(([s, b]) => { const k = Date.parse(s); if (isNaN(k)) return;
+          B[k] = { at: b.at, arr: b.arr.map(mk).sort((x, y) => flEt(x) - flEt(y)), dep: b.dep.map(mk).sort((x, y) => flEt(x) - flEt(y)) }; });
+        flBlocks.MEL = B; lsSet('flBlocks:MEL', JSON.stringify(B));
+        flErrs.MEL = !Object.keys(B).length && j.err ? 'Sheet: ' + j.err : '';
+        shFlAt = Date.now(); shFlErr = ''; shFlInfo = { got: shFlAt, at: j.at, calls: j.calls, cap: j.cap, err: j.err || '' }; lsSet('shFlInfo', JSON.stringify(shFlInfo));
+        return true;
+      } catch (e) {
+        shFlErr = e.name === 'AbortError' ? 'The Google Sheet didn’t answer in time.' : e instanceof TypeError ? 'Couldn’t reach the Google Sheet (offline, or the web app isn’t shared with “Anyone”).' : e.message;
+        shFlErrAt = Date.now(); flErrAt.MEL = Date.now();
+        if (!(flBlocks.MEL && Object.keys(flBlocks.MEL).length)) flErrs.MEL = shFlErr;
+        return false;
+      } finally {
+        shFlBusy = false; flLoading.MEL = false; flCompose('MEL'); syncFlightNote(); try { syncSheetNote(); } catch (e) {}
+        if (busySel === 'airport:MEL') fillBusyDetail();
+        try { renderAirport(); } catch (e) {}
+        if (map && document.getElementById('view-drive').style.display !== 'none') { try { renderMap(); } catch (e) {} }
+      }
+    }
+    // Shift log: queued on the phone, sent when the sheet answers
+    const loadSheetQ = () => { try { return JSON.parse(lsGet('sheetQ')) || []; } catch (e) { return []; } };
+    let sheetBusy = false;
+    async function sheetPost(body) {
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 30000);
+      try {
+        const r = await fetch(sheetUrl(), { method: 'POST', body: JSON.stringify(Object.assign({ key: sheetKey() }, body)), signal: ctl.signal });
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.err === 'key' ? 'The sheet refused the private key. Open your phone link again.' : 'The sheet couldn’t save it (' + (j.err || 'error') + ').');
+        return j;
+      } catch (e) { throw e.name === 'AbortError' ? new Error('The Google Sheet didn’t answer in time.') : e instanceof TypeError ? new Error('Couldn’t reach the Google Sheet. It will send when you’re back online.') : e; }
+      finally { clearTimeout(tm); }
+    }
+    async function sheetFlush(loud) {
+      if (TEST || !sheetOn() || !sheetKey() || sheetBusy) return;
+      const q = loadSheetQ(); if (!q.length) return;
+      sheetBusy = true;
+      try {
+        for (let i = 0; i < q.length; i += 20) await sheetPost({ kind: 'shifts', shifts: q.slice(i, i + 20) });
+        const sent = new Set(loadSheetQ().map(x => x.id)); q.forEach(x => sent.delete(x.id));
+        lsSet('sheetQ', JSON.stringify(loadSheetQ().filter(x => sent.has(x.id))));       // anything added while sending stays queued
+        lsSet('sheetSentAt', Date.now()); lsDel('sheetErr');
+        if (loud) toast(`📗 ${q.length} shift${q.length === 1 ? '' : 's'} saved to your Google Sheet`);
+      } catch (e) { lsSet('sheetErr', e.message); if (loud) toast('📗 ' + e.message); }
+      finally { sheetBusy = false; try { syncSheetNote(); } catch (e) {} }
+    }
+    function sheetQueue(rec) {
+      if (TEST || !sheetOn() || !sheetKey() || lsGet('sheetAuto') === '0') return;
+      const q = loadSheetQ().filter(x => x.id !== rec.id); q.push(rec); lsSet('sheetQ', JSON.stringify(q.slice(-300)));
+      sheetFlush(true);
+    }
+    function sheetSendAll() {
+      let h = []; try { h = JSON.parse(lsGet(SHIFT_HIST_KEY)) || []; } catch (e) {}
+      if (!h.length) { toast('No past shifts on this phone yet.'); return; }
+      const q = loadSheetQ(), ids = new Set(q.map(x => x.id));
+      h.forEach(x => { const r = shiftRecord(x); if (!ids.has(r.id)) q.push(r); });
+      lsSet('sheetQ', JSON.stringify(q.slice(-300))); sheetFlush(true);
+      toast(`📗 Sending ${h.length} shift${h.length === 1 ? '' : 's'}…`);
+    }
+    async function sheetTest() {
+      const u = document.getElementById('cfgSheetUrl').value.trim(), k = document.getElementById('cfgSheetKey').value.trim(), n = document.getElementById('sheetNote');
+      if (!SHEET_RE.test(u)) { n.textContent = '⚠️ The address should look like https://script.google.com/macros/s/…/exec'; return; }
+      n.textContent = 'Checking…';
+      try {
+        const r = await fetch(u + '?ping=1'); const j = await r.json(); if (!j.ok) throw new Error();
+        let w = ''; if (k) { const r2 = await fetch(u, { method: 'POST', body: JSON.stringify({ key: k, kind: 'ping' }) }); const j2 = await r2.json(); w = j2.ok ? ' · private key accepted, shifts can be saved' : ' · ⚠️ private key refused'; }
+        n.textContent = '✓ Sheet found' + w + '. Tap Save.';
+      } catch (e) { n.textContent = '⚠️ No answer from that address. In the script: Deploy ▸ Manage deployments, check “Who has access: Anyone”.'; }
+    }
+    function sheetPage() {
+      document.getElementById('cfgSheetUrl').value = sheetUrl();
+      document.getElementById('cfgSheetKey').value = sheetKey();
+      document.getElementById('sheetAuto').checked = lsGet('sheetAuto') !== '0';
+      document.getElementById('routeKeep').value = String(routeKeepDays());
+      document.getElementById('routeOn').checked = lsGet('routeOff') !== '1';
+      syncSheetNote();
+    }
+    function sheetSave() {
+      const u = document.getElementById('cfgSheetUrl').value.trim(), k = document.getElementById('cfgSheetKey').value.trim();
+      if (u && !SHEET_RE.test(u)) { toast('That isn’t a web app address (…/exec).'); return; }
+      const was = sheetUrl();
+      if (u) lsSet('cfgSheetUrl', u); else lsDel('cfgSheetUrl');
+      if (k) lsSet('cfgSheetKey', k); else lsDel('cfgSheetKey');
+      lsSet('sheetAuto', document.getElementById('sheetAuto').checked ? '1' : '0');
+      lsSet('routeKeep', document.getElementById('routeKeep').value);
+      lsSet('routeOff', document.getElementById('routeOn').checked ? '0' : '1');
+      if (u && u !== was) { shFlAt = 0; sheetFlights(true); }
+      sheetFlush(); routePrune(); syncSheetNote(); sxSummaries(); toast('✓ Google Sheet settings saved');
+    }
+    function syncSheetNote() {
+      const n = document.getElementById('sheetNote'); if (!n) return;
+      if (!sheetOn()) { n.textContent = 'Not connected. Open your phone link from the sheet (✈️ Offer Pilot ▸ 3. Phone link), or paste the address and key here.'; return; }
+      const i = shFlInfo, q = loadSheetQ().length, sent = parseFloat(lsGet('sheetSentAt')), err = lsGet('sheetErr');
+      n.textContent = [shFlErr ? '⚠️ Flights: ' + shFlErr : i ? `✈️ Flights from the sheet · updated ${i.at ? fmtDT(i.at) : '—'} · sheet used ${i.calls} of ${i.cap} calls this month${i.err ? ' · ⚠️ ' + i.err : ''}` : '✈️ Flights: not loaded yet',
+        !sheetKey() ? '📗 Shift log off: no private key (flights-only link)' : `📗 Shift log ${lsGet('sheetAuto') === '0' ? 'paused' : 'on'}${sent ? ' · last sent ' + fmtDT(sent) : ''}${q ? ` · ${q} waiting to send` : ''}${err && q ? ' · ⚠️ ' + err : ''}`].join('\n');
+    }
+    setInterval(() => { if (!document.hidden && loadSheetQ().length) sheetFlush(); }, 5 * 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => { try { sheetFlush(); } catch (e) {} }, 3000); });
+    addEventListener('online', () => setTimeout(() => { try { sheetFlush(); } catch (e) {} }, 2000));
 
     // ================= WEEK-ON-WEEK TREND CHANGES =================
     const PERIODS = [['Morning', 6, 10], ['Midday', 10, 15], ['Afternoon', 15, 19], ['Evening', 19, 23], ['Late night', 23, 27]];
@@ -9456,6 +9891,7 @@ ${sub}${body}
       const n = document.getElementById('flightKeyNote'); if (!n) return;
       const base = 'Free key from rapidapi.com (subscribe to AeroDataBox, Basic plan, then copy the X-RapidAPI-Key). Adds real Melbourne Airport arrivals and departures; the key stays on this phone.';
       const c = flights.MEL, used = flCalls();
+      if (sheetOn()) { n.textContent = '📗 Flights come from your Google Sheet, so this phone uses none of these calls' + (lsGet('cfgFlightKey') ? '. The key here is only used if the sheet can’t be reached.' : '. No key needed here.'); return; }
       n.textContent = !lsGet('cfgFlightKey') ? base : c && c.err ? `⚠️ ${c.err}` :
         c && c.at ? `✓ Connected · ${c.arr.length} arrivals and ${c.dep.length} departures until ${DAYS[dayIdx(new Date(c.to))]} ${new Date(c.to).getDate()} ${fmtTime(c.to)} · checked ${fmtTime(c.at)} · ${used} of ${flCap()} calls used this month` +
           (() => { const w = flWeekStatus(); return w.have < w.of ? ` · week ahead: ${w.have} of ${w.of} half-days loaded, catching up every 6 hours` : ' · full week ahead loaded, topped up twice a day'; })() +
@@ -9536,6 +9972,7 @@ ${sub}${body}
     // Called by the map and Plan & Roster: refreshes the block you're in when it's due (hourly while you're using the app).
     // force = the Refresh link: always fetches it.
     async function loadFlights(code = 'MEL', force) {
+      if (code === 'MEL' && sheetOn()) { const ok = await sheetFlights(force); if (ok || !lsGet('cfgFlightKey')) return; }   // the shared sheet first
       if (!lsGet('cfgFlightKey') || flLoading[code]) return;
       const s = blockStart(Date.now()), b = (flBlocks[code] || {})[s];
       if (!force) {
@@ -9556,6 +9993,7 @@ ${sub}${body}
     const flHardOk = () => flCalls() < flCap() * 0.95;           // rounds may use the allowance up to 95%
     let flRoundBusy = false;
     async function flAutoCheck() {
+      if (!document.hidden && sheetOn()) { const ok = await sheetFlights(); if (ok || !lsGet('cfgFlightKey')) return; }
       if (document.hidden || !lsGet('cfgFlightKey') || flLoading.MEL || flRoundBusy) return;
       if (flErrs.MEL && Date.now() - (flErrAt.MEL || 0) < 10 * 60000) return;
       const B = flBlocks.MEL || {}, now = Date.now(), starts = [blockStart(now)];
@@ -9674,7 +10112,7 @@ ${sub}${body}
     const flFoot = code => { const c = flights[code]; return `${c.err ? '⚠️ ' + esc(c.err) + ' · ' : ''}Checked ${fmtTime(c.okAt || c.at)} · <a href="#" onclick="loadFlights('${code}', true);return false;">Refresh</a>`; };
     // Plan & Roster: the live picture from your chosen start (or now, if that has passed), for the date you picked
     function flightPlanHTML(st) {
-      if (!lsGet('cfgFlightKey')) return `<div class="fl-plan">✈️ Add a free AeroDataBox key in Settings → Developer to see live arrivals here.</div>`;
+      if (!flSource()) return `<div class="fl-plan">✈️ Connect your Google Sheet (Settings → Google Sheet) or add an AeroDataBox key (Settings → Developer) to see live arrivals here.</div>`;
       const c = flights.MEL;
       if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-plan">✈️ ${flLoading.MEL || !c ? 'Loading live flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div>`;
       const now = Date.now(), from = Math.max(st.getTime(), now), h0 = new Date(from); h0.setMinutes(0, 0, 0);
@@ -9768,7 +10206,7 @@ ${sub}${body}
     }
     // Map side box: a short summary, with the full list in Plan & Roster
     function flightsHTML(code) {
-      if (!lsGet('cfgFlightKey')) return `<div class="fl-box"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div><div class="bp-why">Add a free AeroDataBox key in Settings → Developer to see real arrivals here.</div></div>`;
+      if (!flSource()) return `<div class="fl-box"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div><div class="bp-why">Connect your Google Sheet (Settings → Google Sheet) or add an AeroDataBox key (Settings → Developer) to see real arrivals here.</div></div>`;
       const c = flights[code];
       if (!c || (!c.arr.length && !c.dep.length)) return `<div class="fl-box"><div class="fl-h"><svg class="h-ic"><use href="#h-plane"/></svg>Live flights</div><div class="bp-why">${flLoading[code] || !c ? 'Loading flights…' : c.err ? '⚠️ ' + esc(c.err) : 'No passenger flights in the next few hours.'}</div></div>`;
       const now = Date.now(), h0 = Math.floor(now / 3600000) * 3600000;
@@ -10129,7 +10567,7 @@ ${sub}${body}
         <div class="demand-axis ap-axis">${AXIS_HRS.map(h => `<span>${fmtHour(h)}</span>`).join('')}</div>
         ${peaks.map(e => `<div class="ap-peak">🟣 Uber: <b>${esc(e.name)}</b> ${fmtTimeRange(e.s, e.e)}${e.level ? ' · ' + e.level.toLowerCase() + ' earnings' : ''}</div>`).join('')}
         <div class="autoread-hint">Best on ${DAYS[dayIdx(base)]}: to the airport ${bo || 'no busy hours'}; from the airport ${bi || 'no busy hours'}.<span class="help">
-          Estimated from typical Melbourne Airport flight times${lsGet('cfgFlightKey') ? ', live flights where loaded,' : ''} and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</span></div>` +
+          Estimated from typical Melbourne Airport flight times${flSource() ? ', live flights where loaded,' : ''} and Uber’s Melbourne City trend. A $4.82 airport access fee is added to rideshare trips.</span></div>` +
         flightPlanHTML(st);
       return { out: run, in: inNow };
     }
@@ -10240,8 +10678,11 @@ ${sub}${body}
         const fk = (hp.get('flightkey') || '').trim(), tk = (hp.get('trainkey') || '').trim();
         if (/^[\w-]{20,}$/.test(fk)) { lsSet('cfgFlightKey', fk); flClearAll(); saved.push('✈️ Flight'); loadFlights('MEL', true); }
         if (/^[\w-]{20,}$/.test(tk)) { lsSet('cfgTrainKey', tk); train.at = 0; saved.push('🚆 Train'); loadTrainAlerts(true); }
-        if (fk || tk) history.replaceState(null, '', location.pathname + location.search);
-        if (saved.length) setTimeout(() => toast(`✓ ${saved.join(' and ')} key saved in Settings`), 1500);
+        const su = (hp.get('sheet') || '').trim(), sk = (hp.get('sheetkey') || '').trim();
+        if (SHEET_RE.test(su)) { lsSet('cfgSheetUrl', su); shFlAt = 0; saved.push('📗 Google Sheet'); sheetFlights(true); }
+        if (SHEET_RE.test(su) && /^[\w-]{16,}$/.test(sk)) { lsSet('cfgSheetKey', sk); setTimeout(() => sheetFlush(), 4000); }
+        if (fk || tk || su) history.replaceState(null, '', location.pathname + location.search);
+        if (saved.length) setTimeout(() => toast(su && saved.length === 1 ? `✓ Google Sheet connected${sk ? ': flights and shift log' : ': flights'}` : `✓ ${saved.join(' and ')} saved in Settings`), 1500);
       } catch (e) {}
       // Keep live-surge ages and predictions current while driving
       setInterval(() => {
