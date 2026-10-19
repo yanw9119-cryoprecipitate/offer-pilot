@@ -7536,6 +7536,11 @@ ${sub}${body}
     async function loadStations(lat, lng) {
       if (stationsLoading) return;
       if (stationsAt && distM(lat, lng, stationsAt.lat, stationsAt.lng) < 800 && Date.now() - stationsAt.t < 6 * 3600000) return;
+      if (inFuelDb(lat, lng)) {                    // the sheet's list: no download needed
+        stations = fuelDb().all.filter(s => Math.abs(s.lat - lat) < 0.02 && Math.abs(s.lng - lng) < 0.025 && distM(lat, lng, s.lat, s.lng) < 1500);
+        stationsAt = { lat, lng, t: Date.now() };
+        return;
+      }
       stationsLoading = true;
       const q = `[out:json][timeout:15];(node["amenity"~"^(fuel|charging_station)$"](around:1500,${lat},${lng});` +
         `way["amenity"~"^(fuel|charging_station)$"](around:1500,${lat},${lng}););out center tags;`;
@@ -8005,7 +8010,7 @@ ${sub}${body}
       zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones (graded from live flights, separately for ✈️→🏙 pick-ups and 🏙→✈️ rides to the airport: teal High, orange Medium, slate Low, ↑ rising or ↓ easing; the label shows only while flights are landing or leaving in the next hour and at least one grade is above Low, or when you tap it): tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
-      fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate.'],
+      fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate. Melbourne’s stations come from your Google Sheet (refreshed weekly) and are kept on the phone, so they show even offline.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
       pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
@@ -9023,7 +9028,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.98.0';
+    const APP_VERSION = '1.99.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -10753,7 +10758,47 @@ ${sub}${body}
     }
     setInterval(() => { if (!document.hidden) loadTrainAlerts(); }, 60000);
 
-    // ================= ⛽ FUEL STATIONS LAYER (OpenStreetMap, free, no key) =================
+    // ================= ⛽ FUEL STATIONS FROM YOUR GOOGLE SHEET =================
+    // The sheet keeps every fuel station and EV charger in Greater Melbourne (from OpenStreetMap, refreshed weekly).
+    // The pilot copies the list once a day and keeps it on the phone, so the ⛽ layer and fuel-stop detection work
+    // straight away, offline, and when OpenStreetMap is busy. Outside that area it still asks OpenStreetMap.
+    let fuelDbMem = undefined, fuelDbBusy = false;
+    function fuelDb() {
+      if (fuelDbMem !== undefined) return fuelDbMem;
+      fuelDbMem = null;
+      try {
+        const j = JSON.parse(localStorage.getItem('fuelDb'));
+        if (j && Array.isArray(j.rows) && j.rows.length && j.box) {
+          const all = j.rows.map(r => ({ id: r[11], ev: r[0] === 'e', name: r[1], brand: r[2], addr: r[3], fuels: r[4] ? r[4].split(' · ') : [],
+            hours: r[5], hoursFrom: r[6], shopName: r[7], usually24: !!r[8], h24: r[5] === '24/7', lat: r[9], lng: r[10] })).filter(x => isFinite(x.lat) && isFinite(x.lng));
+          fuelDbMem = { at: j.at, got: j.got, box: j.box, all, fuel: all.filter(x => !x.ev) };
+        }
+      } catch (e) {}
+      return fuelDbMem;
+    }
+    const inFuelDb = (lat, lng) => { const d = fuelDb(); return !!(d && lat >= d.box.s && lat <= d.box.n && lng >= d.box.w && lng <= d.box.e); };
+    async function refreshFuelDb(force) {
+      if (fuelDbBusy || TEST || !sheetOn()) return false;
+      const d = fuelDb();
+      if (!force && d && Date.now() - (d.got || 0) < 24 * 3600000) return true;
+      fuelDbBusy = true;
+      try {
+        const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 30000);
+        const r = await fetch(sheetUrl() + '?fuel=1', { signal: ctl.signal }); clearTimeout(tm);
+        const j = await r.json();
+        if (!j || !j.ok || !Array.isArray(j.rows) || !j.rows.length) return false;   // the sheet hasn't got its list yet: keep what's here
+        localStorage.setItem('fuelDb', JSON.stringify({ at: j.at, got: Date.now(), box: j.box, rows: j.rows }));
+        fuelDbMem = undefined; fuelDb();
+        stationsAt = null;                                   // fuel-stop detection uses the new list on the next GPS fix
+        if (layers.fuel && map) { fuelBox = null; drawFuel(); }
+        return true;
+      } catch (e) { return false; }
+      finally { fuelDbBusy = false; }
+    }
+    setTimeout(() => refreshFuelDb(), 7000);
+    setInterval(() => { if (!document.hidden) refreshFuelDb(); }, 3 * 3600000);
+
+    // ================= ⛽ FUEL STATIONS LAYER (from the sheet; OpenStreetMap outside Greater Melbourne) =================
     let fuelLayer = null, fuelBox = null, fuelList = [], fuelLoading = false, fuelMoveT = null;
     const FUEL_MIN_ZOOM = 12;
     function fuelBoxOf(b, pad) {
@@ -10765,6 +10810,10 @@ ${sub}${body}
       if (!map || fuelLoading || map.getZoom() < FUEL_MIN_ZOOM) return;
       const b = map.getBounds();
       if (fuelInside(fuelBox, b)) return;
+      // Inside the area your sheet covers: use its list (no waiting, works offline)
+      const db = fuelDb();
+      if (db && fuelInside(db.box, b)) { fuelList = db.fuel; fuelBox = db.box; drawFuel(); return; }
+      if (!db) refreshFuelDb();
       const box = fuelBoxOf(b, 0.4), bb = `${box.s.toFixed(4)},${box.w.toFixed(4)},${box.n.toFixed(4)},${box.e.toFixed(4)}`;
       // Fuel stations plus convenience shops: at many servos the hours are on the shop (Coles Express, 7-Eleven, Reddy Express…)
       const q = `[out:json][timeout:20];(node["amenity"="fuel"](${bb});way["amenity"="fuel"](${bb});node["shop"="convenience"](${bb});way["shop"="convenience"](${bb}););out center tags;`;
@@ -10800,7 +10849,11 @@ ${sub}${body}
         });
         fuelBox = box;
         drawFuel();
-      } catch (e) { if (layers.fuel) toast('⛽ Couldn’t load fuel stations right now'); }
+      } catch (e) {
+        // OpenStreetMap busy: show what the sheet has nearby rather than nothing
+        if (db && db.fuel.length) { fuelList = db.fuel; fuelBox = null; drawFuel(); if (layers.fuel) toast('⛽ Showing the saved Melbourne list (OpenStreetMap is busy)'); }
+        else if (layers.fuel) toast(sheetOn() ? '⛽ Couldn’t load fuel stations right now' : '⛽ Couldn’t load fuel stations right now. Connect your Google Sheet to keep them on the phone.');
+      }
       finally { fuelLoading = false; }
     }
     const FUEL_24_BRANDS = /7-?eleven|reddy express|coles express/i;
@@ -10849,7 +10902,7 @@ ${sub}${body}
       if (!layers.fuel) return;
       const zoom = map.getZoom();
       if (zoom < FUEL_MIN_ZOOM) return;
-      if (!fuelInside(fuelBox, map.getBounds())) loadFuel();
+      if (!fuelInside(fuelBox, map.getBounds()) && !fuelLoading) loadFuel();
       const b = map.getBounds().pad(0.2);
       fuelList.filter(f => b.contains([f.lat, f.lng])).forEach(f => {
         L.marker([f.lat, f.lng], { icon: fuelIcon(f, zoom), zIndexOffset: 200 }).on('click', () => openFuelCard(f)).addTo(fuelLayer);

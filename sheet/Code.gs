@@ -8,6 +8,8 @@
  *    ("2026-10 October"), one row per shift, and a "Summary" tab with a line for each month.
  * 3. Sync between your devices (hidden "Sync" tab), shown in their own files in the Offer Pilot folder:
  *    "Offer Pilot Shifts", "Offer Pilot Devices" and "Offer Pilot Trends" (the Uber demand charts you've uploaded).
+ * 4. Fuel stations and EV chargers across Greater Melbourne ("Offer Pilot Fuel Stations"), from OpenStreetMap once a week.
+ *    Pilots load them from here, so the ⛽ map layer works even when OpenStreetMap's servers are busy.
  *
  * Setup (once, on a computer): see the "Offer Pilot" menu at the top of the sheet.
  *   ✈️ Offer Pilot ▸ 1. Set flight key   (paste your X-RapidAPI-Key)
@@ -24,7 +26,10 @@ const PILOT = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
 const SHIFTS_FILE = '1q2YZqYaeSMbimIktSgH0bD5BihQ6_zRAAUOZnFpfgcA';
 // "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
 const DEVICES_FILE = '1Khp9tA29J1cdGAKU6FkOmB4FdH16zhEWK4w-GD1Ltso';  // "Offer Pilot Devices" (one tab); a DEVICES_ID script property overrides it
-const TRENDS_FILE = '1AdZbMjLRBmDloWFbRpr4GTVXvLgGVb-2m55ft2Pn2_o';   // "Offer Pilot Trends" (a tab per zone); a TRENDS_ID script property overrides it
+const TRENDS_FILE = '1AdZbMjLRBmDloWFbRpr4GTVXvLgGVb-2m55ft2Pn2_o';
+const FUEL_FILE = '1qKKRZkaB6mMroShlWu8SnWOcEAF2zSgx8VsqDkuMiuY';     // "Offer Pilot Fuel Stations"; a FUEL_ID script property overrides it
+const FUEL_BOX = { s: -38.45, w: 144.40, n: -37.40, e: 145.65 };      // Greater Melbourne: Werribee, Melton, Sunbury, Lilydale, Pakenham, Frankston
+const FUEL_EVERY_D = 7;                                                 // refreshed from OpenStreetMap once a week (free, no key)   // "Offer Pilot Trends" (a tab per zone); a TRENDS_ID script property overrides it
 const P = PropertiesService.getScriptProperties();
 const FL_HEAD = ['Block', 'Checked', 'Direction', 'Flight', 'Airline', 'From / to', 'Scheduled', 'Expected', 'Terminal', 'Status', 'International'];
 const SH_HEAD = ['Date', 'Day', 'Punch in', 'Punch out', 'Hours', 'Car', 'Trips', 'Offers', 'Accepted', 'Declined', 'Ride types',
@@ -38,6 +43,7 @@ function onOpen() {
     .addItem('3. Phone link', 'phoneLink')
     .addSeparator()
     .addItem('Update flights now', 'updateNow')
+    .addItem('Update fuel stations now', 'updateFuel')
     .addItem('Status', 'status')
     .addItem('Stop updates', 'stop')
     .addToUi();
@@ -110,6 +116,7 @@ function tick(manual) {
   try { writeShiftSheets_(syncRead_(syncSheet_())); } catch (e) {}
   try { writeDevices_(); } catch (e) {}   // keeps "Now" and "Upcoming" current every hour
   try { const m = syncRead_(syncSheet_()); if (m.uberTrends && m.uberTrends.t > (+P.getProperty('TRENDS_AT') || 0)) writeTrends_(m); } catch (e) {}
+  try { if (Date.now() - (+P.getProperty('FUEL_AT') || 0) > FUEL_EVERY_D * 864e5 && Date.now() - (+P.getProperty('FUEL_TRY') || 0) > 6 * 3600000) refreshFuel_(); } catch (e) { P.setProperty('FUEL_ERR', e.message); }
   const key = P.getProperty('AERO_KEY');
   if (!key) return 'No flight key yet: ✈️ Offer Pilot ▸ 1. Set flight key.';
   const lock = LockService.getScriptLock();
@@ -236,6 +243,7 @@ function budgetOk_() {
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.ping) return json_({ ok: true, v: 1 });
+  if (p.fuel) return json_(fuelOut_());
   if (p.d) seen_(p.d, { n: p.n, ver: p.ver, acc: 'Flights' });
   const sh = SpreadsheetApp.getActive().getSheetByName('Flights'), st = blockState_(), blocks = {};
   Object.keys(st).forEach(s => { blocks[s] = { at: st[s], arr: [], dep: [] }; });
@@ -598,3 +606,82 @@ function writeTrends_(m) {
 }
 // Run once from the editor to fill the Trends file straight away
 function updateTrends() { writeTrends_(syncRead_(syncSheet_())); }
+
+// ---------------------------------------------------------------- "Offer Pilot Fuel Stations" spreadsheet
+// Every fuel station and EV charger in Greater Melbourne, from OpenStreetMap (Overpass, free, no key), once a week.
+// Hours missing on a station are borrowed from the servo's shop within 60 m (Coles Express, 7-Eleven …).
+// Pilots read them with GET …/exec?fuel=1 (no key needed, nothing counted against any allowance).
+const FUEL_HEAD = ['Kind', 'Name', 'Brand', 'Address', 'Fuels', 'Hours', 'Hours from', 'Shop', 'Usually 24/7', 'Lat', 'Lng', 'OSM id'];
+const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+function overpass_(q) {
+  let last = '';
+  for (const url of OVERPASS) {
+    try {
+      const r = UrlFetchApp.fetch(url, { method: 'post', payload: { data: q }, muteHttpExceptions: true });
+      if (r.getResponseCode() === 200) return JSON.parse(r.getContentText()).elements || [];
+      last = url.split('/')[2] + ' ' + r.getResponseCode();
+    } catch (e) { last = url.split('/')[2] + ' ' + e.message; }
+  }
+  throw new Error('OpenStreetMap busy (' + last + ')');
+}
+function refreshFuel_() {
+  P.setProperty('FUEL_TRY', String(Date.now()));
+  const b = FUEL_BOX, bb = [b.s, b.w, b.n, b.e].join(',');
+  const els = overpass_(`[out:json][timeout:120];(node["amenity"~"^(fuel|charging_station)$"](${bb});way["amenity"~"^(fuel|charging_station)$"](${bb}););out center tags;`);
+  const shopEls = overpass_(`[out:json][timeout:120];(node["shop"="convenience"](${bb});way["shop"="convenience"](${bb}););out center tags;`);
+  // shops in ~100 m squares, so each station only checks the squares around it
+  const grid = {}, key = (la, ln) => Math.round(la * 1000) + ':' + Math.round(ln * 1000);
+  shopEls.forEach(e => { const la = e.lat != null ? e.lat : (e.center || {}).lat, ln = e.lon != null ? e.lon : (e.center || {}).lon; if (la == null) return;
+    const k = key(la, ln); (grid[k] = grid[k] || []).push({ la, ln, t: e.tags || {} }); });
+  const dist = (a, b, c, d) => { const x = (d - b) * Math.cos((a + c) * Math.PI / 360), y = c - a; return Math.sqrt(x * x + y * y) * 111320; };
+  const rows = [];
+  els.forEach(e => {
+    const t = e.tags || {}, la = e.lat != null ? e.lat : (e.center || {}).lat, ln = e.lon != null ? e.lon : (e.center || {}).lon;
+    if (la == null) return;
+    const ev = t.amenity === 'charging_station', fuels = [];
+    if (!ev) {
+      if (t['fuel:octane_91'] === 'yes' || t['fuel:e10'] === 'yes') fuels.push(t['fuel:e10'] === 'yes' ? 'E10' : '91');
+      if (t['fuel:octane_95'] === 'yes') fuels.push('95');
+      if (t['fuel:octane_98'] === 'yes') fuels.push('98');
+      if (t['fuel:diesel'] === 'yes') fuels.push('Diesel');
+      if (t['fuel:lpg'] === 'yes') fuels.push('LPG');
+    }
+    const addr = [t['addr:housenumber'], t['addr:street'], t['addr:suburb'] || t['addr:city']].filter(Boolean).join(' ');
+    let hours = t.opening_hours || '', from = '', shop = '';
+    if (!ev) {
+      let near = null, nd = 60; const la0 = Math.round(la * 1000), ln0 = Math.round(ln * 1000);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) (grid[(la0 + i) + ':' + (ln0 + j)] || []).forEach(x => { const d = dist(la, ln, x.la, x.ln); if (d < nd) { nd = d; near = x; } });
+      if (near) { shop = near.t.brand || near.t.name || ''; if (!hours && near.t.opening_hours) { hours = near.t.opening_hours; from = shop || 'the shop'; } }
+    }
+    const brand = t.brand || t.operator || '', name = t.name || t.brand || (ev ? 'EV charger' : 'Service station');
+    const u24 = !ev && !hours && /7-?eleven|reddy express|coles express/i.test(brand + ' ' + name + ' ' + shop);
+    rows.push([ev ? 'EV charger' : 'Fuel', name, brand, addr, fuels.join(' · '), hours, from, shop, u24 ? 'Yes' : '', Math.round(la * 1e6) / 1e6, Math.round(ln * 1e6) / 1e6, e.type + e.id]);
+  });
+  if (rows.filter(r => r[0] === 'Fuel').length < 100) throw new Error('Only ' + rows.length + ' stations came back; keeping the old list');
+  rows.sort((a, b) => (a[0] > b[0] ? 1 : a[0] < b[0] ? -1 : 0) || String(a[2] || a[1]).localeCompare(String(b[2] || b[1])));
+  const book = SpreadsheetApp.openById(P.getProperty('FUEL_ID') || FUEL_FILE);
+  if (book.getSpreadsheetTimeZone() !== TZ) book.setSpreadsheetTimeZone(TZ);
+  const sh = tab_(book, 'Stations', FUEL_HEAD);
+  sh.getRange(1, 1, sh.getMaxRows(), 9).setNumberFormat('@');            // keep hours like 06:00-22:00 as text
+  fill_(sh, FUEL_HEAD, rows);
+  sh.setFrozenColumns(2); sh.setColumnWidth(2, 220); sh.setColumnWidth(4, 220); sh.setColumnWidth(6, 260);
+  const now = Date.now();
+  sh.getRange(1, FUEL_HEAD.length + 2).setValue(`Updated ${fmt_(now, 'EEE d MMM yyyy h:mm a')} from OpenStreetMap · ${rows.filter(r => r[0] === 'Fuel').length} fuel stations · ${rows.filter(r => r[0] !== 'Fuel').length} EV chargers · refreshed weekly`);
+  book.getSheets().forEach(t => { if (t.getName() !== 'Stations' && book.getSheets().length > 1) book.deleteSheet(t); });
+  P.setProperty('FUEL_AT', String(now)); P.deleteProperty('FUEL_ERR');
+  return rows.length;
+}
+function fuelOut_() {
+  const book = SpreadsheetApp.openById(P.getProperty('FUEL_ID') || FUEL_FILE), sh = book.getSheetByName('Stations');
+  const n = sh ? sh.getLastRow() - 1 : 0;
+  const rows = n > 0 ? sh.getRange(2, 1, n, FUEL_HEAD.length).getValues().filter(r => r[0] && r[9] !== '') : [];
+  return { ok: true, at: +P.getProperty('FUEL_AT') || 0, box: FUEL_BOX, err: P.getProperty('FUEL_ERR') || '',
+    fields: ['kind', 'name', 'brand', 'addr', 'fuels', 'hours', 'from', 'shop', 'u24', 'lat', 'lng', 'id'],
+    rows: rows.map(r => [r[0] === 'Fuel' ? 'f' : 'e', String(r[1]), String(r[2]), String(r[3]), String(r[4]), String(r[5]), String(r[6]), String(r[7]), r[8] === 'Yes' ? 1 : 0, +r[9], +r[10], String(r[11])]) };
+}
+function updateFuel() {
+  let msg;
+  try { msg = '✓ ' + refreshFuel_() + ' fuel stations and EV chargers saved in "Offer Pilot Fuel Stations".'; }
+  catch (e) { P.setProperty('FUEL_ERR', e.message); msg = 'Fuel stations not updated: ' + e.message + '. The hourly run tries again in 6 hours.'; }
+  try { SpreadsheetApp.getUi().alert(msg); } catch (e) { Logger.log(msg); }
+}
