@@ -2519,6 +2519,8 @@
         <button type="button" class="sx-add" onclick="sheetShareLink()"><svg><use href="#i-plus"/></svg>📲 Link another device (QR code)</button>
         <div class="sx-hint">On iPhone, the pilot on your Home Screen keeps its own data, separate from Safari. Paste the link here inside the pilot, or scan the QR code from your computer with the Camera and choose the pilot.</div>
         <button type="button" class="sx-add" onclick="sheetTest()"><svg><use href="#i-plus"/></svg>Test connection</button>
+        <button type="button" class="sx-add" onclick="fuelHarvest(true)"><svg><use href="#i-plus"/></svg>⛽ Update fuel stations now</button>
+        <div class="sx-hint" id="fuelNote"></div>
         <div class="sx-hint help">Easiest: open the phone link from the sheet (✈️ Offer Pilot ▸ 3. Phone link) once on each device and both boxes fill in. Flights: the sheet calls AeroDataBox every hour and every pilot reads them from the sheet. Shift log: each shift goes to a tab for its month (“2026-10 October”), with a Summary tab of the months. Both stay only on this phone and in your own Google Drive.</div>
       </div>
       <div class="sx-card sx-pad">
@@ -9028,7 +9030,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.99.0';
+    const APP_VERSION = '1.99.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9860,6 +9862,7 @@ ${sub}${body}
       sheetFlush(); routePrune(); syncSheetNote(); sxSummaries(); toast('✓ Google Sheet settings saved');
     }
     function syncSheetNote() {
+      try { fuelNote(); } catch (e) {}
       const n = document.getElementById('sheetNote'); if (!n) return;
       if (!sheetOn()) { n.textContent = 'Not connected. Open your phone link from the sheet (✈️ Offer Pilot ▸ 3. Phone link), or paste the address and key here.'; return; }
       const i = shFlInfo, q = loadSheetQ().length, sent = parseFloat(lsGet('sheetSentAt')), err = lsGet('sheetErr');
@@ -10829,35 +10832,57 @@ ${sub}${body}
     async function overpassAll(q) {
       let err = null;
       for (const u of OVERPASS_URLS) {
-        try { const j = await fetchJSON(u + '?data=' + encodeURIComponent(q), 120000); if (Array.isArray(j.elements)) return j.elements; } catch (e) { err = e; }
+        try { const j = await fetchJSON(u + '?data=' + encodeURIComponent(q), 150000); if (Array.isArray(j.elements)) return j.elements; } catch (e) { err = e; }
       }
       throw err || new Error('busy');
     }
-    // About once a week, in the background: download Greater Melbourne from OpenStreetMap and send it to your sheet
-    let fuelHarvestBusy = false;
-    async function fuelHarvest() {
-      if (fuelHarvestBusy || TEST || !sheetOn() || !sheetKey() || document.hidden || navigator.onLine === false) return;
+    function fuelNote(msg) {
+      const n = document.getElementById('fuelNote'); if (!n) return;
       const d = fuelDb();
-      if (d && Date.now() - (d.at || 0) < 7 * 864e5) return;
-      if (Date.now() - (+localStorage.getItem('fuelHarvestTry') || 0) < 6 * 3600000) return;   // OpenStreetMap busy last time: wait a while
-      try { if ((typeof ocrStream !== 'undefined' && ocrStream) || (loadTrip().stage !== 'idle' && loadTrip().stage !== 'done')) return; } catch (e) {}
+      n.textContent = msg || (d ? `⛽ ${d.fuel.length} fuel stations · ${d.all.length - d.fuel.length} EV chargers saved on this device · list from ${d.at ? new Date(d.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : '—'}`
+        : '⛽ No fuel station list on this device yet.');
+    }
+    // About once a week, in the background: download Greater Melbourne from OpenStreetMap and send it to your sheet.
+    // One request: the stations, the chargers, and only the convenience shops within 60 m of a station (for their hours).
+    let fuelHarvestBusy = false;
+    async function fuelHarvest(force) {
+      if (force && !sheetOn()) { toast('⛽ Connect your Google Sheet first'); return; }
+      if (fuelHarvestBusy) { if (force) toast('⛽ Already downloading the fuel stations…'); return; }
+      if (TEST || !sheetOn() || !sheetKey() || navigator.onLine === false) { if (force) toast(TEST ? '🧪 Not during a test run' : !sheetKey() ? '⛽ This device needs your private key (open your sync link here)' : '⛽ You’re offline'); return; }
+      const d = fuelDb();
+      if (!force) {
+        if (document.hidden || (d && Date.now() - (d.at || 0) < 7 * 864e5)) return;
+        const wait = d ? 6 * 3600000 : 10 * 60000;          // nothing saved anywhere yet: try again in 10 minutes, not 6 hours
+        if (Date.now() - (+localStorage.getItem('fuelHarvestTry') || 0) < wait) return;
+        try { if ((typeof ocrStream !== 'undefined' && ocrStream) || (loadTrip().stage !== 'idle' && loadTrip().stage !== 'done')) return; } catch (e) {}
+      }
       fuelHarvestBusy = true;
       try { localStorage.setItem('fuelHarvestTry', String(Date.now())); } catch (e) {}
+      if (force) toast('⛽ Downloading Melbourne’s fuel stations… (up to a minute)');
+      fuelNote('⛽ Downloading from OpenStreetMap…');
       try {
         const b = FUEL_DB_BOX, bb = `${b.s},${b.w},${b.n},${b.e}`;
-        const els = await overpassAll(`[out:json][timeout:120];(node["amenity"~"^(fuel|charging_station)$"](${bb});way["amenity"~"^(fuel|charging_station)$"](${bb}););out center tags;`);
-        const shops = await overpassAll(`[out:json][timeout:120];(node["shop"="convenience"](${bb});way["shop"="convenience"](${bb}););out center tags;`);
-        const rows = fuelRowsFrom(els, shops);
-        if (rows.filter(r => r[0] === 'f').length < 100) return;
+        const els = await overpassAll(`[out:json][timeout:120];nwr["amenity"="fuel"](${bb})->.f;nwr["amenity"="charging_station"](${bb})->.c;` +
+          `nwr["shop"="convenience"](around.f:60)->.s;(.f;.c;.s;);out center tags;`);
+        const isShop = e => (e.tags || {}).shop === 'convenience' && !/^(fuel|charging_station)$/.test((e.tags || {}).amenity || '');
+        const rows = fuelRowsFrom(els.filter(e => !isShop(e)), els.filter(isShop));
+        if (rows.filter(r => r[0] === 'f').length < 100) throw new Error('only ' + rows.length + ' came back');
         const now = Date.now();
         try { localStorage.setItem('fuelDb', JSON.stringify({ at: now, got: now, box: b, rows })); } catch (e) {}
         fuelDbMem = undefined; fuelDb(); stationsAt = null;
         if (layers.fuel && map) { fuelBox = null; drawFuel(); }
+        fuelNote('⛽ Saved here · sending to your Google Sheet…');
         await sheetPost({ kind: 'fuel', rows, dev: devLabel() });   // the other devices get it from the sheet
-      } catch (e) { /* OpenStreetMap busy or offline: try again in 6 hours */ }
+        fuelNote();
+        if (force) toast(`✓ ${rows.filter(r => r[0] === 'f').length} fuel stations saved to your Google Sheet`);
+      } catch (e) {
+        fuelNote();
+        if (force) toast('⛽ ' + (e.name === 'AbortError' ? 'OpenStreetMap took too long' : e.message && /sheet/i.test(e.message) ? e.message : 'OpenStreetMap is busy') + '. Try again in a few minutes.');
+      }
       finally { fuelHarvestBusy = false; }
     }
     setTimeout(() => refreshFuelDb().then(() => setTimeout(fuelHarvest, 15000)), 7000);
+    setInterval(() => { if (!fuelDb()) fuelHarvest(); }, 10 * 60000);   // no list anywhere yet: keep trying every 10 minutes
     setInterval(() => { if (!document.hidden) refreshFuelDb().then(() => fuelHarvest()); }, 3 * 3600000);
 
     // ================= ⛽ FUEL STATIONS LAYER (from the sheet; OpenStreetMap outside Greater Melbourne) =================
@@ -10875,7 +10900,7 @@ ${sub}${body}
       // Inside the area your sheet covers: use its list (no waiting, works offline)
       const db = fuelDb();
       if (db && fuelInside(db.box, b)) { fuelList = db.fuel; fuelBox = db.box; drawFuel(); return; }
-      if (!db) refreshFuelDb();
+      if (!db) refreshFuelDb().then(() => fuelHarvest());
       const box = fuelBoxOf(b, 0.4), bb = `${box.s.toFixed(4)},${box.w.toFixed(4)},${box.n.toFixed(4)},${box.e.toFixed(4)}`;
       // Fuel stations plus convenience shops: at many servos the hours are on the shop (Coles Express, 7-Eleven, Reddy Express…)
       const q = `[out:json][timeout:20];(node["amenity"="fuel"](${bb});way["amenity"="fuel"](${bb});node["shop"="convenience"](${bb});way["shop"="convenience"](${bb}););out center tags;`;
