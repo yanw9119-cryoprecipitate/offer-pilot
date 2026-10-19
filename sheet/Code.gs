@@ -19,7 +19,8 @@ const HOST = 'aerodatabox.p.rapidapi.com';
 const AHEAD = 14;                    // 14 blocks of 12 hours = the next 7 days
 const REFRESH_H = 3;                 // the block you're in is refreshed about every 3 hours (as the allowance allows)
 const PILOT = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
-const SHIFTS_FILE = '1q2YZqYaeSMbimIktSgH0bD5BihQ6_zRAAUOZnFpfgcA';   // "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
+const SHIFTS_FILE = '1q2YZqYaeSMbimIktSgH0bD5BihQ6_zRAAUOZnFpfgcA';
+const DEVICES_FILE = '1Khp9tA29J1cdGAKU6FkOmB4FdH16zhEWK4w-GD1Ltso';  // "Offer Pilot Devices" (one tab); a DEVICES_ID script property overrides it   // "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
 const P = PropertiesService.getScriptProperties();
 const FL_HEAD = ['Block', 'Checked', 'Direction', 'Flight', 'Airline', 'From / to', 'Scheduled', 'Expected', 'Terminal', 'Status', 'International'];
 const SH_HEAD = ['Date', 'Day', 'Punch in', 'Punch out', 'Hours', 'Car', 'Trips', 'Offers', 'Accepted', 'Declined', 'Ride types',
@@ -458,10 +459,15 @@ function devList_() {
   const d = devs_(), now = Date.now();
   return Object.keys(d).map(id => Object.assign({ id, active: now - d[id].last < 15 * 60000 }, d[id])).sort((a, b) => b.last - a.last);
 }
+// Written to its own spreadsheet, "Offer Pilot Devices" (the old Devices tab in this sheet is removed)
 function writeDevices_() {
-  const ss = SpreadsheetApp.getActive(), head = ['Device', 'Access', 'Pilot version', 'Status', 'Last seen', 'Last sync', 'Syncs', 'First seen', 'Device ID'];
+  const old = SpreadsheetApp.getActive().getSheetByName('Devices'); if (old) SpreadsheetApp.getActive().deleteSheet(old);
+  const ss = SpreadsheetApp.openById(P.getProperty('DEVICES_ID') || DEVICES_FILE), head = ['Device', 'Access', 'Pilot version', 'Status', 'Last seen', 'Last sync', 'Syncs', 'First seen', 'Device ID'];
+  if (ss.getSpreadsheetTimeZone() !== TZ) ss.setSpreadsheetTimeZone(TZ);
   let sh = ss.getSheetByName('Devices');
-  if (!sh) { sh = ss.insertSheet('Devices'); sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff'); sh.setFrozenRows(1); }
+  if (!sh) { sh = ss.insertSheet('Devices', 0); }
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff'); sh.setFrozenRows(1);
+  ss.getSheets().forEach(t => { if (t.getName() !== 'Devices' && ss.getSheets().length > 1 && t.getLastRow() <= 3 && /^(Sheet1|Untitled|Offer Pilot Devices)$/.test(t.getName())) ss.deleteSheet(t); });
   const now = Date.now(), rows = devList_().map(x => [x.n, x.acc === 'Sync' ? 'Sync (private key)' : 'Flights only', x.ver || '',
     x.active ? '🟢 Active now' : now - x.last < 86400000 ? 'Today' : now - x.last < 7 * 86400000 ? 'This week' : 'Not lately',
     new Date(x.last), x.lastSync ? new Date(x.lastSync) : '', x.syncs || 0, new Date(x.first), x.id]);
