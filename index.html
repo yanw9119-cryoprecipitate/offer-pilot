@@ -725,6 +725,7 @@
     .rs-pop-sec { padding: 10px 12px 2px; font-weight: 800; font-size: .78rem; color: var(--muted); } .rs-pop-sec .h-ic { color: var(--accent); }
     .rs-pop-row { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-top: 1px dashed var(--line); }
     .rs-pop-row > div { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: .86rem; } .rs-pop-row span { color: var(--muted); font-size: .74rem; }
+    .rs-pop-row.rs-notes { flex-wrap: wrap; gap: 4px 10px; font-size: .76rem; } .rs-notes span { color: var(--text); }
     .rs-pop-row.mine { background: color-mix(in srgb, var(--accent) 8%, transparent); } .rs-pop-row .rs-btn { padding: 6px 10px; font-size: .76rem; }
     .rs-clash { font-style: normal; font-size: .68rem; color: #ef4444; font-weight: 700; } .rs-none { padding: 4px 0; }
     .rs-pop-foot { padding: 8px 12px 10px; border-top: 1px solid var(--line); }
@@ -5848,20 +5849,27 @@ ${sub}${body}
     }
     function rosterCalHTML() {
       const d0 = new Date(); d0.setHours(0, 0, 0, 0);
-      const mon = d0.getTime() - dayIdx(d0) * 86400000, r = loadRoster(), z = homeZone();
+      const mon = d0.getTime() - dayIdx(d0) * 86400000, r = loadRoster(), z = homeZone(), evs = allEvents(), hols = PUBLIC_HOLIDAYS, av = availSet();
       let cells = '';
       for (let k = 0; k < 28; k++) {
         const base = mon + k * 86400000, d = new Date(base), past = base < d0.getTime();
         const shifts = r.filter(x => x.s >= base && x.s < base + 86400000);
         const o = past ? null : dayOutlook(d, z);
+        // the same stickers as the Plan calendar: 🚗 rostered · 🏟 event · 📅 holiday · ✈️ airport runs · weather (next 7 days) · 🙋 your time
+        const d4 = base + 4 * 3600000, dayEv = past ? [] : evs.filter(e => e.s < d4 + 86400000 && e.e > d4);
+        const ap = past ? null : airportDay(d, evs);
+        const marks = (shifts.length ? '🚗' : '') + (dayEv.some(e => e.zone !== AIRPORT_ZONE) ? '🏟' : '') + (hols[ymd(d)] ? '📅' : '') + (!past && av && availWins(base).length && !shifts.length ? '🙋' : '');
+        const w = !past && base - d0.getTime() < 7 * 86400000 ? wxDay(d) : null;
+        const title = `${d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}${shifts.length ? ' · rostered ' + shifts.map(x => fmtTimeRange(x.s, x.e)).join(', ') : ''}${o ? ` · ${o.good} recommended hours` : ''}${ap && ap.rec ? ' · airport runs ' + ap.win : ''}${dayEv.length ? ' · ' + dayEv.map(e => e.name).join(', ') : ''}${hols[ymd(d)] ? ' · ' + hols[ymd(d)] : ''}`;
         const cls = (past ? ' past' : o ? ' ' + o.cls : '') + (base === d0.getTime() ? ' today' : '') + (shifts.length ? ' has' : '') + (rsCalSel === base ? ' sel' : '');
-        cells += `<button type="button" class="cal-day rs-day${cls}" data-b="${base}" ${past ? 'disabled' : `onclick="rosterDayPop(${base}, this)"`}>` +
-          `<b>${d.getDate()}</b><small>${shifts.length ? fmtTime(shifts[0].s).replace(/:00/, '') : o && o.good ? o.good + 'h' : ''}</small>${shifts.length ? '<em>🚗</em>' : ''}</button>`;
+        cells += `<button type="button" class="cal-day rs-day${cls}" data-b="${base}" title="${esc(title)}" aria-label="${esc(title)}" ${past ? 'disabled' : `onclick="rosterDayPop(${base}, this)"`}>` +
+          `<b>${d.getDate()}</b><small>${shifts.length ? fmtTime(shifts[0].s).replace(/:00/, '') : o && o.good ? o.good + 'h' : ''}</small>${marks ? `<em>${marks}</em>` : ''}` +
+          `${ap && ap.rec ? `<span class="cal-air${ap.peak ? ' peak' : ''}">✈️</span>` : ''}${w ? `<i class="cal-wx" title="${wxName(w.code)}">${wxIcon(w.code)}</i>` : ''}</button>`;
       }
       const m0 = new Date(mon).toLocaleDateString([], { month: 'long' }), m1 = new Date(mon + 27 * 86400000).toLocaleDateString([], { month: 'long' });
       return `<div class="rs-cal"><div class="cal-top"><b><svg class="h-ic"><use href="#h-cal"/></svg>${m0}${m1 !== m0 ? ' – ' + m1 : ''}</b><small>${esc(z)} · tap a day</small></div>` +
         `<div class="cal-grid">${DAYS.map(x => `<span class="cal-dow">${x.slice(0, 1)}</span>`).join('')}${cells}</div>` +
-        `<div class="cal-key"><span><i class="yes"></i>Busy day</span><span><i class="maybe"></i>Some good hours</span><span>🚗 rostered (start time) · “9h” = good hours</span></div></div>`;
+        `<div class="cal-key"><span><i class="yes"></i>Busy day</span><span><i class="maybe"></i>Some good hours</span><span>🚗 rostered (start time) · “9h” = good hours · ✈️ airport runs · 🏟 event · 📅 holiday${availSet() ? ' · 🙋 your time' : ''}</span></div></div>`;
     }
     let rsCalSel = null, rsPopAt = 0, rsPopY = 0;
     function rosterDayPop(base, cell) {
@@ -5871,6 +5879,9 @@ ${sub}${body}
       const lbl = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
       const qs = s => `'${esc(s).replace(/'/g, '&#39;')}'`;
       let h = `<div class="flp-h"><b>${lbl}</b></div>`;
+      { const d4 = base + 4 * 3600000, ev = allEvents().filter(e => e.s < d4 + 86400000 && e.e > d4), hol = PUBLIC_HOLIDAYS[ymd(d)], w = wxDay(d);
+        const bits = [hol ? `📅 ${esc(hol)}` : '', ...ev.map(e => `${e.zone === AIRPORT_ZONE ? '🟣' : '🏟'} ${esc(e.name)} ${fmtTimeRange(e.s, e.e)}`), w ? `${wxIcon(w.code)} ${wxName(w.code)}` : ''].filter(Boolean);
+        if (bits.length) h += `<div class="rs-pop-row rs-notes">${bits.map(b => `<span>${b}</span>`).join('')}</div>`; }
       if (r.length) h += `<div class="rs-pop-sec">Your shift${r.length > 1 ? 's' : ''}</div>` + r.map(x => `<div class="rs-pop-row mine"><div><b>${fmtTimeRange(x.s, x.e)}</b><span>${x.z ? esc(x.z) + ' · ' : ''}${shiftLen(x)}</span></div>` +
         `<button type="button" class="rs-btn" onclick="closeRsPop(); rosterEditor({ id: '${x.id}' })">Change</button></div>`).join('');
       // a suggestion row with Take (or "overlaps") and Adjust
@@ -8981,7 +8992,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.94.0';
+    const APP_VERSION = '1.95.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
