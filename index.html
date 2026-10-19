@@ -8010,7 +8010,7 @@ ${sub}${body}
       zones: ['🗺 Zones', 'Tap a zone (its label or anywhere inside it) for the drive, time and navigation. ✈️ Airports (MEL, Essendon) are their own small zones (graded from live flights, separately for ✈️→🏙 pick-ups and 🏙→✈️ rides to the airport: teal High, orange Medium, slate Low, ↑ rising or ↓ easing; the label shows only while flights are landing or leaving in the next hour and at least one grade is above Low, or when you tap it): tap for the Uber pick-up points. The number is how many zones are busy or fair now; its colour is the best one (green busy, yellow fair, blue quiet). On the map: 🟩 busy, 🟨 fair, 🟦 quiet. Busy ones are labelled with demand and your drive time. Double-tap for all zones.'],
       zonesAll: ['🗺 All zones', 'Every zone is labelled, quiet ones too. Double-tap again to label busy zones only.'],
       surgeFire: ['🔥 Surge detected', 'A live surge is on the map: the flame marks it. The 🔥 button burns whenever there are surges or busy zones. Tap the pin for the drive and whether it’s worth it.'],
-      fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate. Melbourne’s stations come from your Google Sheet (refreshed weekly) and are kept on the phone, so they show even offline.'],
+      fuel: ['⛽ Fuel stations', 'Green ring: open now (hours from the station or its shop, e.g. Coles Express or 7-Eleven). Dashed green: usually 24/7, hours not listed. Faded: closed now. Grey ring: hours not listed. Tap one for brand, fuels, hours and drive time, then navigate. Melbourne’s stations come from your Google Sheet (refreshed about weekly) and are kept on the phone, so they show even offline.'],
       zonesBusy: ['🗺 Busy zones only', 'Only busy zones are labelled now. Double-tap to label every zone.'],
       live: ['🔴 Live', 'Surges you’ve snapped in the last 20 minutes, with the extra $ and whether the drive is worth it.'],
       pred: ['🔮 Predicted', 'Where your own snapshots say surges usually happen now and in the next 2 hours: green worth chasing, yellow optional.'],
@@ -10759,9 +10759,12 @@ ${sub}${body}
     setInterval(() => { if (!document.hidden) loadTrainAlerts(); }, 60000);
 
     // ================= ⛽ FUEL STATIONS FROM YOUR GOOGLE SHEET =================
-    // The sheet keeps every fuel station and EV charger in Greater Melbourne (from OpenStreetMap, refreshed weekly).
-    // The pilot copies the list once a day and keeps it on the phone, so the ⛽ layer and fuel-stop detection work
-    // straight away, offline, and when OpenStreetMap is busy. Outside that area it still asks OpenStreetMap.
+    // The sheet keeps every fuel station and EV charger in Greater Melbourne (from OpenStreetMap). Google's servers can't
+    // reach OpenStreetMap, so about once a week a pilot with your private key downloads the whole list in the background
+    // and sends it to the sheet. Every pilot copies the list once a day and keeps it on the phone, so the ⛽ layer and
+    // fuel-stop detection work straight away, offline, and when OpenStreetMap is busy. Outside that area it still asks OpenStreetMap.
+    const FUEL_DB_BOX = { s: -38.45, w: 144.40, n: -37.40, e: 145.65 };   // Werribee, Melton, Sunbury, Lilydale, Pakenham, Frankston
+    const OVERPASS_URLS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
     let fuelDbMem = undefined, fuelDbBusy = false;
     function fuelDb() {
       if (fuelDbMem !== undefined) return fuelDbMem;
@@ -10786,7 +10789,8 @@ ${sub}${body}
         const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 30000);
         const r = await fetch(sheetUrl() + '?fuel=1', { signal: ctl.signal }); clearTimeout(tm);
         const j = await r.json();
-        if (!j || !j.ok || !Array.isArray(j.rows) || !j.rows.length) return false;   // the sheet hasn't got its list yet: keep what's here
+        if (!j || !j.ok || !Array.isArray(j.rows) || !j.rows.length) { setTimeout(fuelHarvest, 3000); return false; }   // the sheet has no list yet
+        if (d && d.at > (j.at || 0)) { try { const x = JSON.parse(localStorage.getItem('fuelDb')); x.got = Date.now(); localStorage.setItem('fuelDb', JSON.stringify(x)); } catch (e) {} fuelDbMem = undefined; return true; }   // ours is newer
         localStorage.setItem('fuelDb', JSON.stringify({ at: j.at, got: Date.now(), box: j.box, rows: j.rows }));
         fuelDbMem = undefined; fuelDb();
         stationsAt = null;                                   // fuel-stop detection uses the new list on the next GPS fix
@@ -10795,8 +10799,66 @@ ${sub}${body}
       } catch (e) { return false; }
       finally { fuelDbBusy = false; }
     }
-    setTimeout(() => refreshFuelDb(), 7000);
-    setInterval(() => { if (!document.hidden) refreshFuelDb(); }, 3 * 3600000);
+    // Rows as the sheet keeps them: [kind f/e, name, brand, address, fuels, hours, hours from, shop, usually 24/7, lat, lng, id]
+    function fuelRowsFrom(els, shopEls) {
+      const grid = {}, cell = (la, ln) => Math.round(la * 1000) + ':' + Math.round(ln * 1000);
+      const pos = e => [e.lat ?? e.center?.lat, e.lon ?? e.center?.lon];
+      shopEls.forEach(e => { const [la, ln] = pos(e); if (la == null) return; (grid[cell(la, ln)] = grid[cell(la, ln)] || []).push({ la, ln, t: e.tags || {} }); });
+      return els.map(e => {
+        const t = e.tags || {}, [la, ln] = pos(e); if (la == null) return null;
+        const ev = t.amenity === 'charging_station', fuels = [];
+        if (!ev) {
+          if (t['fuel:octane_91'] === 'yes' || t['fuel:e10'] === 'yes') fuels.push(t['fuel:e10'] === 'yes' ? 'E10' : '91');
+          if (t['fuel:octane_95'] === 'yes') fuels.push('95');
+          if (t['fuel:octane_98'] === 'yes') fuels.push('98');
+          if (t['fuel:diesel'] === 'yes') fuels.push('Diesel');
+          if (t['fuel:lpg'] === 'yes') fuels.push('LPG');
+        }
+        let hours = t.opening_hours || '', from = '', shop = '';
+        if (!ev) {
+          let near = null, nd = 60; const a = Math.round(la * 1000), b = Math.round(ln * 1000);
+          for (let i = -1; i <= 1; i++) for (let k = -1; k <= 1; k++) (grid[(a + i) + ':' + (b + k)] || []).forEach(x => { const d = distM(la, ln, x.la, x.ln); if (d < nd) { nd = d; near = x; } });
+          if (near) { shop = near.t.brand || near.t.name || ''; if (!hours && near.t.opening_hours) { hours = near.t.opening_hours; from = shop || 'the shop'; } }
+        }
+        const brand = t.brand || t.operator || '', name = t.name || t.brand || (ev ? 'EV charger' : 'Service station');
+        const addr = [t['addr:housenumber'], t['addr:street'], t['addr:suburb'] || t['addr:city']].filter(Boolean).join(' ');
+        return [ev ? 'e' : 'f', name, brand, addr, fuels.join(' · '), hours, from, shop, !ev && !hours && FUEL_24_BRANDS.test(`${brand} ${name} ${shop}`) ? 1 : 0,
+          Math.round(la * 1e6) / 1e6, Math.round(ln * 1e6) / 1e6, e.type + e.id];
+      }).filter(Boolean);
+    }
+    async function overpassAll(q) {
+      let err = null;
+      for (const u of OVERPASS_URLS) {
+        try { const j = await fetchJSON(u + '?data=' + encodeURIComponent(q), 120000); if (Array.isArray(j.elements)) return j.elements; } catch (e) { err = e; }
+      }
+      throw err || new Error('busy');
+    }
+    // About once a week, in the background: download Greater Melbourne from OpenStreetMap and send it to your sheet
+    let fuelHarvestBusy = false;
+    async function fuelHarvest() {
+      if (fuelHarvestBusy || TEST || !sheetOn() || !sheetKey() || document.hidden || navigator.onLine === false) return;
+      const d = fuelDb();
+      if (d && Date.now() - (d.at || 0) < 7 * 864e5) return;
+      if (Date.now() - (+localStorage.getItem('fuelHarvestTry') || 0) < 6 * 3600000) return;   // OpenStreetMap busy last time: wait a while
+      try { if ((typeof ocrStream !== 'undefined' && ocrStream) || (loadTrip().stage !== 'idle' && loadTrip().stage !== 'done')) return; } catch (e) {}
+      fuelHarvestBusy = true;
+      try { localStorage.setItem('fuelHarvestTry', String(Date.now())); } catch (e) {}
+      try {
+        const b = FUEL_DB_BOX, bb = `${b.s},${b.w},${b.n},${b.e}`;
+        const els = await overpassAll(`[out:json][timeout:120];(node["amenity"~"^(fuel|charging_station)$"](${bb});way["amenity"~"^(fuel|charging_station)$"](${bb}););out center tags;`);
+        const shops = await overpassAll(`[out:json][timeout:120];(node["shop"="convenience"](${bb});way["shop"="convenience"](${bb}););out center tags;`);
+        const rows = fuelRowsFrom(els, shops);
+        if (rows.filter(r => r[0] === 'f').length < 100) return;
+        const now = Date.now();
+        try { localStorage.setItem('fuelDb', JSON.stringify({ at: now, got: now, box: b, rows })); } catch (e) {}
+        fuelDbMem = undefined; fuelDb(); stationsAt = null;
+        if (layers.fuel && map) { fuelBox = null; drawFuel(); }
+        await sheetPost({ kind: 'fuel', rows, dev: devLabel() });   // the other devices get it from the sheet
+      } catch (e) { /* OpenStreetMap busy or offline: try again in 6 hours */ }
+      finally { fuelHarvestBusy = false; }
+    }
+    setTimeout(() => refreshFuelDb().then(() => setTimeout(fuelHarvest, 15000)), 7000);
+    setInterval(() => { if (!document.hidden) refreshFuelDb().then(() => fuelHarvest()); }, 3 * 3600000);
 
     // ================= ⛽ FUEL STATIONS LAYER (from the sheet; OpenStreetMap outside Greater Melbourne) =================
     let fuelLayer = null, fuelBox = null, fuelList = [], fuelLoading = false, fuelMoveT = null;
