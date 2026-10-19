@@ -431,6 +431,6 @@ function writeShiftSheets_(m) {
     sh.getRange(2, 14, rows.length, 2).setNumberFormat('$#,##0.00');
   }
   // the placeholder first tab from when the file was made
-  book.getSheets().forEach(t => { if (!['Upcoming', 'History'].includes(t.getName()) && book.getSheets().length > 2 && t.getLastRow() <= 3 && /^(Sheet1|Offer Pilot Shifts)$/.test(t.getName())) book.deleteSheet(t); });
+  book.getSheets().forEach(t => { if (!['Upcoming', 'History'].includes(t.getName()) && book.getSheets().length > 2 && t.getLastRow() <= 3 && /^(Sheet1|Untitled|Offer Pilot Shifts)$/.test(t.getName())) book.deleteSheet(t); });
   if (book.getSheets()[0].getName() !== 'Upcoming') { book.setActiveSheet(su); book.moveActiveSheet(1); }
 }
