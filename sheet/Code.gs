@@ -247,6 +247,7 @@ function doPost(e) {
     if (b.kind === 'ping') return json_({ ok: true });
     if (b.kind === 'shift' && b.shift) { const tab = writeShift_(b.shift); return json_({ ok: true, tab }); }
     if (b.kind === 'shifts' && Array.isArray(b.shifts)) { const tabs = b.shifts.map(writeShift_); return json_({ ok: true, n: tabs.length }); }
+    if (b.kind === 'sync') return json_(doSync_(b));
     return json_({ ok: false, err: 'unknown' });
   } finally { lock.releaseLock(); }
 }
@@ -318,4 +319,40 @@ function updateSummary_(name) {
   sh.getRange(r, 1, 1, line.length).setValues([line]);
   sh.getRange(r, 5, 1, 4).setNumberFormat('$#,##0.00');
   if (sh.getLastRow() > 2) sh.getRange(2, 1, sh.getLastRow() - 1, 9).sort({ column: 1, ascending: false });
+}
+
+// ---------------------------------------------------------------- sync between your devices
+// The hidden "Sync" tab keeps one row per pilot item (offers, roster, availability, shifts, cars, settings …):
+// key · when it last changed · which device · the value, split into 40,000-character pieces (each starts with ~ so
+// Sheets never turns it into a number, date or formula). The newest change of each item wins.
+function syncSheet_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName('Sync');
+  if (!sh) { sh = ss.insertSheet('Sync'); sh.getRange(1, 1, 1, 4).setValues([['Item', 'Changed', 'Device', 'Value …']]).setFontWeight('bold'); sh.setFrozenRows(1); sh.hideSheet(); }
+  return sh;
+}
+function syncRead_(sh) {
+  const n = sh.getLastRow() - 1, w = Math.max(4, sh.getLastColumn()), m = {};
+  if (n > 0) sh.getRange(2, 1, n, w).getValues().forEach((r, i) => {
+    const k = String(r[0]); if (!k) return;
+    m[k] = { row: i + 2, t: +r[1] || 0, v: r.slice(3).filter(x => x !== '').map(x => String(x).slice(1)).join('') };
+  });
+  return m;
+}
+function doSync_(b) {
+  const sh = syncSheet_(), m = syncRead_(sh), put = b.put || {}, have = b.have || {};
+  Object.keys(put).forEach(k => {
+    const p = put[k]; if (!p || !(+p.t > 0)) return;
+    if (m[k] && +p.t <= m[k].t) return;                          // the sheet already has something newer
+    const v = String(p.v == null ? '' : p.v), parts = [];
+    for (let i = 0; i < v.length; i += 40000) parts.push('~' + v.slice(i, i + 40000));
+    if (!parts.length) parts.push('~');
+    const row = m[k] ? m[k].row : sh.getLastRow() + 1, vals = [k, +p.t, String(b.dev || '')].concat(parts);
+    while (m[k] && vals.length < sh.getLastColumn()) vals.push('');   // blank out pieces left from a longer old value
+    sh.getRange(row, 1, 1, vals.length).setValues([vals]);
+    m[k] = { row, t: +p.t, v };
+  });
+  const get = {};
+  Object.keys(m).forEach(k => { if (m[k].t > (+have[k] || 0)) get[k] = { t: m[k].t, v: m[k].v }; });
+  return { ok: true, get, at: Date.now() };
 }

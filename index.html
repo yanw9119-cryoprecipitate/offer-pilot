@@ -1558,6 +1558,10 @@
     :root[data-theme="contrast"] .side-logo .logo path[stroke="#3ddc84"] { stroke: #00a152; }
     .side-snap { position: relative; color: #ea580c; }
     :root[data-theme="dark"] .side-snap, :root[data-theme="contrast"] .side-snap { color: #fb923c; }
+    .sync-dot { display: none; position: absolute; top: 7px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #f97316; box-shadow: 0 0 0 2px var(--card); }
+    #siteSideBtn.dirty .sync-dot { display: block; } .side-stack .sync-dot { top: 6px; right: calc(50% - 16px); box-shadow: 0 0 0 2px var(--glass-strong); }
+    #siteSideBtn.busy .sb-ic { animation: syncSpin 1s linear infinite; } @keyframes syncSpin { to { transform: rotate(360deg); } }
+    #siteSideBtn { font: inherit; cursor: pointer; }
     .snap-dot { position: absolute; top: 7px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #f97316; box-shadow: 0 0 0 2px var(--card); }
     /* Map notes follow the theme */
     .drive .map-note { background: var(--glass); color: var(--text); border: var(--bw) solid var(--card-border); border-radius: 14px;
@@ -1712,6 +1716,7 @@
         <symbol id="i-log" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 21z"/><path d="M9 7.5h6M9 11h6M9 14.5h3.5"/><path d="M15.6 14.2v3.4M14.4 15c0-.5.5-.9 1.2-.9s1.2.4 1.2.9-.5.8-1.2.8-1.2.4-1.2.9.5.9 1.2.9 1.2-.4 1.2-.9"/></symbol>
         <symbol id="i-pip" viewBox="0 0 24 24"><rect x="2.5" y="4.5" width="19" height="15" rx="2.5"/><rect x="12" y="11.5" width="7" height="5.5" rx="1.2" fill="currentColor" stroke="none"/></symbol>
         <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3M15.5 4h3A1.5 1.5 0 0 1 20 5.5v3M20 15.5v3a1.5 1.5 0 0 1-1.5 1.5h-3M8.5 20h-3A1.5 1.5 0 0 1 4 18.5v-3M7.5 12h9"/></symbol>
+        <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5"/><path d="M5 3v4h4M19 21v-4h-4"/></symbol>
         <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9M12 3C9.4 5.6 8.2 8.6 8.2 12s1.2 6.4 3.8 9"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
       </defs>
@@ -2125,8 +2130,7 @@
     <button class="side-btn" id="autoSideBtn" onclick="openAutoSheet()" aria-label="Auto-Read"><svg class="sb-ic"><use href="#i-scan"/></svg><span>Auto</span><i class="live-dot"></i></button>
     <button class="side-btn side-snap" id="snapSideBtn" onclick="openSnap()" aria-label="Surge snapshot"><svg class="sb-ic"><use href="#i-cam"/></svg><i class="snap-dot"></i><span>Snap</span></button>
     <button class="side-btn side-gear" onclick="toggleSettings(true)" aria-label="Settings"><svg class="sb-ic"><use href="#i-gear"/></svg><span>Settings</span></button>
-    <a class="side-btn side-link" id="siteSideBtn" href="https://yanw9119-cryoprecipitate.github.io/offer-pilot/"
-       target="_blank" rel="noopener" onclick="this.href = freshSiteUrl()" aria-label="Open the latest version of the live site"><svg class="sb-ic"><use href="#i-globe"/></svg><span>Site</span></a>
+    <button class="side-btn side-link" id="siteSideBtn" onclick="syncNow()" aria-label="Sync with your other devices"><svg class="sb-ic"><use href="#i-sync"/></svg><i class="sync-dot"></i><span>Sync</span></button>
   </div>
 
   <!-- Version status -->
@@ -2530,8 +2534,24 @@
     const SHARED_KEYS = new Set(['testMode', 'devPass', 'cfgTomTom', 'cfgTrainKey', 'cfgFlightKey', 'cfgFlightCap', 'flCalls', 'cfgSheetUrl', 'cfgSheetKey']);   // same in test runs
     const tk = k => TEST && !SHARED_KEYS.has(k) ? 'test:' + k : k;
     function lsGet(k) { try { return localStorage.getItem(tk(k)); } catch (e) { return null; } }
-    function lsSet(k, v) { try { localStorage.setItem(tk(k), v); } catch (e) {} }
-    function lsDel(k) { try { localStorage.removeItem(tk(k)); } catch (e) {} }
+    function lsSet(k, v) { try { localStorage.setItem(tk(k), v); } catch (e) {} syncMark(k); }
+    function lsDel(k) { try { localStorage.removeItem(tk(k)); } catch (e) {} syncMark(k); }
+    // 🔄 Items kept the same on all your devices through your Google Sheet (tap Sync). Each change is time-stamped;
+    // the newest change wins. Lists of records (offers, shifts, roster …) are combined the first time a device syncs.
+    // Not synced: API keys and the sheet link, test runs, caches, map and screen settings, GPS counters, routes, photos.
+    const SYNC_KEYS = new Set(['offerLog', 'shiftHistory', 'shift', 'roster', 'avail', 'weekPlanCfg', 'homeZone', 'uberTrends', 'trendChanges',
+      'myEvents', 'hiddenEvents', 'fillUps', 'expenses', 'uberStatements', 'acctCfg', 'cars', 'carActive', 'driveLog', 'vehModel', 'vehMaint',
+      'vehFuel', 'vehKmh', 'cfgCostKm', 'cfgMinKm', 'cfgMinHr', 'cfgMaxChase', 'cfgAlerts', 'goalKm', 'goalHr', 'shiftGoal', 'shiftGoalMode',
+      'apQueue', 'calZone', 'timeFmt']);
+    const SYNC_LISTS = new Set(['offerLog', 'shiftHistory', 'roster', 'myEvents', 'fillUps', 'expenses', 'uberStatements', 'driveLog', 'apQueue', 'cars']);
+    let syncT = null, syncApplying = false;
+    function syncMark(k) {
+      if (TEST || syncApplying || !SYNC_KEYS.has(k)) return;
+      if (!syncT) { try { syncT = JSON.parse(localStorage.getItem('syncT')) || {}; } catch (e) { syncT = {}; } }
+      syncT[k] = Date.now();
+      try { localStorage.setItem('syncT', JSON.stringify(syncT)); } catch (e) {}
+      try { syncBadge(); } catch (e) {}
+    }
 
     // State & Config (Persistent in localStorage)
     let config = {
@@ -7894,7 +7914,7 @@ ${sub}${body}
       pad:   ['🔢 Keypad', 'Type an offer’s fare, time and km yourself. Opens the Drive tab; tap again to close.'],
       pip:   ['📺 Overlay', 'A small floating ACCEPT / DECLINE window that stays on top of the Uber app.'],
       auto:  ['🔎 Auto', 'Auto-Read: reads offers from your shared screen and logs accepted or declined (Android or computer; not iPhone).'],
-      site:  ['🌐 Site', 'Opens the newest version of the pilot in your browser.']
+      site:  ['🔄 Sync', 'Keeps your offers, shifts, roster, availability, cars and settings the same on all your devices, through your Google Sheet. Orange dot: changes here not synced yet. Also tells you when a new version is ready.']
     };
     let barHelpT = null;
     function showBarHelp(keys, ms) {
@@ -8890,7 +8910,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.86.0';
+    const APP_VERSION = '1.87.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9626,6 +9646,79 @@ ${sub}${body}
     setInterval(() => { if (!document.hidden && loadSheetQ().length) sheetFlush(); }, 5 * 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => { try { sheetFlush(); } catch (e) {} }, 3000); });
     addEventListener('online', () => setTimeout(() => { try { sheetFlush(); } catch (e) {} }, 2000));
+
+
+    // ================= 🔄 SYNC: the same offers, shifts, roster, cars and settings on every device =================
+    // Tap Sync (bottom bar). Your changes go to the Google Sheet and the other device's changes come back.
+    // The first sync on a device combines its lists with what's already in the sheet; after that the newest change wins.
+    let syncBusy = false;
+    const devName = () => /iPhone/.test(navigator.userAgent) ? 'iPhone' : /iPad/.test(navigator.userAgent) ? 'iPad' : /Android/.test(navigator.userAgent) ? 'Android' : 'Computer';
+    function syncPending() {
+      if (TEST || !sheetOn() || !sheetKey()) return 0;
+      if (!syncT) { try { syncT = JSON.parse(localStorage.getItem('syncT')) || {}; } catch (e) { syncT = {}; } }
+      const at = +localStorage.getItem('syncAt') || 0;
+      return at ? Object.keys(syncT).filter(k => SYNC_KEYS.has(k) && syncT[k] > at).length : 1;
+    }
+    function syncBadge() {
+      const b = document.getElementById('siteSideBtn'); if (!b) return;
+      b.classList.toggle('dirty', syncPending() > 0);
+      b.classList.toggle('busy', syncBusy);
+    }
+    const recId = x => x && typeof x === 'object' ? String(x.id ?? x.t ?? x.start ?? x.s ?? x.at ?? JSON.stringify(x)) : JSON.stringify(x);
+    const recTime = x => x && typeof x === 'object' ? +(x.t ?? x.start ?? x.s ?? x.at ?? 0) || 0 : 0;
+    function mergeLists(mine, theirs) {
+      let a, b; try { a = JSON.parse(mine); b = JSON.parse(theirs); } catch (e) { return mine; }
+      if (!Array.isArray(a) || !Array.isArray(b)) return mine;
+      // the same record on both devices (same id or time): keep the fuller one (more details filled in)
+      const idx = new Map(), out = [];
+      [...a, ...b].forEach(x => { const k = recId(x), i = idx.get(k);
+        if (i === undefined) { idx.set(k, out.length); out.push(x); } else if (JSON.stringify(x).length > JSON.stringify(out[i]).length) out[i] = x; });
+      if (out.every(x => recTime(x))) out.sort((x, y) => recTime(x) - recTime(y));
+      return JSON.stringify(out);
+    }
+    function syncApply(k, v) { syncApplying = true; try { if (v === '' || v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} syncApplying = false; }
+    async function syncNow() {
+      if (TEST) { toast('🧪 End the test run to sync: test data never leaves this device.'); return; }
+      if (!sheetOn() || !sheetKey()) { toast('🔄 Connect your Google Sheet first to sync devices', 'Set up', () => { toggleSettings(true); sxGo('gsheet'); }); return; }
+      if (syncBusy) return;
+      syncBusy = true; syncBadge(); toast('🔄 Syncing…');
+      const started = Date.now(), first = !localStorage.getItem('syncAt'), lastAt = +localStorage.getItem('syncAt') || 0;
+      if (!syncT) { try { syncT = JSON.parse(localStorage.getItem('syncT')) || {}; } catch (e) { syncT = {}; } }
+      const local = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+      let got = 0, sent = 0;
+      try {
+        if (first) {
+          // this device's first sync: take what the sheet has, combining lists with what's here
+          const j = await sheetPost({ kind: 'sync', dev: devName(), have: {}, put: {} }), srv = j.get || {};
+          SYNC_KEYS.forEach(k => {
+            const lv = local(k), sv = srv[k];
+            if (sv && sv.v !== '' && lv != null && SYNC_LISTS.has(k)) { const m = mergeLists(lv, sv.v); syncApply(k, m); syncT[k] = m === sv.v ? sv.t : Date.now(); got++; }
+            else if (sv && sv.v !== '') { if (lv !== sv.v) { syncApply(k, sv.v); got++; } syncT[k] = sv.t; }
+            else if (lv != null) syncT[k] = Date.now();
+          });
+        }
+        const have = {}, put = {};
+        SYNC_KEYS.forEach(k => {
+          have[k] = syncT[k] || 0;
+          if ((syncT[k] || 0) > lastAt && (first || syncT[k] < started)) { put[k] = { t: syncT[k], v: local(k) ?? '' }; }
+        });
+        // the sheet keeps the newest of each item and sends back anything newer than this device has
+        const j = await sheetPost({ kind: 'sync', dev: devName(), have, put });
+        sent = Object.keys(put).length;
+        Object.entries(j.get || {}).forEach(([k, x]) => { if (!SYNC_KEYS.has(k) || (syncT[k] || 0) >= x.t) return; syncApply(k, x.v); syncT[k] = x.t; got++; });
+        localStorage.setItem('syncT', JSON.stringify(syncT));
+        localStorage.setItem('syncAt', String(started));
+        toast(`✓ Synced${got ? ` · ${got} update${got === 1 ? '' : 's'} from your other device` : ' · up to date'}${sent && !first ? ` · ${sent} sent` : ''}`);
+        if (got) {
+          // reload so every page, setting and total uses the new data (not while Auto-Read is watching the screen)
+          if (typeof ocrStream === 'undefined' || !ocrStream) setTimeout(() => location.reload(), 900);
+          else { try { renderShiftBar(); renderRoster(); renderPlanCal(); renderAccount(); } catch (e) {} toast('✓ Synced · some settings apply next time you open the pilot'); }
+        }
+      } catch (e) { toast('🔄 ' + (e.message || 'Sync failed') + ' Try again in a moment.'); }
+      finally { syncBusy = false; syncBadge(); }
+      if (newerVersion) toast(`✨ Version ${newerVersion} is ready`, 'Update', () => { location.href = freshSiteUrl(); });
+    }
+    setTimeout(() => { try { syncBadge(); } catch (e) {} }, 2000);
 
     // ================= WEEK-ON-WEEK TREND CHANGES =================
     const PERIODS = [['Morning', 6, 10], ['Midday', 10, 15], ['Afternoon', 15, 19], ['Evening', 19, 23], ['Late night', 23, 27]];
