@@ -1380,6 +1380,9 @@
     .sx-sub { color: var(--sx-muted); font-size: .92rem; margin: 0 0 14px; }
     .sx-card { background: var(--sx-card); border-radius: 18px; padding: 6px 0; margin-bottom: 14px; }
     .sx-card.sx-pad { padding: 18px 18px 14px; }
+    a.sx-row { text-decoration: none; }
+    .qr-box { display: flex; justify-content: center; align-items: center; min-height: 236px; margin: 8px 0; padding: 8px; background: #fff; border-radius: 14px; color: #333; font-size: .8rem; }
+    .qr-acts { display: flex; gap: 8px; justify-content: center; margin-bottom: 6px; } .qr-sheet .veh-grid { display: block; }
     .sx-row { width: 100%; display: flex; align-items: center; gap: 14px; background: none; border: none; color: var(--sx-ink);
       padding: 14px 18px; text-align: left; font: inherit; }
     .sx-row[hidden] { display: none; }
@@ -2265,6 +2268,8 @@
       <div class="sx-group" data-group>
         <h2 class="sx-h">About</h2>
         <div class="sx-card">
+          <a class="sx-row" data-k="site website open latest live link browser" href="https://yanw9119-cryoprecipitate.github.io/offer-pilot/" target="_blank" rel="noopener" onclick="this.href = freshSiteUrl()">
+            <svg class="sx-ic"><use href="#i-globe"/></svg><span class="sx-rt"><b>Open the site</b><small>The newest version of the pilot in your browser</small></span><svg class="sx-chev"><use href="#i-chev"/></svg></a>
           <button type="button" class="sx-row" data-k="version update about" onclick="onVersionTap()">
             <svg class="sx-ic"><use href="#i-info"/></svg><span class="sx-rt"><b>Version &amp; updates</b><small id="sxsVersion"></small></span><svg class="sx-chev"><use href="#i-chev"/></svg></button>
         </div>
@@ -2428,6 +2433,10 @@
         <div class="sx-field"><label for="cfgSheetUrl">Web app address</label><input type="password" id="cfgSheetUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-field"><label for="cfgSheetKey">Private key (for the shift log)</label><input type="password" id="cfgSheetKey" placeholder="From ✈️ Offer Pilot ▸ 3. Phone link" autocomplete="off" spellcheck="false" /></div>
         <div class="sx-hint" id="sheetNote" style="white-space: pre-line"></div>
+        <div class="sx-field"><label for="sheetLinkIn">Or paste your sync link (it fills both boxes)</label><input type="text" id="sheetLinkIn" placeholder="https://…offer-pilot/#sheet=…&amp;sheetkey=…" autocomplete="off" spellcheck="false" oninput="sheetLinkTyped(this.value)" /></div>
+        <button type="button" class="sx-add" onclick="sheetPasteLink()"><svg><use href="#i-plus"/></svg>📋 Paste sync link</button>
+        <button type="button" class="sx-add" onclick="sheetShareLink()"><svg><use href="#i-plus"/></svg>📲 Link another device (QR code)</button>
+        <div class="sx-hint">On iPhone, the pilot on your Home Screen keeps its own data, separate from Safari. Paste the link here inside the pilot, or scan the QR code from your computer with the Camera and choose the pilot.</div>
         <button type="button" class="sx-add" onclick="sheetTest()"><svg><use href="#i-plus"/></svg>Test connection</button>
         <div class="sx-hint help">Easiest: open the phone link from the sheet (✈️ Offer Pilot ▸ 3. Phone link) once on each device and both boxes fill in. Flights: the sheet calls AeroDataBox every hour and every pilot reads them from the sheet. Shift log: each shift goes to a tab for its month (“2026-10 October”), with a Summary tab of the months. Both stay only on this phone and in your own Google Drive.</div>
       </div>
@@ -8910,7 +8919,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.89.0';
+    const APP_VERSION = '1.90.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9643,6 +9652,50 @@ ${sub}${body}
       const i = shFlInfo, q = loadSheetQ().length, sent = parseFloat(lsGet('sheetSentAt')), err = lsGet('sheetErr');
       n.textContent = [shFlErr ? '⚠️ Flights: ' + shFlErr : i ? `✈️ Flights from the sheet · updated ${i.at ? fmtDT(i.at) : '—'} · sheet used ${i.calls} of ${i.cap} calls this month${i.err ? ' · ⚠️ ' + i.err : ''}` : '✈️ Flights: not loaded yet',
         !sheetKey() ? '📗 Shift log off: no private key (flights-only link)' : `📗 Shift log ${lsGet('sheetAuto') === '0' ? 'paused' : 'on'}${sent ? ' · last sent ' + fmtDT(sent) : ''}${q ? ` · ${q} waiting to send` : ''}${err && q ? ' · ⚠️ ' + err : ''}`].join('\n');
+    }
+    // ---- 📲 The sync link: the site link with your sheet address and private key in it (after the #, never sent to any server) ----
+    const sheetLinkFor = () => sheetOn() && sheetKey() ? `${SITE_URL}#sheet=${encodeURIComponent(sheetUrl())}&sheetkey=${sheetKey()}` : '';
+    function sheetLinkParse(t) {
+      const m = String(t || '').match(/#(.*)$/); if (!m) return null;
+      const hp = new URLSearchParams(m[1]), u = (hp.get('sheet') || '').trim(), k = (hp.get('sheetkey') || '').trim();
+      return SHEET_RE.test(u) ? { u, k: /^[\w-]{16,}$/.test(k) ? k : '' } : null;
+    }
+    // Connect this device from a link, then sync straight away (the first sync combines what's here with the sheet)
+    function sheetApplyLink(x, quietToast) {
+      if (!x) return false;
+      lsSet('cfgSheetUrl', x.u); if (x.k) lsSet('cfgSheetKey', x.k);
+      shFlAt = 0; sheetFlights(true);
+      const a = document.getElementById('cfgSheetUrl'), b = document.getElementById('cfgSheetKey');
+      if (a) a.value = x.u; if (b && x.k) b.value = x.k;
+      try { syncSheetNote(); sxSummaries(); } catch (e) {}
+      if (!quietToast) toast(`✓ Google Sheet connected${x.k ? ': syncing now…' : ' (flights only)'}`);
+      if (x.k && !TEST) setTimeout(() => { try { sheetFlush(); syncNow(); } catch (e) {} }, 1500);
+      return true;
+    }
+    function sheetLinkTyped(v) { const x = sheetLinkParse(v); if (x) { sheetApplyLink(x); document.getElementById('sheetLinkIn').value = ''; } }
+    async function sheetPasteLink() {
+      try { const t = await navigator.clipboard.readText(); if (!sheetApplyLink(sheetLinkParse(t))) toast('That isn’t an Offer Pilot sync link. Copy the whole link (…#sheet=…&sheetkey=…).'); }
+      catch (e) { toast('Tap the box above, then Paste the link there.'); const i = document.getElementById('sheetLinkIn'); if (i) i.focus(); }
+    }
+    // Show the link as a QR code (scan it with another phone), with Copy and Share
+    let qrLib = null;
+    function loadQR() {
+      if (window.QRCode) return Promise.resolve();
+      if (qrLib) return qrLib;
+      qrLib = new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; sc.onload = res; sc.onerror = () => { qrLib = null; rej(); }; document.head.appendChild(sc); });
+      return qrLib;
+    }
+    async function sheetShareLink() {
+      const link = sheetLinkFor();
+      if (!link) { toast('Connect this device first (paste the address and private key, or your sync link).'); return; }
+      acctSheet('📲 Link another device', `<div class="ac-note">Scan with the other phone's camera, or send it the link. Keep it private: it lets a device read and change your pilot data.</div>` +
+        `<div id="qrBox" class="qr-box">Loading QR code…</div><div class="qr-acts"><button type="button" class="rs-btn" id="qrCopy">📋 Copy link</button>${navigator.share ? '<button type="button" class="rs-btn" id="qrShare">📤 Share</button>' : ''}</div>` +
+        `<div class="ac-note">iPhone Home Screen pilot: copy the link, open the pilot, then Settings ▸ Google Sheet ▸ 📋 Paste sync link.</div>`, () => true, 'qr-sheet');
+      const sv = document.getElementById('acctSave'); if (sv) sv.textContent = 'Done';
+      document.getElementById('qrCopy').onclick = async () => { try { await navigator.clipboard.writeText(link); toast('✓ Sync link copied'); } catch (e) { prompt('Copy this link', link); } };
+      const sh = document.getElementById('qrShare'); if (sh) sh.onclick = () => navigator.share({ title: 'Offer Pilot sync link', url: link }).catch(() => {});
+      try { await loadQR(); const box = document.getElementById('qrBox'); box.innerHTML = ''; new QRCode(box, { text: link, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M }); }
+      catch (e) { const box = document.getElementById('qrBox'); if (box) box.textContent = 'QR code couldn’t load (offline?). Use Copy link instead.'; }
     }
     setInterval(() => { if (!document.hidden && loadSheetQ().length) sheetFlush(); }, 5 * 60000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => { try { sheetFlush(); } catch (e) {} }, 3000); });
@@ -10844,10 +10897,9 @@ ${sub}${body}
         if (/^[\w-]{20,}$/.test(fk)) { lsSet('cfgFlightKey', fk); flClearAll(); saved.push('✈️ Flight'); loadFlights('MEL', true); }
         if (/^[\w-]{20,}$/.test(tk)) { lsSet('cfgTrainKey', tk); train.at = 0; saved.push('🚆 Train'); loadTrainAlerts(true); }
         const su = (hp.get('sheet') || '').trim(), sk = (hp.get('sheetkey') || '').trim();
-        if (SHEET_RE.test(su)) { lsSet('cfgSheetUrl', su); shFlAt = 0; saved.push('📗 Google Sheet'); sheetFlights(true); }
-        if (SHEET_RE.test(su) && /^[\w-]{16,}$/.test(sk)) { lsSet('cfgSheetKey', sk); setTimeout(() => sheetFlush(), 4000); }
+        if (SHEET_RE.test(su)) { saved.push('📗 Google Sheet'); setTimeout(() => sheetApplyLink({ u: su, k: /^[\w-]{16,}$/.test(sk) ? sk : '' }, true), 2500); }
         if (fk || tk || su) history.replaceState(null, '', location.pathname + location.search);
-        if (saved.length) setTimeout(() => toast(su && saved.length === 1 ? `✓ Google Sheet connected${sk ? ': flights and shift log' : ': flights'}` : `✓ ${saved.join(' and ')} saved in Settings`), 1500);
+        if (saved.length) setTimeout(() => toast(su && saved.length === 1 ? `✓ Google Sheet connected${sk ? ': syncing your data now…' : ': flights'}` : `✓ ${saved.join(' and ')} saved in Settings`), 1500);
       } catch (e) {}
       // Keep live-surge ages and predictions current while driving
       setInterval(() => {
