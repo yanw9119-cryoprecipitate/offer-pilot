@@ -763,6 +763,28 @@
     .av-bar { display: flex; align-items: center; gap: 10px; width: 100%; margin: 8px 0; padding: 9px 12px; border-radius: 14px; border: 1.5px dashed #38bdf8; background: color-mix(in srgb, #0284c7 6%, var(--card)); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
     .av-bar.set { border-style: solid; } .av-bar > span { font-size: 1.3rem; } .av-bar > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .av-bar small { color: var(--muted); font-size: .72rem; line-height: 1.3; } .av-bar em { font-style: normal; color: var(--muted); font-size: 1.2rem; font-weight: 800; }
+    /* week view */
+    .avw { margin: 6px 0 8px; border: 1px solid var(--card-border); border-radius: 14px; overflow: hidden; background: var(--card); }
+    .avw-head { display: grid; grid-template-columns: 34px repeat(7, 1fr); font-size: .7rem; font-weight: 800; color: var(--muted); text-align: center; padding: 6px 0 4px; border-bottom: 1px solid var(--card-border); }
+    .avw-head .today { color: var(--accent); }
+    .avw-scroll { max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; }
+    .avw-body { position: relative; display: grid; grid-template-columns: 34px repeat(7, 1fr);
+      background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--hh) - 1px), var(--card-border) calc(var(--hh) - 1px), var(--card-border) var(--hh)); }
+    .avw-hours { position: relative; } .avw-hours span { position: absolute; right: 4px; transform: translateY(-50%); font-size: .58rem; color: var(--muted); white-space: nowrap; }
+    .avw-col { position: relative; border-left: 1px solid var(--card-border); cursor: pointer; } .avw-col.today { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+    .avw-b { position: absolute; left: 2px; right: 2px; border-radius: 6px; background: color-mix(in srgb, #0284c7 72%, var(--card)); color: #fff; overflow: hidden; z-index: 1; }
+    .avw-b b { display: block; padding: 2px 3px; font-size: .56rem; line-height: 1.15; font-weight: 800; }
+    .avw-b.carry { opacity: .75; border-top-left-radius: 0; border-top-right-radius: 0; } .avw-b.sel { box-shadow: 0 0 0 2px var(--text); }
+    .avw-r { position: absolute; left: 30%; right: 1px; border: 2px solid var(--accent); border-radius: 5px; z-index: 2; pointer-events: none; font-size: .55rem; text-align: right; padding-right: 1px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .avw-now { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 3; pointer-events: none; }
+    .avw-tip { font-size: .74rem; color: var(--muted); text-align: center; margin: 2px 0 8px; }
+    .avw-ed { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; padding: 6px 8px; margin-bottom: 8px; border-radius: 12px; border: 1.5px solid #38bdf8; background: var(--card-2); }
+    .avw-ed .av-t { border: 1px solid var(--card-border); border-radius: 10px; padding: 6px 10px; background: var(--card); } .avw-ed .rs-btn { margin-left: auto; padding: 5px 10px; font-size: .74rem; }
+    /* mini week on the roster card */
+    .avw.mini { margin: 6px 0 0; border-radius: 8px; } .avw.mini .avw-head { grid-template-columns: repeat(7, 1fr); padding: 2px 0; font-size: .58rem; }
+    .avw.mini .avw-body { grid-template-columns: repeat(7, 1fr); background-image: none; } .avw.mini .avw-scroll { max-height: none; overflow: hidden; }
+    .avw.mini .avw-col { cursor: inherit; } .avw.mini .avw-b { border-radius: 2px; left: 1px; right: 1px; } .avw.mini .avw-r { left: 40%; border-width: 1px; border-radius: 2px; }
     .av-rows { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
     .av-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 12px; background: var(--card-2); }
     .av-row > b { width: 40px; flex: none; font-size: .86rem; } .av-row > .rs-btn { padding: 5px 11px; flex: none; }
@@ -6052,7 +6074,7 @@ ${sub}${body}
       }
       box.innerHTML = `<div class="demand-title"><svg class="h-ic"><use href="#h-roster"/></svg>My roster</div>` +
         `<div class="demand-sub">This week: <b>${thisWeek.length} shift${thisWeek.length === 1 ? '' : 's'}</b>${hrs ? ` · <b>${Math.round(hrs * 10) / 10} h</b>` : ''}<span class="help">. Tap a day for Pilot's suggested shifts to take or adjust, or a shift below to change it.</span></div>` +
-        `<button type="button" class="av-bar${availSet() ? ' set' : ''}" onclick="openAvail()"><span>🙋</span><div><b>When I can work</b><small>${availSet() ? esc(availSummary()) : 'Not set · tap to add your free times so Pilot can fit shifts to them'}</small></div><em>›</em></button>` +
+        `<button type="button" class="av-bar${availSet() ? ' set' : ''}" onclick="openAvail()"><span>🙋</span><div><b>When I can work</b><small>${availSet() ? esc(availSummary()) : 'Not set · tap to add your free times so Pilot can fit shifts to them'}</small>${availSet() ? avWeekHTML(loadAvail(), { mini: true }) : ''}</div><em>›</em></button>` +
         rosterCalHTML() + weekPlanHTML() +
         `<div class="rs-sub">Upcoming shifts</div><div class="rs-list">${up.length ? up.map(x => row(x)).join('') : '<div class="autoread-hint">No shifts planned yet.</div>'}</div>` +
         `<div class="rs-acts"><button type="button" class="rs-btn${rosterShowSug ? ' on' : ''}" onclick="rosterToggleSug()"><svg class="h-ic"><use href="#h-spark"/></svg>${rosterShowSug ? 'Hide suggestions' : 'Suggest shifts'}</button>` +
@@ -8992,7 +9014,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.95.0';
+    const APP_VERSION = '1.96.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9468,36 +9490,80 @@ ${sub}${body}
     // ---- 🙋 Availability pop-up: a row per day, each time range set with the same scroll wheel ----
     let avDraft = null;
     function openAvail() {
-      avDraft = JSON.parse(JSON.stringify(loadAvail()));
+      avDraft = JSON.parse(JSON.stringify(loadAvail())); avSel = null;
       let sh = document.getElementById('avSheet');
       if (!sh) { sh = document.createElement('div'); sh.id = 'avSheet'; sh.className = 'sheet'; sh.onclick = e => { if (e.target === sh) closeAvail(); }; document.body.appendChild(sh); }
       sh.style.display = 'flex'; sh.style.zIndex = 2150; renderAvail();
     }
     function closeAvail() { const sh = document.getElementById('avSheet'); if (sh) sh.style.display = 'none'; avDraft = null; }
-    function renderAvail() {
-      const sh = document.getElementById('avSheet'); if (!sh || !avDraft) return;
-      const rows = DAYS.map((n, d) => {
-        const r = avDraft[d] || [];
-        return `<div class="av-row"><b>${n}</b><div class="av-wins">${r.length ? r.map(([s, e], i) =>
-          `<span class="av-win"><button type="button" class="av-t" onclick="avPick(${d}, ${i}, 0, this)">${fmtMin(s)}</button>–<button type="button" class="av-t" onclick="avPick(${d}, ${i}, 1, this)">${fmtMin(e)}</button>` +
-          `<button type="button" class="av-del" onclick="avDel(${d}, ${i})" aria-label="Remove this time">🚮</button></span>`).join('') : '<small>Not available</small>'}</div>` +
-          `<button type="button" class="rs-btn" onclick="avAdd(${d})" aria-label="Add a time on ${n}">＋</button></div>`;
+    // ---- 🙋 Week view (like Google Calendar): days across, hours down. Your free times are blue blocks;
+    // this pay week's rostered shifts show as outlined bars. Tap an empty slot to add 4 hours there, tap a block to change it.
+    const AVW_H = 22;                                       // pixels per hour
+    let avSel = null;                                       // { d, i } the block being changed
+    function avBlocks(a, d) {                                // pieces drawn in day d's column: [startMin, endMin, ownerDay, index, continues]
+      const out = [];
+      (a[d] || []).forEach(([s, e], i) => { out.push([s, e <= s ? 1440 : e, d, i, e <= s]); });
+      const p = (d + 6) % 7;                                 // a window from the day before that runs past midnight
+      (a[p] || []).forEach(([s, e], i) => { if (e <= s && e > 0) out.push([0, e, p, i, false, true]); });
+      return out;
+    }
+    function avWeekHTML(a, opts = {}) {
+      const H = opts.mini ? 3 : AVW_H, now = new Date(), w = rsWeek(0), r = loadRoster().filter(x => x.e > w.s && x.s < w.e + 4 * 3600000);
+      const todayIdx = dayIdx(now), nowMin = now.getHours() * 60 + now.getMinutes();
+      const cols = DAYS.map((n, d) => {
+        const blocks = avBlocks(a, d).map(([s, e, od, i, cont, carry]) => {
+          const sel = avSel && avSel.d === od && avSel.i === i;
+          return `<div class="avw-b${sel ? ' sel' : ''}${carry ? ' carry' : ''}" style="top:${s / 60 * H}px;height:${Math.max(opts.mini ? 2 : 14, (e - s) / 60 * H)}px"` +
+            (opts.mini ? '' : ` onclick="event.stopPropagation(); avSelect(${od}, ${i})"`) + `>${opts.mini || (e - s) < 90 ? '' : `<b>${fmtMinRange(...(a[od][i]))}</b>`}</div>`;
+        }).join('');
+        // rostered shifts this pay week, on their weekday
+        const shifts = r.filter(x => dayIdx(new Date(x.s)) === d).map(x => { const st = new Date(x.s), sm = st.getHours() * 60 + st.getMinutes(), em = Math.min(1440, sm + (x.e - x.s) / 60000);
+          return `<div class="avw-r" style="top:${sm / 60 * H}px;height:${Math.max(2, (em - sm) / 60 * H)}px" title="Rostered ${fmtTimeRange(x.s, x.e)}">${opts.mini ? '' : '🚗'}</div>`; }).join('');
+        const nowLine = d === todayIdx ? `<i class="avw-now" style="top:${nowMin / 60 * H}px"></i>` : '';
+        return `<div class="avw-col${d === todayIdx ? ' today' : ''}" style="height:${24 * H}px"${opts.mini ? '' : ` onclick="avTapSlot(${d}, event, this)"`}>${blocks}${shifts}${nowLine}</div>`;
       }).join('');
+      const head = `<div class="avw-head">${opts.mini ? '' : '<span></span>'}${DAYS.map((n, d) => `<span class="${d === todayIdx ? 'today' : ''}">${opts.mini ? n.slice(0, 1) : n}</span>`).join('')}</div>`;
+      const hours = opts.mini ? '' : `<div class="avw-hours" style="height:${24 * H}px">${Array.from({ length: 24 }, (_, h) => `<span style="top:${h * H}px">${h ? fmtHour(h).replace(':00', '') : ''}</span>`).join('')}</div>`;
+      return `<div class="avw${opts.mini ? ' mini' : ''}">${head}<div class="avw-scroll"${opts.mini ? '' : ' id="avwScroll"'}><div class="avw-body" style="--hh:${H}px">${hours}${cols}</div></div></div>`;
+    }
+    function avTapSlot(d, ev, col) {
+      const y = ev.clientY - col.getBoundingClientRect().top, h = Math.max(0, Math.min(23, Math.floor(y / AVW_H)));
+      const s = h * 60, r = avDraft[d] = avDraft[d] || [];
+      r.push([s, (s + 240) % 1440]); avSel = { d, i: r.length - 1 }; renderAvail(true);
+    }
+    function avSelect(d, i) { avSel = { d, i }; renderAvail(true); }
+    function avEditorHTML() {
+      if (!avSel || !avDraft[avSel.d] || !avDraft[avSel.d][avSel.i]) return `<div class="avw-tip">Tap an empty time to add a block · tap a block to change it</div>`;
+      const { d, i } = avSel, [s, e] = avDraft[d][i];
+      return `<div class="avw-ed"><b>${DAYS[d]}</b><button type="button" class="av-t" onclick="avPick(${d}, ${i}, 0, this)">${fmtMin(s)}</button>–<button type="button" class="av-t" onclick="avPick(${d}, ${i}, 1, this)">${fmtMin(e)}</button>` +
+        `<button type="button" class="rs-btn" onclick="avCopyTo(${d}, ${i})" title="Copy to the other days">All days</button><button type="button" class="av-del" onclick="avDel(${d}, ${i})" aria-label="Remove this time">🚮</button></div>`;
+    }
+    function avCopyTo(d, i) {
+      const w = avDraft[d][i];
+      for (let k = 0; k < 7; k++) { if (k === d) continue; const r = avDraft[k] = avDraft[k] || []; if (!r.some(x => x[0] === w[0] && x[1] === w[1])) r.push([...w]); }
+      renderAvail(true); toast(`${fmtMinRange(...w)} copied to every day`);
+    }
+    function renderAvail(keepScroll) {
+      const sh = document.getElementById('avSheet'); if (!sh || !avDraft) return;
+      const sc = document.getElementById('avwScroll'), top = sc ? sc.scrollTop : null;
       sh.innerHTML = `<div class="sheet-content av-sheet"><div class="sheet-head"><h3 style="color: var(--accent);">🙋 When I can work</h3><button class="x-btn" onclick="closeAvail()" aria-label="Close">✕</button></div>` +
-        `<div class="ac-note help">Set the times you're free each week. Pilot still shows its ✨ Recommended shifts, and adds the best shift inside your times, marked 🙋 Your time. An end before the start runs past midnight (6 PM–2 AM).</div>` +
-        `<div class="av-rows">${rows}</div>` +
-        `<div class="av-acts"><button type="button" class="rs-btn" onclick="avCopyWeekdays()">Copy Mon to Tue–Fri</button><button type="button" class="rs-btn" onclick="avDraft = {}; renderAvail()">🚮 Clear all</button></div>` +
+        `<div class="ac-note help">Your free times each week (blue). 🚗 outlines are this week's rostered shifts. Pilot still shows its ✨ Recommended shifts and adds the best shift inside your times, marked 🙋 Your time. A block can run past midnight.</div>` +
+        avWeekHTML(avDraft) + avEditorHTML() +
+        `<div class="av-acts"><button type="button" class="rs-btn" onclick="avCopyWeekdays()">Copy Mon to Tue–Fri</button><button type="button" class="rs-btn" onclick="avDraft = {}; avSel = null; renderAvail(true)">🚮 Clear all</button></div>` +
         `<button class="pip-btn" onclick="saveAvail()">Save</button></div>`;
+      const n = document.getElementById('avwScroll');
+      if (n) n.scrollTop = keepScroll && top !== null ? top : 6 * AVW_H;      // opens at 6am
     }
     function avPick(d, i, end, btn) {
-      openWheelFor({ title: `${DAYS[d]} · ${end ? '🏁 Until' : '🕘 From'}`, get: () => avDraft[d][i][end], set: v => { avDraft[d][i][end] = v; btn.textContent = fmtMin(v); }, done: renderAvail }, btn);
+      avSel = { d, i };
+      openWheelFor({ title: `${DAYS[d]} · ${end ? '🏁 Until' : '🕘 From'}`, get: () => avDraft[d][i][end], set: v => { avDraft[d][i][end] = v; btn.textContent = fmtMin(v); }, done: () => renderAvail(true) }, btn);
     }
     function avAdd(d) {
       const r = avDraft[d] = avDraft[d] || [], last = r[r.length - 1];
       r.push(last ? [last[1] % 1440, (last[1] + 240) % 1440] : (avDraft[(d + 6) % 7] || [])[0] ? [...avDraft[(d + 6) % 7][0]] : [17 * 60, 23 * 60]);
       renderAvail();
     }
-    function avDel(d, i) { avDraft[d].splice(i, 1); renderAvail(); }
+    function avDel(d, i) { avDraft[d].splice(i, 1); avSel = null; renderAvail(true); }
     function avCopyWeekdays() { for (let d = 1; d <= 4; d++) avDraft[d] = JSON.parse(JSON.stringify(avDraft[0] || [])); renderAvail(); toast('Monday copied to Tue–Fri'); }
     function saveAvail() {
       const a = {}; Object.keys(avDraft || {}).forEach(d => { const r = (avDraft[d] || []).filter(([s, e]) => s !== e); if (r.length) a[d] = r.sort((x, y) => x[0] - y[0]); });
