@@ -1381,6 +1381,11 @@
     .sx-card { background: var(--sx-card); border-radius: 18px; padding: 6px 0; margin-bottom: 14px; }
     .sx-card.sx-pad { padding: 18px 18px 14px; }
     a.sx-row { text-decoration: none; }
+    .dev-list { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; } .dev-sum { font-size: .82rem; margin-bottom: 2px; }
+    .dev-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--sx-bg, #f2f2f7); }
+    .dev-row > div { display: flex; flex-direction: column; min-width: 0; } .dev-row b { font-size: .9rem; } .dev-row i { font-weight: 500; font-style: normal; color: #8e8e93; }
+    .dev-row small { font-size: .72rem; color: #8e8e93; } .dev-dot { width: 10px; height: 10px; border-radius: 50%; background: #c7c7cc; flex: none; }
+    .dev-dot.on { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.2); } .dev-dot.day { background: #f59e0b; }
     .qr-box { display: flex; justify-content: center; align-items: center; min-height: 236px; margin: 8px 0; padding: 8px; background: #fff; border-radius: 14px; color: #333; font-size: .8rem; }
     .qr-acts { display: flex; gap: 8px; justify-content: center; margin-bottom: 6px; } .qr-sheet .veh-grid { display: block; }
     .sx-row { width: 100%; display: flex; align-items: center; gap: 14px; background: none; border: none; color: var(--sx-ink);
@@ -2439,6 +2444,13 @@
         <div class="sx-hint">On iPhone, the pilot on your Home Screen keeps its own data, separate from Safari. Paste the link here inside the pilot, or scan the QR code from your computer with the Camera and choose the pilot.</div>
         <button type="button" class="sx-add" onclick="sheetTest()"><svg><use href="#i-plus"/></svg>Test connection</button>
         <div class="sx-hint help">Easiest: open the phone link from the sheet (✈️ Offer Pilot ▸ 3. Phone link) once on each device and both boxes fill in. Flights: the sheet calls AeroDataBox every hour and every pilot reads them from the sheet. Shift log: each shift goes to a tab for its month (“2026-10 October”), with a Summary tab of the months. Both stay only on this phone and in your own Google Drive.</div>
+      </div>
+      <div class="sx-card sx-pad">
+        <h3 class="sx-ch">📱 Linked devices</h3>
+        <div class="sx-field"><label for="devNameIn">This device's name</label><input type="text" id="devNameIn" maxlength="30" placeholder="iPhone" onchange="setDevName(this.value)" /></div>
+        <div id="devListBox" class="dev-list"></div>
+        <button type="button" class="sx-add" onclick="syncNow()"><svg><use href="#i-plus"/></svg>🔄 Sync now and refresh this list</button>
+        <div class="sx-hint">🟢 used in the last 15 minutes · 🟠 today. Also in the sheet's Devices tab.<span class="help"> Every pilot that syncs or reads flights from your sheet shows here. A device you don't recognise with "Sync" access has your private key: make a new key in the sheet (Apps Script ▸ Project settings ▸ Script properties ▸ delete TOKEN, then ✈️ Offer Pilot ▸ 3. Phone link) and re-link your own devices.</span></div>
       </div>
       <div class="sx-card sx-pad">
         <h3 class="sx-ch">⏱ Shift log</h3>
@@ -3964,7 +3976,7 @@
       { const n = [chaseCfg.tomtom, lsGet('cfgTrainKey'), lsGet('cfgFlightKey')].filter(Boolean).length;
         set('sxsDev', `${n} of 3 keys added · ${devPass() ? '🔒 passcode on' : 'set a passcode'}`); }
       { const ac = acctCfg(); set('sxsAcct', `${ac.biz}% business use${ac.remind ? ' · reminder Mon ' + ac.remind : ''}`); }
-      set('sxsSheet', !sheetOn() ? 'Not connected · shared flights and shift log' : `Connected · flights${sheetKey() ? ' + shift log' + (loadSheetQ().length ? ` · ${loadSheetQ().length} to send` : '') : ' only'}`);
+      set('sxsSheet', !sheetOn() ? 'Not connected · shared flights and shift log' : `Connected · flights${sheetKey() ? ' + sync' + (loadSheetQ().length ? ` · ${loadSheetQ().length} to send` : '') : ' only'}${(() => { try { const d = JSON.parse(localStorage.getItem('devList')); return d && d.list ? ' · ' + d.list.length + ' device' + (d.list.length === 1 ? '' : 's') : ''; } catch (e) { return ''; } })()}`);
       set('sxsStmt', `${loadCars().length} car${loadCars().length === 1 ? '' : 's'} · download for tax and accounting`);
       set('sxsTime', (timePick || (is24() ? '24' : '12')) === '24' ? '24-hour · 15:00–16:00' : '12-hour · 3–4PM, 10AM–2PM');
       set('sxsVersion', `v${APP_VERSION}${newerVersion ? ' · update ready, tap to load' : ' · tap to check'}`);
@@ -8919,7 +8931,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.90.0';
+    const APP_VERSION = '1.91.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9555,7 +9567,7 @@ ${sub}${body}
       shFlBusy = true; flLoading.MEL = true;
       try {
         const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 25000);
-        const r = await fetch(sheetUrl() + '?flights=1', { signal: ctl.signal }); clearTimeout(tm);
+        const r = await fetch(sheetUrl() + `?flights=1&d=${encodeURIComponent(devId())}&n=${encodeURIComponent(devLabel())}&ver=${APP_VERSION}`, { signal: ctl.signal }); clearTimeout(tm);
         const j = await r.json();
         if (!j || !j.ok || !j.blocks) throw new Error('The Google Sheet didn’t send flights. Check the web app is deployed for “Anyone”.');
         const mk = a => ({ n: a[0], al: a[1], ap: a[2], t: a[3], rt: a[4] || null, term: a[5], st: a[6], intl: !!a[7] }), B = {};
@@ -9626,13 +9638,26 @@ ${sub}${body}
         n.textContent = '✓ Sheet found' + w + '. Tap Save.';
       } catch (e) { n.textContent = '⚠️ No answer from that address. In the script: Deploy ▸ Manage deployments, check “Who has access: Anyone”.'; }
     }
+    function setDevName(v) { v = String(v || '').trim().slice(0, 30); try { if (v) localStorage.setItem('devName', v); else localStorage.removeItem('devName'); } catch (e) {} toast(`✓ This device is “${devLabel()}”`); setTimeout(() => { try { syncNow(true); } catch (e) {} }, 500); }
+    function renderDevices() {
+      const box = document.getElementById('devListBox'); if (!box) return;
+      const inp = document.getElementById('devNameIn'); if (inp && document.activeElement !== inp) inp.value = devLabel();
+      let d = null; try { d = JSON.parse(localStorage.getItem('devList')); } catch (e) {}
+      if (!d || !d.list || !d.list.length) { box.innerHTML = '<div class="autoread-hint">Tap Sync to see the devices linked to your sheet.</div>'; return; }
+      const now = Date.now(), ago = t => { const m = Math.round((now - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+      const act = d.list.filter(x => now - x.last < 15 * 60000).length, sync = d.list.filter(x => x.acc === 'Sync').length;
+      box.innerHTML = `<div class="dev-sum"><b>${act}</b> active now · <b>${sync}</b> linked for sync · ${d.list.length} in total</div>` + d.list.map(x =>
+        `<div class="dev-row"><span class="dev-dot ${now - x.last < 15 * 60000 ? 'on' : now - x.last < 86400000 ? 'day' : ''}"></span><div><b>${esc(x.n)}${x.id === devId() ? ' <i>(this device)</i>' : ''}</b>` +
+        `<small>${x.acc === 'Sync' ? '🔄 Sync' : '✈️ Flights only'} · seen ${ago(x.last)}${x.lastSync ? ' · synced ' + ago(x.lastSync) : ''}${x.ver ? ' · v' + esc(x.ver) : ''}</small></div></div>`).join('') +
+        `<div class="sx-hint">List from ${ago(d.at)}.</div>`;
+    }
     function sheetPage() {
       document.getElementById('cfgSheetUrl').value = sheetUrl();
       document.getElementById('cfgSheetKey').value = sheetKey();
       document.getElementById('sheetAuto').checked = lsGet('sheetAuto') !== '0';
       document.getElementById('routeKeep').value = String(routeKeepDays());
       document.getElementById('routeOn').checked = lsGet('routeOff') !== '1';
-      syncSheetNote();
+      syncSheetNote(); renderDevices();
     }
     function sheetSave() {
       const u = document.getElementById('cfgSheetUrl').value.trim(), k = document.getElementById('cfgSheetKey').value.trim();
@@ -9706,6 +9731,9 @@ ${sub}${body}
     // Tap Sync (bottom bar). Your changes go to the Google Sheet and the other device's changes come back.
     // The first sync on a device combines its lists with what's already in the sheet; after that the newest change wins.
     let syncBusy = false;
+    // This device: a random id that stays on it, and a name you can change (Settings ▸ Google Sheet)
+    function devId() { let i = ''; try { i = localStorage.getItem('devId'); if (!i) { i = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem('devId', i); } } catch (e) {} return i; }
+    const devLabel = () => { try { return localStorage.getItem('devName') || devName(); } catch (e) { return devName(); } };
     const devName = () => /iPhone/.test(navigator.userAgent) ? 'iPhone' : /iPad/.test(navigator.userAgent) ? 'iPad' : /Android/.test(navigator.userAgent) ? 'Android' : 'Computer';
     function syncPending() {
       if (TEST || !sheetOn() || !sheetKey()) return 0;
@@ -9751,7 +9779,7 @@ ${sub}${body}
       try {
         if (first) {
           // this device's first sync: take what the sheet has, combining lists with what's here
-          const j = await sheetPost({ kind: 'sync', dev: devName(), have: {}, put: {} }), srv = j.get || {};
+          const j = await sheetPost({ kind: 'sync', dev: devLabel(), devId: devId(), ver: APP_VERSION, have: {}, put: {} }), srv = j.get || {};
           SYNC_KEYS.forEach(k => {
             const lv = local(k), sv = srv[k];
             if (sv && sv.v !== '' && lv != null && SYNC_LISTS.has(k)) { const m = mergeLists(lv, sv.v); syncApply(k, m); syncT[k] = m === sv.v ? sv.t : Date.now(); got++; }
@@ -9765,7 +9793,8 @@ ${sub}${body}
           if ((syncT[k] || 0) > lastAt && (first || syncT[k] < started)) { put[k] = { t: syncT[k], v: local(k) ?? '' }; }
         });
         // the sheet keeps the newest of each item and sends back anything newer than this device has
-        const j = await sheetPost({ kind: 'sync', dev: devName(), have, put });
+        const j = await sheetPost({ kind: 'sync', dev: devLabel(), devId: devId(), ver: APP_VERSION, have, put });
+        if (Array.isArray(j.devices)) { try { localStorage.setItem('devList', JSON.stringify({ at: Date.now(), list: j.devices })); renderDevices(); } catch (e) {} }
         sent = Object.keys(put).length;
         Object.entries(j.get || {}).forEach(([k, x]) => { if (!SYNC_KEYS.has(k) || (syncT[k] || 0) >= x.t) return; syncApply(k, x.v); syncT[k] = x.t; got++; });
         localStorage.setItem('syncT', JSON.stringify(syncT));

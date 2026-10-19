@@ -102,7 +102,8 @@ function phoneLink() {
 //  2. The next block once more when it's under 12 hours away (schedule changes, delays).
 //  3. The block you're in, about every 3 hours from 5am to 1am, while the monthly allowance allows.
 function tick(manual) {
-  try { writeShiftSheets_(syncRead_(syncSheet_())); } catch (e) {}   // keeps "Now" and "Upcoming" current every hour
+  try { writeShiftSheets_(syncRead_(syncSheet_())); } catch (e) {}
+  try { writeDevices_(); } catch (e) {}   // keeps "Now" and "Upcoming" current every hour
   const key = P.getProperty('AERO_KEY');
   if (!key) return 'No flight key yet: ✈️ Offer Pilot ▸ 1. Set flight key.';
   const lock = LockService.getScriptLock();
@@ -229,6 +230,7 @@ function budgetOk_() {
 function doGet(e) {
   const p = (e && e.parameter) || {};
   if (p.ping) return json_({ ok: true, v: 1 });
+  if (p.d) seen_(p.d, { n: p.n, ver: p.ver, acc: 'Flights' });
   const sh = SpreadsheetApp.getActive().getSheetByName('Flights'), st = blockState_(), blocks = {};
   Object.keys(st).forEach(s => { blocks[s] = { at: st[s], arr: [], dep: [] }; });
   const n = sh ? sh.getLastRow() - 1 : 0;
@@ -342,6 +344,7 @@ function syncRead_(sh) {
   return m;
 }
 function doSync_(b) {
+  if (b.devId) seen_(b.devId, { n: b.dev, ver: b.ver, acc: 'Sync', sync: true });
   const sh = syncSheet_(), m = syncRead_(sh), put = b.put || {}, have = b.have || {};
   Object.keys(put).forEach(k => {
     const p = put[k]; if (!p || !(+p.t > 0)) return;
@@ -357,7 +360,8 @@ function doSync_(b) {
   if (['roster', 'shiftHistory', 'shift', 'cars'].some(k => put[k])) { try { writeShiftSheets_(m); } catch (e) { P.setProperty('LAST_ERR', 'Shift sheet: ' + e.message); } }
   const get = {};
   Object.keys(m).forEach(k => { if (m[k].t > (+have[k] || 0)) get[k] = { t: m[k].t, v: m[k].v }; });
-  return { ok: true, get, at: Date.now() };
+  try { writeDevices_(); } catch (e) {}
+  return { ok: true, get, at: Date.now(), devices: devList_() };
 }
 
 // ---------------------------------------------------------------- "Offer Pilot Shifts" spreadsheet
@@ -433,4 +437,35 @@ function writeShiftSheets_(m) {
   // the placeholder first tab from when the file was made
   book.getSheets().forEach(t => { if (!['Upcoming', 'History'].includes(t.getName()) && book.getSheets().length > 2 && t.getLastRow() <= 3 && /^(Sheet1|Untitled|Offer Pilot Shifts)$/.test(t.getName())) book.deleteSheet(t); });
   if (book.getSheets()[0].getName() !== 'Upcoming') { book.setActiveSheet(su); book.moveActiveSheet(1); }
+}
+
+// ---------------------------------------------------------------- devices
+// Every pilot that syncs (or reads flights) says who it is: a random id kept on that device, its name, the pilot version.
+// Kept in the script's settings and shown in the "Devices" tab. "Active" = seen in the last 15 minutes.
+function devs_() { try { return JSON.parse(P.getProperty('DEVICES')) || {}; } catch (e) { return {}; } }
+function seen_(id, x) {
+  id = String(id).replace(/[^\w-]/g, '').slice(0, 40); if (!id) return;
+  const d = devs_(), now = Date.now(), o = d[id] || { first: now, syncs: 0 };
+  o.n = String(x.n || o.n || 'Device').slice(0, 40); o.ver = String(x.ver || o.ver || '').slice(0, 12); o.last = now;
+  if (x.acc === 'Sync' || o.acc !== 'Sync') o.acc = x.acc;
+  if (x.sync) { o.lastSync = now; o.syncs = (o.syncs || 0) + 1; }
+  d[id] = o;
+  const ids = Object.keys(d).sort((a, b) => d[b].last - d[a].last).slice(0, 40), keep = {};   // remember the 40 most recent
+  ids.forEach(k => { keep[k] = d[k]; });
+  P.setProperty('DEVICES', JSON.stringify(keep));
+}
+function devList_() {
+  const d = devs_(), now = Date.now();
+  return Object.keys(d).map(id => Object.assign({ id, active: now - d[id].last < 15 * 60000 }, d[id])).sort((a, b) => b.last - a.last);
+}
+function writeDevices_() {
+  const ss = SpreadsheetApp.getActive(), head = ['Device', 'Access', 'Pilot version', 'Status', 'Last seen', 'Last sync', 'Syncs', 'First seen', 'Device ID'];
+  let sh = ss.getSheetByName('Devices');
+  if (!sh) { sh = ss.insertSheet('Devices'); sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff'); sh.setFrozenRows(1); }
+  const now = Date.now(), rows = devList_().map(x => [x.n, x.acc === 'Sync' ? 'Sync (private key)' : 'Flights only', x.ver || '',
+    x.active ? '🟢 Active now' : now - x.last < 86400000 ? 'Today' : now - x.last < 7 * 86400000 ? 'This week' : 'Not lately',
+    new Date(x.last), x.lastSync ? new Date(x.lastSync) : '', x.syncs || 0, new Date(x.first), x.id]);
+  const n = sh.getMaxRows() - 1; if (n > 0) sh.getRange(2, 1, n, head.length).clearContent();
+  if (rows.length) { sh.getRange(2, 1, rows.length, head.length).setValues(rows); sh.getRange(2, 5, rows.length, 2).setNumberFormat('ddd d mmm h:mm am/pm'); sh.getRange(2, 8, rows.length, 1).setNumberFormat('d mmm yyyy'); }
+  sh.getRange(1, head.length + 2).setValue(`${rows.filter(r => String(r[3]).startsWith('🟢')).length} active now · ${rows.filter(r => r[1].startsWith('Sync')).length} linked for sync · ${rows.length} in total`);
 }
