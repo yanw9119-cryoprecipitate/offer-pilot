@@ -2538,11 +2538,11 @@
     function lsDel(k) { try { localStorage.removeItem(tk(k)); } catch (e) {} syncMark(k); }
     // 🔄 Items kept the same on all your devices through your Google Sheet (tap Sync). Each change is time-stamped;
     // the newest change wins. Lists of records (offers, shifts, roster …) are combined the first time a device syncs.
-    // Not synced: API keys and the sheet link, test runs, caches, map and screen settings, GPS counters, routes, photos.
+    // Not synced: API keys and the sheet link (the developer passcode is, as a salted hash), test runs, caches, map and screen settings, GPS counters, routes, photos.
     const SYNC_KEYS = new Set(['offerLog', 'shiftHistory', 'shift', 'roster', 'avail', 'weekPlanCfg', 'homeZone', 'uberTrends', 'trendChanges',
       'myEvents', 'hiddenEvents', 'fillUps', 'expenses', 'uberStatements', 'acctCfg', 'cars', 'carActive', 'driveLog', 'vehModel', 'vehMaint',
       'vehFuel', 'vehKmh', 'cfgCostKm', 'cfgMinKm', 'cfgMinHr', 'cfgMaxChase', 'cfgAlerts', 'goalKm', 'goalHr', 'shiftGoal', 'shiftGoalMode',
-      'apQueue', 'calZone', 'timeFmt']);
+      'apQueue', 'calZone', 'timeFmt', 'devPass']);                  // devPass is a salted hash of the passcode, never the passcode itself
     const SYNC_LISTS = new Set(['offerLog', 'shiftHistory', 'roster', 'myEvents', 'fillUps', 'expenses', 'uberStatements', 'driveLog', 'apQueue', 'cars']);
     let syncT = null, syncApplying = false;
     function syncMark(k) {
@@ -8910,7 +8910,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.87.0';
+    const APP_VERSION = '1.87.1';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
