@@ -8981,7 +8981,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.93.0';
+    const APP_VERSION = '1.94.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9004,7 +9004,7 @@ ${sub}${body}
         const m = (await r.text()).match(/const APP_VERSION = '([\d.]+)'/);
         if (!m) throw new Error('no version');
         const live = m[1];
-        if (cmpVer(live, APP_VERSION) > 0) { newerVersion = live; setVerBadge('update', `↻ tap for v${live}`); }
+        if (cmpVer(live, APP_VERSION) > 0) { newerVersion = live; setVerBadge('update', `↻ tap for v${live}`); autoUpdate(live); }
         else { newerVersion = null; setVerBadge('ok', cmpVer(live, APP_VERSION) === 0 ? '✓ latest' : 'ahead of site'); }
       } catch (e) {
         setVerBadge('', location.protocol === 'file:' ? 'file copy' : navigator.onLine === false ? 'offline' : 'can’t check');
@@ -9013,6 +9013,22 @@ ${sub}${body}
     // Site link that skips the phone's cached copy, so it always opens the newest version
     function freshSiteUrl() { return SITE_URL + '?v=' + (newerVersion || APP_VERSION) + '-' + Date.now().toString(36); }
 
+    // Update by itself (Home Screen apps keep their old copy otherwise): when the pilot has just opened, or comes back
+    // after a while, and nothing is in progress (no trip on the go, Auto-Read not watching the screen, no form open).
+    const bootAt = Date.now(); let lastHiddenAt = 0;
+    document.addEventListener('visibilitychange', () => { if (document.hidden) lastHiddenAt = Date.now(); else if (lastHiddenAt && Date.now() - lastHiddenAt > 5 * 60000) setTimeout(checkVersion, 1500); });
+    function autoUpdate(live) {
+      if (location.protocol === 'file:' || TEST) return;
+      const fresh = Date.now() - bootAt < 60000 || (lastHiddenAt && Date.now() - lastHiddenAt < 60000);
+      let busy = false;
+      try { busy = (typeof ocrStream !== 'undefined' && ocrStream) || (loadTrip().stage !== 'idle' && loadTrip().stage !== 'done') ||
+        [...document.querySelectorAll('.sheet')].some(x => x.style.display === 'flex') || document.getElementById('settingsModal').style.display === 'block'; } catch (e) {}
+      if (!fresh || busy) return;
+      if (sessionStorage.getItem('autoUpdTo') === live) return;            // tried once already this session: leave it to the badge
+      try { sessionStorage.setItem('autoUpdTo', live); } catch (e) {}
+      toast(`✨ Updating to v${live}…`);
+      setTimeout(() => { try { saveDrive(driveMem, true); routeSave(); } catch (e) {} location.replace(freshSiteUrl()); }, 900);
+    }
     function onVersionTap() {
       if (newerVersion) { location.replace(freshSiteUrl()); return; } // fresh copy of the new version
       toast(`Offer Pilot v${APP_VERSION} · checking for updates…`);
