@@ -779,8 +779,11 @@
       background: color-mix(in srgb, var(--accent) 12%, transparent); }
     .avw-now { position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; z-index: 3; pointer-events: none; }
     .avw-tip { font-size: .74rem; color: var(--muted); text-align: center; margin: 2px 0 8px; }
-    .avw-ed { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; padding: 6px 8px; margin-bottom: 8px; border-radius: 12px; border: 1.5px solid #38bdf8; background: var(--card-2); }
-    .avw-ed .av-t { border: 1px solid var(--card-border); border-radius: 10px; padding: 6px 10px; background: var(--card); } .avw-ed .rs-btn { margin-left: auto; padding: 5px 10px; font-size: .74rem; }
+    .avw-ed { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 8px; margin-bottom: 8px; border-radius: 12px; border: 1.5px solid #38bdf8; background: var(--card-2); }
+    .avw-ed .av-t { border: 1px solid var(--card-border); border-radius: 10px; padding: 6px 10px; background: var(--card); } .avw-ed-acts { display: flex; gap: 6px; margin-left: auto; } .avw-ed .rs-btn { padding: 6px 10px; font-size: .74rem; white-space: nowrap; }
+    .avw-del { border-color: #ef4444; color: #ef4444; }
+    .avw-x { position: absolute; bottom: 2px; right: 2px; width: 18px; height: 18px; border: none; border-radius: 50%; padding: 0; background: rgba(0,0,0,.28); color: #fff; font: 800 .62rem/18px sans-serif; text-align: center; cursor: pointer; z-index: 2; }
+    .avw-b.sel .avw-x { background: #ef4444; }
     /* mini week on the roster card */
     .avw.mini { margin: 6px 0 0; border-radius: 8px; } .avw.mini .avw-head { grid-template-columns: repeat(7, 1fr); padding: 2px 0; font-size: .58rem; }
     .avw.mini .avw-body { grid-template-columns: repeat(7, 1fr); background-image: none; } .avw.mini .avw-scroll { max-height: none; overflow: hidden; }
@@ -9014,7 +9017,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.96.0';
+    const APP_VERSION = '1.97.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9514,7 +9517,8 @@ ${sub}${body}
         const blocks = avBlocks(a, d).map(([s, e, od, i, cont, carry]) => {
           const sel = avSel && avSel.d === od && avSel.i === i;
           return `<div class="avw-b${sel ? ' sel' : ''}${carry ? ' carry' : ''}" style="top:${s / 60 * H}px;height:${Math.max(opts.mini ? 2 : 14, (e - s) / 60 * H)}px"` +
-            (opts.mini ? '' : ` onclick="event.stopPropagation(); avSelect(${od}, ${i})"`) + `>${opts.mini || (e - s) < 90 ? '' : `<b>${fmtMinRange(...(a[od][i]))}</b>`}</div>`;
+            (opts.mini ? '' : ` onclick="event.stopPropagation(); avSelect(${od}, ${i})"`) + `>${opts.mini || (e - s) < 90 ? '' : `<b>${fmtMinRange(...(a[od][i]))}</b>`}` +
+            (opts.mini || carry ? '' : `<button type="button" class="avw-x" onclick="event.stopPropagation(); avDel(${od}, ${i})" aria-label="Remove ${DAYS[od]} ${fmtMinRange(...(a[od][i]))}">✕</button>`) + `</div>`;
         }).join('');
         // rostered shifts this pay week, on their weekday
         const shifts = r.filter(x => dayIdx(new Date(x.s)) === d).map(x => { const st = new Date(x.s), sm = st.getHours() * 60 + st.getMinutes(), em = Math.min(1440, sm + (x.e - x.s) / 60000);
@@ -9533,10 +9537,10 @@ ${sub}${body}
     }
     function avSelect(d, i) { avSel = { d, i }; renderAvail(true); }
     function avEditorHTML() {
-      if (!avSel || !avDraft[avSel.d] || !avDraft[avSel.d][avSel.i]) return `<div class="avw-tip">Tap an empty time to add a block · tap a block to change it</div>`;
+      if (!avSel || !avDraft[avSel.d] || !avDraft[avSel.d][avSel.i]) return `<div class="avw-tip">Tap an empty time to add a block · tap a block to change it · ✕ removes a block</div>`;
       const { d, i } = avSel, [s, e] = avDraft[d][i];
       return `<div class="avw-ed"><b>${DAYS[d]}</b><button type="button" class="av-t" onclick="avPick(${d}, ${i}, 0, this)">${fmtMin(s)}</button>–<button type="button" class="av-t" onclick="avPick(${d}, ${i}, 1, this)">${fmtMin(e)}</button>` +
-        `<button type="button" class="rs-btn" onclick="avCopyTo(${d}, ${i})" title="Copy to the other days">All days</button><button type="button" class="av-del" onclick="avDel(${d}, ${i})" aria-label="Remove this time">🚮</button></div>`;
+        `<span class="avw-ed-acts"><button type="button" class="rs-btn" onclick="avCopyTo(${d}, ${i})" title="Copy to the other days">Copy to all days</button><button type="button" class="rs-btn avw-del" onclick="avDel(${d}, ${i})">🚮 Remove</button></span></div>`;
     }
     function avCopyTo(d, i) {
       const w = avDraft[d][i];
