@@ -9017,7 +9017,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.97.1';
+    const APP_VERSION = '1.97.2';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9076,18 +9076,24 @@ ${sub}${body}
     function autoUpdate(live) {
       if (location.protocol === 'file:' || TEST) return;
       pendingUpdate = live;
-      if (document.hidden || updBusy()) return;                              // try again on return / next minute
+      if (document.hidden) return;                                           // goes ahead the moment you come back
+      if (updBusy()) { setVerBadge('update', `↻ v${live} after this`); return; } // next minute, or on return
       const now = Date.now();
-      const fresh = now - bootAt < 60000 || (lastShownAt && now - lastShownAt < 60000) || now - lastTouch > 90000;
-      if (!fresh) return;
-      // Loop guard: at most 3 tries for the same version within 10 minutes (a phone serving a stale copy)
+      // Each try opens a different never-seen link, so the phone can't hand back its saved copy; after 3 it waits 10 minutes (no reload loops)
       let t = {}; try { t = JSON.parse(sessionStorage.getItem('autoUpd') || '{}'); } catch (e) {}
-      if (t.v === live && t.n >= 3 && now - t.at < 600000) return;
-      const n = t.v === live && now - t.at < 600000 ? (t.n || 0) + 1 : 1;
+      const same = t.v === live && now - t.at < 600000;
+      if (same && t.n >= 3) { setVerBadge('update', `↻ tap for v${live}`); return; }
+      const n = same ? (t.n || 0) + 1 : 1;
       try { sessionStorage.setItem('autoUpd', JSON.stringify({ v: live, n, at: now })); } catch (e) {}
       pendingUpdate = null;
+      setVerBadge('update', `↻ updating to v${live}…`);
       toast(`✨ Updating to v${live}…`);
-      setTimeout(() => { try { saveDrive(driveMem, true); routeSave(); } catch (e) {} location.replace(freshSiteUrl()); }, 900);
+      setTimeout(() => {
+        try { saveDrive(driveMem, true); routeSave(); } catch (e) {}
+        if (n === 1) location.replace(freshSiteUrl());
+        else if (n === 2) location.replace(SITE_URL + 'index.html?v=' + live + '-' + now.toString(36));
+        else location.replace(SITE_URL + '?fresh=' + live + '-' + Date.now().toString(36) + '#' + now);
+      }, 900);
     }
     function onVersionTap() {
       if (newerVersion) { location.replace(freshSiteUrl()); return; } // fresh copy of the new version
