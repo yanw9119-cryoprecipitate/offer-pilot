@@ -76,13 +76,12 @@ function status() {
 
 function phoneLink() {
   const ui = SpreadsheetApp.getUi();
+  // Always the address you copy from Deploy ▸ Manage deployments (Google's own guess can point at an old or test deployment)
   let url = P.getProperty('WEB_URL') || '';
-  try { const u = ScriptApp.getService().getUrl(); if (u && /\/exec$/.test(u)) url = u; } catch (e) {}
-  if (!url) {
-    const r = ui.prompt('Web app address', 'Deploy ▸ New deployment ▸ Web app first, then paste the Web app URL (ends in /exec).', ui.ButtonSet.OK_CANCEL);
-    if (r.getSelectedButton() !== ui.Button.OK) return;
-    url = r.getResponseText().trim();
-  }
+  const r = ui.prompt('Web app address', 'In Apps Script: Deploy ▸ Manage deployments ▸ copy the Web app URL (ends in /exec) and paste it here.' +
+    (url ? '\nLeave empty to keep: ' + url : ''), ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  if (r.getResponseText().trim()) url = r.getResponseText().trim();
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) { ui.alert('That isn\'t a web app address (https://script.google.com/macros/s/…/exec).'); return; }
   P.setProperty('WEB_URL', url);
   const mine = `${PILOT}#sheet=${encodeURIComponent(url)}&sheetkey=${token_()}`, flightsOnly = `${PILOT}#sheet=${encodeURIComponent(url)}`;
