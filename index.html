@@ -5,6 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Offer Pilot</title>
   <meta name="theme-color" content="#ffffff" />
+  <!-- Home Screen app (iPhone and Android): the pilot's gauge logo, opens full screen -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Offer Pilot" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <script>
     // Apply the saved theme before the page draws (no flash)
     (function () {
@@ -8931,7 +8940,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.91.0';
+    const APP_VERSION = '1.92.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
