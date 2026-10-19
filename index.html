@@ -7914,7 +7914,7 @@ ${sub}${body}
       pad:   ['🔢 Keypad', 'Type an offer’s fare, time and km yourself. Opens the Drive tab; tap again to close.'],
       pip:   ['📺 Overlay', 'A small floating ACCEPT / DECLINE window that stays on top of the Uber app.'],
       auto:  ['🔎 Auto', 'Auto-Read: reads offers from your shared screen and logs accepted or declined (Android or computer; not iPhone).'],
-      site:  ['🔄 Sync', 'Keeps your offers, shifts, roster, availability, cars and settings the same on all your devices, through your Google Sheet. Orange dot: changes here not synced yet. Also tells you when a new version is ready.']
+      site:  ['🔄 Sync', 'Keeps your offers, shifts, roster, availability, cars and settings the same on all your devices, through your Google Sheet. After your first tap it also syncs by itself: when you open the pilot, every 30 minutes, and after punching in or out. Orange dot: changes here not synced yet. Also tells you when a new version is ready.']
     };
     let barHelpT = null;
     function showBarHelp(keys, ms) {
@@ -8910,7 +8910,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.88.0';
+    const APP_VERSION = '1.89.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9686,7 +9686,7 @@ ${sub}${body}
       clearTimeout(syncSoonT); syncSoonT = setTimeout(() => { try { syncNow(true); } catch (e) {} }, 20000);
     }
     async function syncNow(quiet) {
-      if (quiet && (syncBusy || !navigator.onLine)) return;
+      if (quiet && (syncBusy || !navigator.onLine || !localStorage.getItem('syncAt'))) return;   // automatic only after a first Sync by hand
       if (TEST) { toast('🧪 End the test run to sync: test data never leaves this device.'); return; }
       if (!sheetOn() || !sheetKey()) { toast('🔄 Connect your Google Sheet first to sync devices', 'Set up', () => { toggleSettings(true); sxGo('gsheet'); }); return; }
       if (syncBusy) return;
@@ -9729,6 +9729,17 @@ ${sub}${body}
       if (newerVersion && !quiet) toast(`✨ Version ${newerVersion} is ready`, 'Update', () => { location.href = freshSiteUrl(); });
     }
     setTimeout(() => { try { syncBadge(); } catch (e) {} }, 2000);
+    // Automatic sync: when the pilot opens (or comes back after 10+ minutes away), then every 30 minutes while it's on
+    // screen. Quiet: no messages and no reload; anything new from your other device shows straight away.
+    const SYNC_EVERY = 30 * 60000;
+    let syncHiddenAt = 0;
+    function syncAutoDue() { return Date.now() - (+localStorage.getItem('syncAt') || 0) >= SYNC_EVERY; }
+    setTimeout(() => { try { if (syncAutoDue()) syncNow(true); } catch (e) {} }, 8000);
+    setInterval(() => { try { if (!document.hidden && syncAutoDue()) syncNow(true); } catch (e) {} }, 5 * 60000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { syncHiddenAt = Date.now(); return; }
+      if (syncHiddenAt && Date.now() - syncHiddenAt > 10 * 60000) setTimeout(() => { try { syncNow(true); } catch (e) {} }, 3000);
+    });
 
     // ================= WEEK-ON-WEEK TREND CHANGES =================
     const PERIODS = [['Morning', 6, 10], ['Midday', 10, 15], ['Afternoon', 15, 19], ['Evening', 19, 23], ['Late night', 23, 27]];
