@@ -1680,9 +1680,50 @@
       .map-chips .chip.chip-go, .map-chips #chipZones { min-width: 44px; font-size: 1rem; }
       .map-fab { width: 56px; height: 56px; }
     }
+    /* ---- Opening animation: the gauge logo on the app's blue, the needle sweeps into the green, then it fades away ---- */
+    #splash { position: fixed; inset: 0; z-index: 5000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      background: radial-gradient(120% 90% at 50% 35%, #3a6e9f 0%, #2f5d8a 45%, #1d3d5e 100%); pointer-events: none;
+      transition: opacity .45s ease, transform .45s ease; }
+    #splash.out { opacity: 0; transform: scale(1.04); }
+    #splash .sp-logo { width: 132px; height: 132px; border-radius: 30px; display: grid; place-items: center; background: rgba(255,255,255,.08);
+      box-shadow: 0 18px 50px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.12); animation: spPop .55s cubic-bezier(.2,1.4,.4,1) both; }
+    #splash svg { width: 96px; height: 96px; overflow: visible; }
+    #splash .sp-ring { stroke-dasharray: 40; stroke-dashoffset: 40; opacity: 0; animation: spDraw .6s .15s ease-out forwards, spFade .05s .15s forwards; }
+    #splash .sp-green { stroke-dasharray: 12; stroke-dashoffset: 12; opacity: 0; animation: spDraw .35s .55s ease-out forwards, spFade .05s .55s forwards; }
+    #splash .sp-needle { transform-origin: 12px 13.4px; transform: rotate(-135deg); animation: spSweep .8s .3s cubic-bezier(.3,1.5,.5,1) forwards; }
+    #splash .sp-base { opacity: 0; animation: spFade .3s .6s forwards; }
+    #splash .sp-name { color: #fff; font: 800 1.6rem/1 -apple-system, "SF Pro Display", Segoe UI, Roboto, sans-serif; letter-spacing: .02em; opacity: 0; animation: spUp .5s .55s ease-out forwards; }
+    #splash .sp-name span { color: #3ddc84; }
+    #splash .sp-tag { color: rgba(255,255,255,.7); font: 600 .8rem/1 -apple-system, Segoe UI, Roboto, sans-serif; letter-spacing: .12em; text-transform: uppercase; opacity: 0; animation: spUp .5s .75s ease-out forwards; }
+    @keyframes spPop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes spDraw { to { stroke-dashoffset: 0; } }
+    @keyframes spSweep { 0% { transform: rotate(-135deg); } 100% { transform: rotate(0deg); } }
+    @keyframes spFade { to { opacity: 1; } }
+    @keyframes spUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { #splash *, #splash { animation-duration: .01s !important; animation-delay: 0s !important; transition-duration: .2s; } }
   </style>
 </head>
 <body>
+  <!-- Opening animation (removed by itself after about 1.4 seconds; taps go straight through to the app) -->
+  <div id="splash" aria-hidden="true">
+    <div class="sp-logo"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round">
+      <path class="sp-ring" pathLength="40" d="M5.1 17.2A8.2 8.2 0 1 1 18.9 17.2" stroke="#ffffff" stroke-opacity=".55" stroke-width="2.3"/>
+      <path class="sp-green" pathLength="12" d="M17.6 7.4A8.2 8.2 0 0 1 18.9 17.2" stroke="#3ddc84" stroke-width="2.6"/>
+      <g class="sp-needle"><path d="M12 13.4 16.4 8.9" stroke="#ffffff" stroke-width="2.4"/></g>
+      <circle cx="12" cy="13.4" r="2.1" fill="#ffffff"/>
+      <path class="sp-base" d="M9.2 19.6h5.6" stroke="#ffffff" stroke-width="2"/>
+    </svg></div>
+    <div class="sp-name">Offer <span>Pilot</span></div>
+    <div class="sp-tag">Drive smarter</div>
+  </div>
+  <script>
+    (function () {
+      var t0 = Date.now(), done = false;
+      function hide() { if (done) return; done = true; var el = document.getElementById('splash'); if (!el) return;
+        setTimeout(function () { el.classList.add('out'); setTimeout(function () { el.remove(); }, 500); }, Math.max(0, 1400 - (Date.now() - t0))); }
+      window.addEventListener('load', hide); setTimeout(hide, 3000);   // never longer than 3 s, even on a slow connection
+    })();
+  </script>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
       <defs>
         <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 17h14M3 13l2-6h14l2 6v5h-3v-2H6v2H3z"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></symbol>
@@ -8940,7 +8981,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.92.0';
+    const APP_VERSION = '1.93.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
