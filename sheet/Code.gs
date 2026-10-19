@@ -26,10 +26,10 @@ const PILOT = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
 const SHIFTS_FILE = '1q2YZqYaeSMbimIktSgH0bD5BihQ6_zRAAUOZnFpfgcA';
 // "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
 const DEVICES_FILE = '1Khp9tA29J1cdGAKU6FkOmB4FdH16zhEWK4w-GD1Ltso';  // "Offer Pilot Devices" (one tab); a DEVICES_ID script property overrides it
-const TRENDS_FILE = '1AdZbMjLRBmDloWFbRpr4GTVXvLgGVb-2m55ft2Pn2_o';
+const TRENDS_FILE = '1AdZbMjLRBmDloWFbRpr4GTVXvLgGVb-2m55ft2Pn2_o';   // "Offer Pilot Trends" (a tab per zone); a TRENDS_ID script property overrides it
 const FUEL_FILE = '1qKKRZkaB6mMroShlWu8SnWOcEAF2zSgx8VsqDkuMiuY';     // "Offer Pilot Fuel Stations"; a FUEL_ID script property overrides it
 const FUEL_BOX = { s: -38.45, w: 144.40, n: -37.40, e: 145.65 };      // Greater Melbourne: Werribee, Melton, Sunbury, Lilydale, Pakenham, Frankston
-const FUEL_EVERY_D = 7;                                                 // refreshed from OpenStreetMap once a week (free, no key)   // "Offer Pilot Trends" (a tab per zone); a TRENDS_ID script property overrides it
+const FUEL_EVERY_D = 7;                                                 // refreshed from OpenStreetMap once a week (free, no key)
 const P = PropertiesService.getScriptProperties();
 const FL_HEAD = ['Block', 'Checked', 'Direction', 'Flight', 'Airline', 'From / to', 'Scheduled', 'Expected', 'Terminal', 'Status', 'International'];
 const SH_HEAD = ['Date', 'Day', 'Punch in', 'Punch out', 'Hours', 'Car', 'Trips', 'Offers', 'Accepted', 'Declined', 'Ride types',
