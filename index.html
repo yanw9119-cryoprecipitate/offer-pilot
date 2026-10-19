@@ -2636,7 +2636,7 @@
     // 🔄 Items kept the same on all your devices through your Google Sheet (tap Sync). Each change is time-stamped;
     // the newest change wins. Lists of records (offers, shifts, roster …) are combined the first time a device syncs.
     // Not synced: API keys and the sheet link (the developer passcode is, as a salted hash), test runs, caches, map and screen settings, GPS counters, routes, photos.
-    const SYNC_KEYS = new Set(['offerLog', 'shiftHistory', 'shift', 'roster', 'avail', 'weekPlanCfg', 'homeZone', 'uberTrends', 'trendChanges',
+    const SYNC_KEYS = new Set(['offerLog', 'shiftHistory', 'shift', 'roster', 'avail', 'weekPlanCfg', 'homeZone', 'uberTrends', 'trendChanges', 'trendDel',
       'myEvents', 'hiddenEvents', 'fillUps', 'expenses', 'uberStatements', 'acctCfg', 'cars', 'carActive', 'driveLog', 'vehModel', 'vehMaint',
       'vehFuel', 'vehKmh', 'cfgCostKm', 'cfgMinKm', 'cfgMinHr', 'cfgMaxChase', 'cfgAlerts', 'goalKm', 'goalHr', 'shiftGoal', 'shiftGoalMode',
       'apQueue', 'calZone', 'timeFmt', 'devPass']);                  // devPass is a salted hash of the passcode, never the passcode itself
@@ -4228,8 +4228,14 @@
     }
     function delOffer(t) { saveLog(loadLog().filter(e => e.t !== t)); renderDataSheet(); }
     function clearOffers() { saveLog([]); renderDataSheet(); toast('Offers deleted'); }
-    function delTrendZone(z) { const all = loadTrends(); delete all[z]; saveTrends(all); renderDataSheet(); toast(`Deleted ${z} trends`); }
+    // Zones you delete (or reset) are remembered, so syncing doesn't bring them back from your other device
+    function trendTomb(zones, at) {
+      let d = {}; try { d = JSON.parse(lsGet('trendDel')) || {}; } catch (e) {}
+      zones.forEach(z => { d[z] = at; }); lsSet('trendDel', JSON.stringify(d));
+    }
+    function delTrendZone(z) { const all = loadTrends(); delete all[z]; trendTomb([z], Date.now()); saveTrends(all); renderDataSheet(); toast(`Deleted ${z} trends`); }
     function resetTrends() {
+      trendTomb(Object.keys(loadTrends()), Date.now() - 1);
       saveTrends({});
       ['trendSeed', 'trendSeed2', 'trendSeed3', 'trendDayAt', 'trendChanges', 'liveDemand'].forEach(lsDel);
       seedTrends(); renderDataSheet(); toast('Trends reset to the built-in week');
@@ -9017,7 +9023,7 @@ ${sub}${body}
 
     // ================= VERSION STATUS =================
     // Bump APP_VERSION with every release. The badge compares it with the live site's copy.
-    const APP_VERSION = '1.97.2';
+    const APP_VERSION = '1.98.0';
     const SITE_URL = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
     let newerVersion = null;
 
@@ -9935,6 +9941,21 @@ ${sub}${body}
       if (out.every(x => recTime(x))) out.sort((x, y) => recTime(x) - recTime(y));
       return JSON.stringify(out);
     }
+    // Trend charts from two devices: hour by hour, the one built from more screenshots (equal: the more recently updated zone)
+    function mergeTrendsJSON(mine, theirs, delRaw) {
+      let a, b, del = {}; try { a = JSON.parse(mine) || {}; b = JSON.parse(theirs) || {}; } catch (e) { return mine; }
+      try { del = JSON.parse(delRaw) || {}; } catch (e) {}
+      const out = {};
+      new Set([...Object.keys(a), ...Object.keys(b)]).forEach(z => {
+        const ok = o => o && o.h && !(del[z] && del[z] >= (o.updated || 0));
+        const p = ok(a[z]) ? a[z] : null, q = ok(b[z]) ? b[z] : null;
+        if (!p || !q) { if (p || q) out[z] = p || q; return; }
+        const nw = (q.updated || 0) >= (p.updated || 0) ? q : p, ol = nw === q ? p : q, h = {};
+        new Set([...Object.keys(ol.h), ...Object.keys(nw.h)]).forEach(k => { const n = nw.h[k], o = ol.h[k]; h[k] = !o ? n : !n ? o : (o.n > n.n ? o : n); });
+        out[z] = { h, shots: Math.max(p.shots || 0, q.shots || 0), updated: Math.max(p.updated || 0, q.updated || 0) };
+      });
+      return JSON.stringify(out);
+    }
     function syncApply(k, v) { syncApplying = true; try { if (v === '' || v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} syncApplying = false; }
     // After punching in or out, or changing the roster: a quiet sync about 20 s later (once this device has synced by hand),
     // so the Offer Pilot Shifts sheet stays current. Nothing reloads; anything new from the other device is shown straight away.
@@ -9960,6 +9981,7 @@ ${sub}${body}
           SYNC_KEYS.forEach(k => {
             const lv = local(k), sv = srv[k];
             if (sv && sv.v !== '' && lv != null && SYNC_LISTS.has(k)) { const m = mergeLists(lv, sv.v); syncApply(k, m); syncT[k] = m === sv.v ? sv.t : Date.now(); got++; }
+            else if (k === 'uberTrends' && sv && sv.v !== '' && lv != null) { const m = mergeTrendsJSON(lv, sv.v, (srv.trendDel || {}).v); syncApply(k, m); syncT[k] = m === sv.v ? sv.t : Date.now(); got++; }
             else if (sv && sv.v !== '') { if (lv !== sv.v) { syncApply(k, sv.v); got++; } syncT[k] = sv.t; }
             else if (lv != null) syncT[k] = Date.now();
           });

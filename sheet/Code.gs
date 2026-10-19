@@ -6,6 +6,8 @@
  *    so the pilots use none of your RapidAPI calls. The key is kept in this script's settings, never in the app.
  * 2. Your shift log. When you punch out, the pilot sends the shift here: one tab per month
  *    ("2026-10 October"), one row per shift, and a "Summary" tab with a line for each month.
+ * 3. Sync between your devices (hidden "Sync" tab), shown in their own files in the Offer Pilot folder:
+ *    "Offer Pilot Shifts", "Offer Pilot Devices" and "Offer Pilot Trends" (the Uber demand charts you've uploaded).
  *
  * Setup (once, on a computer): see the "Offer Pilot" menu at the top of the sheet.
  *   ✈️ Offer Pilot ▸ 1. Set flight key   (paste your X-RapidAPI-Key)
@@ -20,7 +22,9 @@ const AHEAD = 14;                    // 14 blocks of 12 hours = the next 7 days
 const REFRESH_H = 3;                 // the block you're in is refreshed about every 3 hours (as the allowance allows)
 const PILOT = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
 const SHIFTS_FILE = '1q2YZqYaeSMbimIktSgH0bD5BihQ6_zRAAUOZnFpfgcA';
-const DEVICES_FILE = '1Khp9tA29J1cdGAKU6FkOmB4FdH16zhEWK4w-GD1Ltso';  // "Offer Pilot Devices" (one tab); a DEVICES_ID script property overrides it   // "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
+// "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
+const DEVICES_FILE = '1Khp9tA29J1cdGAKU6FkOmB4FdH16zhEWK4w-GD1Ltso';  // "Offer Pilot Devices" (one tab); a DEVICES_ID script property overrides it
+const TRENDS_FILE = '1AdZbMjLRBmDloWFbRpr4GTVXvLgGVb-2m55ft2Pn2_o';   // "Offer Pilot Trends" (a tab per zone); a TRENDS_ID script property overrides it
 const P = PropertiesService.getScriptProperties();
 const FL_HEAD = ['Block', 'Checked', 'Direction', 'Flight', 'Airline', 'From / to', 'Scheduled', 'Expected', 'Terminal', 'Status', 'International'];
 const SH_HEAD = ['Date', 'Day', 'Punch in', 'Punch out', 'Hours', 'Car', 'Trips', 'Offers', 'Accepted', 'Declined', 'Ride types',
@@ -105,6 +109,7 @@ function phoneLink() {
 function tick(manual) {
   try { writeShiftSheets_(syncRead_(syncSheet_())); } catch (e) {}
   try { writeDevices_(); } catch (e) {}   // keeps "Now" and "Upcoming" current every hour
+  try { const m = syncRead_(syncSheet_()); if (m.uberTrends && m.uberTrends.t > (+P.getProperty('TRENDS_AT') || 0)) writeTrends_(m); } catch (e) {}
   const key = P.getProperty('AERO_KEY');
   if (!key) return 'No flight key yet: ✈️ Offer Pilot ▸ 1. Set flight key.';
   const lock = LockService.getScriptLock();
@@ -347,9 +352,18 @@ function syncRead_(sh) {
 function doSync_(b) {
   if (b.devId) seen_(b.devId, { n: b.dev, ver: b.ver, acc: 'Sync', sync: true });
   const sh = syncSheet_(), m = syncRead_(sh), put = b.put || {}, have = b.have || {};
-  Object.keys(put).forEach(k => {
+  // Trend charts: combined zone by zone and hour by hour (not newest-wins), so uploads made on different devices all count.
+  // trendDel (zones you deleted or reset) goes first so they aren't brought back from the other device.
+  const order = Object.keys(put).sort((a, b) => (a === 'trendDel' ? -1 : b === 'trendDel' ? 1 : 0));
+  order.forEach(k => {
     const p = put[k]; if (!p || !(+p.t > 0)) return;
-    if (m[k] && +p.t <= m[k].t) return;                          // the sheet already has something newer
+    if (k === 'uberTrends' && m[k] && m[k].v && p.v) {
+      const sent = String(p.v), del = jparse_((m.trendDel || {}).v, {}), merged = JSON.stringify(mergeTrends_(jparse_(m[k].v, {}), jparse_(sent, {}), del));
+      if (merged === m[k].v) return;                             // nothing new for the sheet
+      // newer than both copies; when it differs from what this device sent, it goes back to it in this same reply
+      p.t = merged === sent ? Math.max(+p.t, m[k].t + 1) : Math.max(Date.now(), m[k].t + 1, +p.t + 1);
+      p.v = merged;
+    } else if (m[k] && +p.t <= m[k].t) return;                   // the sheet already has something newer
     const v = String(p.v == null ? '' : p.v), parts = [];
     for (let i = 0; i < v.length; i += 40000) parts.push('~' + v.slice(i, i + 40000));
     if (!parts.length) parts.push('~');
@@ -359,6 +373,7 @@ function doSync_(b) {
     m[k] = { row, t: +p.t, v };
   });
   if (['roster', 'shiftHistory', 'shift', 'cars'].some(k => put[k])) { try { writeShiftSheets_(m); } catch (e) { P.setProperty('LAST_ERR', 'Shift sheet: ' + e.message); } }
+  if (['uberTrends', 'trendChanges', 'trendDel'].some(k => put[k])) { try { writeTrends_(m); } catch (e) { P.setProperty('LAST_ERR', 'Trends sheet: ' + e.message); } }
   const get = {};
   Object.keys(m).forEach(k => { if (m[k].t > (+have[k] || 0)) get[k] = { t: m[k].t, v: m[k].v }; });
   try { writeDevices_(); } catch (e) {}
@@ -475,3 +490,111 @@ function writeDevices_() {
   if (rows.length) { sh.getRange(2, 1, rows.length, head.length).setValues(rows); sh.getRange(2, 5, rows.length, 2).setNumberFormat('ddd d mmm h:mm am/pm'); sh.getRange(2, 8, rows.length, 1).setNumberFormat('d mmm yyyy'); }
   sh.getRange(1, head.length + 2).setValue(`${rows.filter(r => String(r[3]).startsWith('🟢')).length} active now · ${rows.filter(r => r[1].startsWith('Sync')).length} linked for sync · ${rows.length} in total`);
 }
+
+// ---------------------------------------------------------------- "Offer Pilot Trends" spreadsheet
+// The Uber demand charts you've uploaded (any device), combined. Each zone keeps, for every day and hour, the demand
+// level (0 none – 1 very high, averaged over screenshots) and how many screenshots that average is built from.
+// Combining two devices' copies: for each hour, the one built from more screenshots; equal → the more recently updated zone.
+function mergeTrends_(a, b, del) {
+  const out = {}, zones = {};
+  Object.keys(a || {}).concat(Object.keys(b || {})).forEach(z => { zones[z] = 1; });
+  Object.keys(zones).forEach(z => {
+    const x = (a || {})[z], y = (b || {})[z];
+    const live = o => o && o.h && !(del && del[z] && del[z] >= (o.updated || 0));
+    const p = live(x) ? x : null, q = live(y) ? y : null;
+    if (!p && !q) return;
+    if (!p || !q) { out[z] = p || q; return; }
+    const newer = (q.updated || 0) >= (p.updated || 0) ? q : p, older = newer === q ? p : q, h = {};
+    Object.keys(older.h).concat(Object.keys(newer.h)).forEach(k => {
+      const n = newer.h[k], o = older.h[k];
+      h[k] = !o ? n : !n ? o : (o.n > n.n ? o : n);
+    });
+    out[z] = { h, shots: Math.max(p.shots || 0, q.shots || 0), updated: Math.max(p.updated || 0, q.updated || 0) };
+  });
+  return out;
+}
+const TR_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const TR_NAMES = ['None', 'Low', 'Medium', 'High', 'Very high'];
+function trHour_(h) { return h === 0 ? '12am' : h < 12 ? h + 'am' : h === 12 ? '12pm' : (h - 12) + 'pm'; }
+function trColour_(v) {                       // white → dark blue, like the pilot's demand bars
+  if (v === '' || v == null) return '#f8fafc';
+  const t = Math.max(0, Math.min(1, v / 4)), c = (lo, hi) => Math.round(lo + (hi - lo) * t);
+  const hex = n => ('0' + n.toString(16)).slice(-2);
+  return '#' + hex(c(255, 30)) + hex(c(255, 64)) + hex(c(255, 175));
+}
+// The cell for business day d (Uber's chart runs 4am to 3am) at hour h: 12am–3am is stored under the next calendar day
+function trCell_(z, d, h) { const e = z.h[(h < 4 ? (d + 1) % 7 : d) + '-' + h]; return e ? e : null; }
+function writeTrends_(m) {
+  const id = P.getProperty('TRENDS_ID') || TRENDS_FILE; if (!id) return;
+  const book = SpreadsheetApp.openById(id);
+  if (book.getSpreadsheetTimeZone() !== TZ) book.setSpreadsheetTimeZone(TZ);
+  const all = jparse_((m.uberTrends || {}).v, {}), ch = jparse_((m.trendChanges || {}).v, null);
+  const zones = Object.keys(all).filter(z => all[z] && all[z].h).sort((a, b) => a === 'Melbourne City' ? -1 : b === 'Melbourne City' ? 1 : a.localeCompare(b));
+  const HOURS = []; for (let i = 0; i < 24; i++) HOURS.push((4 + i) % 24);
+  const now = Date.now();
+
+  // Zones: one line each
+  const ZH = ['Zone', 'Screenshots', 'Updated', 'Busiest times (usual week)', 'Quietest daytime'];
+  const zrows = zones.map(z => {
+    const cells = [];
+    TR_DAYS.forEach((dn, d) => HOURS.forEach(h => { const e = trCell_(all[z], d, h); if (e) cells.push({ d, h, v: e.v }); }));
+    const top = cells.slice().sort((x, y) => y.v - x.v).slice(0, 4).map(c => TR_DAYS[c.d] + ' ' + trHour_(c.h)).join(', ');
+    const low = cells.filter(c => c.h >= 8 && c.h <= 20).sort((x, y) => x.v - y.v).slice(0, 3).map(c => TR_DAYS[c.d] + ' ' + trHour_(c.h)).join(', ');
+    return [z, all[z].shots || 0, all[z].updated ? new Date(all[z].updated) : '', top, low];
+  });
+  const sz = tab_(book, 'Zones', ZH);
+  fill_(sz, ZH, zrows);
+  if (zrows.length) sz.getRange(2, 3, zrows.length, 1).setNumberFormat('ddd d mmm yyyy h:mm am/pm');
+  sz.getRange(1, ZH.length + 2).setValue('Updated ' + fmt_(now, 'EEE d MMM h:mm a') + ' · demand 0 = none … 4 = very high · each zone has its own tab');
+  sz.setColumnWidth(1, 200); sz.setColumnWidth(4, 300); sz.setColumnWidth(5, 240);
+
+  // One tab per zone: hours down, days across, coloured like a heat map
+  zones.forEach(z => {
+    const name = z.slice(0, 90);
+    let sh = book.getSheetByName(name); if (!sh) sh = book.insertSheet(name);
+    const vals = [['Hour'].concat(TR_DAYS)], bgs = [['#0f172a', '#0f172a', '#0f172a', '#0f172a', '#0f172a', '#0f172a', '#0f172a', '#0f172a']], ns = [];
+    HOURS.forEach(h => {
+      const row = [trHour_(h)], bg = ['#ffffff'], nr = [];
+      TR_DAYS.forEach((dn, d) => { const e = trCell_(all[z], d, h), v = e ? Math.round(e.v * 40) / 10 : ''; row.push(v); bg.push(trColour_(v)); nr.push(e ? e.n : ''); });
+      vals.push(row); bgs.push(bg); ns.push(nr);
+    });
+    sh.clear();
+    sh.getRange(1, 1, vals.length, 8).setValues(vals).setBackgrounds(bgs).setHorizontalAlignment('center');
+    sh.getRange(1, 1, 1, 8).setFontWeight('bold').setFontColor('#ffffff');
+    sh.getRange(2, 1, 24, 1).setFontWeight('bold').setHorizontalAlignment('left');
+    sh.getRange(2, 2, 24, 7).setNumberFormat('0.0').setFontColor('#0f172a');
+    // dark cells get white text
+    const fc = vals.slice(1).map(r => r.slice(1).map(v => v !== '' && v >= 2.4 ? '#ffffff' : '#0f172a'));
+    sh.getRange(2, 2, 24, 7).setFontColors(fc);
+    sh.setFrozenRows(1); sh.setFrozenColumns(1);
+    sh.getRange(1, 10, 5, 1).setValues([[z], ['Demand: 0 none · 1 low · 2 medium · 3 high · 4 very high'], ['Uber\'s day runs 4am to 3am: 12am–3am belong to the night before'],
+      [`${all[z].shots || 0} screenshots · updated ${all[z].updated ? fmt_(all[z].updated, 'EEE d MMM h:mm a') : '—'}`], ['Screenshots behind each hour (max 8) are in "All data"']]);
+    sh.getRange(1, 10).setFontWeight('bold');
+  });
+
+  // Every hour as a list (easy to filter or chart)
+  const AH = ['Zone', 'Day', 'Hour', 'Demand (0–4)', 'Level', 'Screenshots'];
+  const arows = [];
+  zones.forEach(z => TR_DAYS.forEach((dn, d) => HOURS.forEach(h => {
+    const e = trCell_(all[z], d, h); if (!e) return;
+    const v = Math.round(e.v * 40) / 10;
+    arows.push([z, dn, trHour_(h), v, TR_NAMES[Math.round(v)] || '', e.n]);
+  })));
+  const sa = tab_(book, 'All data', AH);
+  fill_(sa, AH, arows);
+
+  // What changed in your latest uploads
+  const CH = ['Zone', 'Day', 'Part of day', 'Change', 'Levels'];
+  const crows = ch && Array.isArray(ch.items) ? ch.items.map(c => [c.zone, TR_DAYS[c.day] || '', c.period, c.diff > 0 ? '⬆️ Busier' : '⬇️ Quieter', Math.round(c.diff * 40) / 10]) : [];
+  const sc = tab_(book, 'Recent changes', CH);
+  fill_(sc, CH, crows);
+  sc.getRange(1, CH.length + 2).setValue(ch && ch.at ? 'From uploads on ' + fmt_(ch.at, 'EEE d MMM h:mm a') : 'No changes yet');
+
+  // tidy: order, zones you've deleted, the empty first tab
+  const keep = ['Zones'].concat(zones.map(z => z.slice(0, 90)), ['All data', 'Recent changes']);
+  book.getSheets().forEach(t => { if (!keep.includes(t.getName()) && book.getSheets().length > 1) book.deleteSheet(t); });
+  keep.forEach((n, i) => { const t = book.getSheetByName(n); if (t && t.getIndex() !== i + 1) { book.setActiveSheet(t); book.moveActiveSheet(i + 1); } });
+  P.setProperty('TRENDS_AT', String((m.uberTrends || {}).t || now));
+}
+// Run once from the editor to fill the Trends file straight away
+function updateTrends() { writeTrends_(syncRead_(syncSheet_())); }
