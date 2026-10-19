@@ -19,6 +19,7 @@ const HOST = 'aerodatabox.p.rapidapi.com';
 const AHEAD = 14;                    // 14 blocks of 12 hours = the next 7 days
 const REFRESH_H = 3;                 // the block you're in is refreshed about every 3 hours (as the allowance allows)
 const PILOT = 'https://yanw9119-cryoprecipitate.github.io/offer-pilot/';
+const SHIFTS_FILE = '1q2YZqYaeSMbimIktSgH0bD5BihQ6_zRAAUOZnFpfgcA';   // "Offer Pilot Shifts" (Upcoming + History tabs); a SHIFTS_ID script property overrides it
 const P = PropertiesService.getScriptProperties();
 const FL_HEAD = ['Block', 'Checked', 'Direction', 'Flight', 'Airline', 'From / to', 'Scheduled', 'Expected', 'Terminal', 'Status', 'International'];
 const SH_HEAD = ['Date', 'Day', 'Punch in', 'Punch out', 'Hours', 'Car', 'Trips', 'Offers', 'Accepted', 'Declined', 'Ride types',
@@ -101,6 +102,7 @@ function phoneLink() {
 //  2. The next block once more when it's under 12 hours away (schedule changes, delays).
 //  3. The block you're in, about every 3 hours from 5am to 1am, while the monthly allowance allows.
 function tick(manual) {
+  try { writeShiftSheets_(syncRead_(syncSheet_())); } catch (e) {}   // keeps "Now" and "Upcoming" current every hour
   const key = P.getProperty('AERO_KEY');
   if (!key) return 'No flight key yet: ✈️ Offer Pilot ▸ 1. Set flight key.';
   const lock = LockService.getScriptLock();
@@ -352,7 +354,83 @@ function doSync_(b) {
     sh.getRange(row, 1, 1, vals.length).setValues([vals]);
     m[k] = { row, t: +p.t, v };
   });
+  if (['roster', 'shiftHistory', 'shift', 'cars'].some(k => put[k])) { try { writeShiftSheets_(m); } catch (e) { P.setProperty('LAST_ERR', 'Shift sheet: ' + e.message); } }
   const get = {};
   Object.keys(m).forEach(k => { if (m[k].t > (+have[k] || 0)) get[k] = { t: m[k].t, v: m[k].v }; });
   return { ok: true, get, at: Date.now() };
+}
+
+// ---------------------------------------------------------------- "Offer Pilot Shifts" spreadsheet
+// Upcoming: the shift you're punched in to, then every rostered shift still ahead.
+// History: each punched shift, planned (from your roster, or the pilot's suggested finish) against actual.
+// Rebuilt from the synced roster and shift history whenever a device syncs, and every hour.
+const UP_HEAD = ['Status', 'Date', 'Day', 'Start', 'Finish', 'Hours', 'Area', 'Planned by', 'Car', 'When'];
+const HI_HEAD = ['Date', 'Day', 'Planned start', 'Planned finish', 'Planned hours', 'Punch in', 'Punch out', 'Actual hours', 'Difference (h)',
+  'Start: min late (+) / early (−)', 'Finish: min over (+) / early (−)', 'Plan from', 'Trips', 'Take-home $', '$ per hour', 'Car', 'Started in', 'Finished in'];
+function jparse_(s, d) { try { const v = JSON.parse(s); return v == null ? d : v; } catch (e) { return d; } }
+function dayNo_(t) { const [y, m, d] = fmt_(t, 'yyyy-MM-dd').split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; }
+function shiftsBook_() {
+  const id = P.getProperty('SHIFTS_ID') || SHIFTS_FILE;
+  return id ? SpreadsheetApp.openById(id) : null;
+}
+function tab_(book, name, head) {
+  let sh = book.getSheetByName(name);
+  if (!sh) { sh = book.insertSheet(name); }
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#0f172a').setFontColor('#ffffff');
+  sh.setFrozenRows(1);
+  return sh;
+}
+function fill_(sh, head, rows) {
+  const n = sh.getMaxRows() - 1;
+  if (n > 0) sh.getRange(2, 1, n, Math.max(head.length, sh.getMaxColumns())).clearContent();
+  if (rows.length) sh.getRange(2, 1, rows.length, head.length).setValues(rows);
+}
+function writeShiftSheets_(m) {
+  const book = shiftsBook_(); if (!book) return;
+  if (book.getSpreadsheetTimeZone() !== TZ) book.setSpreadsheetTimeZone(TZ);
+  const roster = jparse_((m.roster || {}).v, []), hist = jparse_((m.shiftHistory || {}).v, []), cur = jparse_((m.shift || {}).v, null), cars = jparse_((m.cars || {}).v, []);
+  const carName = id => { const c = (cars || []).find(x => x.id === id) || (id ? null : (cars || [])[0]); return c ? (c.rego || c.name || c.kind || '') : ''; };
+  const SRC = { manual: 'You', pilot: '✨ Pilot', 'pilot-adj': '✨ Pilot (adjusted)' };
+  const now = Date.now(), when = t => { const d = dayNo_(t) - dayNo_(now); return d <= 0 ? 'Today' : d === 1 ? 'Tomorrow' : 'In ' + d + ' days'; };
+
+  // Upcoming
+  const up = [];
+  if (cur && cur.start) {
+    const pe = cur.planEnd || cur.start + 4 * 3600000;
+    up.push(['🟢 Punched in', new Date(cur.start), fmt_(cur.start, 'EEE'), new Date(cur.start), new Date(pe), round_((pe - cur.start) / 3600000, 2), cur.zone || '',
+      cur.planSrc === 'roster' ? 'Roster' : cur.planSrc === 'pilot' ? '✨ Pilot' : 'Own finish', carName(cur.car), 'Now']);
+  }
+  (Array.isArray(roster) ? roster : []).filter(x => x && x.e > now).sort((a, b) => a.s - b.s).forEach(x => {
+    up.push([x.s <= now ? 'Rostered now' : 'Upcoming', new Date(x.s), fmt_(x.s, 'EEE'), new Date(x.s), new Date(x.e), round_((x.e - x.s) / 3600000, 2), x.z || '', SRC[x.src] || 'You', '', when(x.s)]);
+  });
+  const su = tab_(book, 'Upcoming', UP_HEAD);
+  fill_(su, UP_HEAD, up);
+  if (up.length) { su.getRange(2, 2, up.length, 1).setNumberFormat('d mmm yyyy'); su.getRange(2, 4, up.length, 2).setNumberFormat('h:mm am/pm'); }
+  su.getRange(1, UP_HEAD.length + 2).setValue('Updated ' + fmt_(now, 'EEE d MMM h:mm a'));
+
+  // History: planned against actual
+  const rows = (Array.isArray(hist) ? hist : []).filter(h => h && h.start).sort((a, b) => b.start - a.start).map(h => {
+    const end = h.end || h.start + (h.hrs || 0) * 3600000;
+    let best = null, ov = 0;
+    (Array.isArray(roster) ? roster : []).forEach(x => { const o = Math.min(end, x.e) - Math.max(h.start, x.s); if (o > ov) { ov = o; best = x; } });
+    let ps = null, pe = null, from = '';
+    if (best) { ps = best.s; pe = best.e; from = 'Roster'; }
+    else if (h.planE) { ps = h.start; pe = h.planE; from = h.planSrc === 'pilot' ? '✨ Pilot suggestion' : h.planSrc === 'roster' ? 'Roster' : 'Own finish'; }
+    const ph = ps ? (pe - ps) / 3600000 : '', ah = (end - h.start) / 3600000;
+    return [new Date(h.start), fmt_(h.start, 'EEE'), ps ? new Date(ps) : '', pe ? new Date(pe) : '', ph === '' ? '' : round_(ph, 2),
+      new Date(h.start), new Date(end), round_(ah, 2), ph === '' ? '' : round_(ah - ph, 2),
+      ps ? Math.round((h.start - ps) / 60000) : '', pe ? Math.round((end - pe) / 60000) : '', from || 'Not planned',
+      h.trips || 0, round_(h.net, 2), ah > 0 ? round_((h.net || 0) / ah, 2) : 0, carName(h.car), h.from || '', h.to || ''];
+  });
+  const sh = tab_(book, 'History', HI_HEAD);
+  fill_(sh, HI_HEAD, rows);
+  if (rows.length) {
+    sh.getRange(2, 1, rows.length, 1).setNumberFormat('d mmm yyyy');
+    sh.getRange(2, 3, rows.length, 2).setNumberFormat('h:mm am/pm');
+    sh.getRange(2, 6, rows.length, 2).setNumberFormat('h:mm am/pm');
+    sh.getRange(2, 14, rows.length, 2).setNumberFormat('$#,##0.00');
+  }
+  // the placeholder first tab from when the file was made
+  book.getSheets().forEach(t => { if (!['Upcoming', 'History'].includes(t.getName()) && book.getSheets().length > 2 && t.getLastRow() <= 3 && /^(Sheet1|Offer Pilot Shifts)$/.test(t.getName())) book.deleteSheet(t); });
+  if (book.getSheets()[0].getName() !== 'Upcoming') { book.setActiveSheet(su); book.moveActiveSheet(1); }
 }
